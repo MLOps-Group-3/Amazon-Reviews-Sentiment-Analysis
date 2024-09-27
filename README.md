@@ -2,9 +2,9 @@
 
 ### Team Members:
 
-Valli Meenaa Vellaiyan
-Niresh Subramanian
-Venkata Subbarao Shirish Addaganti
-Harshit Sampgaon
-Prabhat Chanda
-Praneeth Korukonda
+Valli Meenaa Vellaiyan <br>
+Niresh Subramanian <br>
+Venkata Subbarao Shirish Addaganti <br>
+Harshit Sampgaon <br>
+Prabhat Chanda <br>
+Praneeth Korukonda <br>
