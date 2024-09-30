@@ -46,7 +46,7 @@ Ensure you have the following installed:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/Amazon-Reviews-Sentiment-Analysis/Amazon-Reviews-Sentiment-Analysis.git
+    git clone https://github.com/MLOps-Group-3/Amazon-Reviews-Sentiment-Analysis.git
 
     cd Amazon-Reviews-Sentiment-Analysis
     ```
