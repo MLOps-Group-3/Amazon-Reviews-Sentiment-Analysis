@@ -17,6 +17,33 @@ The goal of this project is to automate the end-to-end process of analyzing revi
 
 Using advanced sentiment analysis, this project enables Amazon to identify critical feedback faster, enhance the customer experience, and make data-driven decisions that align with business goals such as increasing customer retention, boosting sales, and reducing return rates. This ultimately contributes to a more responsive and customer-focused business strategy, directly impacting business growth. 
 
+## Dataset Overview
+
+### UCSD Amazon Reviews 2023
+The UCSD Amazon Reviews 2023 dataset is a large, publicly available collection of customer reviews across multiple product categories on Amazon. It contains approximately **338 million reviews**, spanning diverse customer experiences and sentiments.
+
+The dataset provides a foundation for sentiment analysis and is integral to our project's goal of classifying reviews into positive, neutral, or negative categories. The large volume and diversity of the dataset make it ideal for building scalable machine learning models.
+
+### Citation
+- **Dataset Source**: [UCSD Amazon Reviews 2023](https://amazon-reviews-2023.github.io/main.html)
+- **Citation**: Jérémie Rappaz, Julian McAuley, Karl Aberer. *Recommendation on Live-Streaming Platforms: Dynamic Availability and Repeat Consumption*, RecSys, 2021.
+
+### Data Card
+- **Format**: CSV/JSON
+- **Size**: 338 million reviews
+- **Data Types**: String, Numeric, List, Boolean, Dictionary, Timestamps
+- **Key Features**:
+  - **Review Text**: The main content of customer feedback
+  - **Star Rating**: Ratings from 1 to 5 stars
+  - **Product Category**: Product category for the reviewed item
+  - **Review Timestamp**: Date and time of the review
+  - **Product Metadata**: Additional product-related details
+  - **Verified Purchase**: Indicator if the review is from a verified purchase
+  - **Review Helpfulness**: Upvotes or downvotes received by the review (if available)
+
+### Data Rights and Privacy
+- The dataset is available for non-commercial use, and user identifiers like reviewer IDs are excluded to prevent privacy breaches. The project adheres to data minimization principles and complies with relevant privacy regulations.
+
 
 ## Folder Structure
 
