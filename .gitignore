@@ -1,0 +1,10 @@
+# Ignore all CSV files
+*.csv
+
+# Ignore SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore MySQL and PostgreSQL dump files
+*.sql
