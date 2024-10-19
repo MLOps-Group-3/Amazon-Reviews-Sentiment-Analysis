@@ -8,3 +8,6 @@
 
 # Ignore MySQL and PostgreSQL dump files
 *.sql
+
+# Ignore macOS .DS_Store files
+*.DS_Store
