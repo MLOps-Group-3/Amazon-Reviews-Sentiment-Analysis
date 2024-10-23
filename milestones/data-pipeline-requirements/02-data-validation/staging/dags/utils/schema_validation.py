@@ -32,7 +32,7 @@ def validate_schema(data: pd.DataFrame) -> bool:
     Comapre the exsiting schema to the New schema
 
     Parameters:
-    data : DataFrame to validate.
+    data : DataFrame 
 
     Returns:
     bool: True if the schema is valid, False otherwise.
@@ -62,3 +62,7 @@ def validate_schema(data: pd.DataFrame) -> bool:
 
     logging.info("Schema validation passed.")
     return True
+
+
+# Example Test :
+#validate_schema(pd.read_csv("/home/shirish/Desktop/mlops/Project/Amazon-Reviews-Sentiment-Analysis/milestones/data-pipeline-requirements/02-data-validation/staging/data/sampled_data_2018_2019.csv"))
