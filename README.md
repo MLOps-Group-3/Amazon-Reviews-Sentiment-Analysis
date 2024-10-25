@@ -106,7 +106,7 @@ This project includes a Terraform configuration to create the necessary Google C
 
 ### Steps
 
-1. **Clone the repository** (if not done already):
+1. **Clone the repositor** (if not done already):
     ```bash
     git clone https://github.com/Amazon-Reviews-Sentiment-Analysis/Amazon-Reviews-Sentiment-Analysis.git
     cd Amazon-Reviews-Sentiment-Analysis
