@@ -1,0 +1,33 @@
+name: Data Preprocessing Tests -- data clean
+
+on:
+  push:
+    paths:
+      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/dags/utils/data_cleaning.py'
+      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/tests/test_data_cleaning.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Java
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'  # Specify the Java version required for Spark
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12.7'  # Specify the Python version you need
+
+    - name: Install dependencies
+      run: |
+        pip install -r milestones/data-pipeline-requirements/03-data-preprocessing/staging/requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest milestones/data-pipeline-requirements/03-data-preprocessing/staging/tests/test_data_cleaning.py
