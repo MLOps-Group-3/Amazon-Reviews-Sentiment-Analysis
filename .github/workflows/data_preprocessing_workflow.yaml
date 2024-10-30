@@ -3,8 +3,8 @@ name: Data Preprocessing Tests -- Data Clean
 on:
   push:
     paths:
-      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/dags/utils/data_cleaning.py'
-      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/tests/test_data_cleaning.py'
+      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/dags/utils/data_cleaning_pandas.py'
+      - 'milestones/data-pipeline-requirements/03-data-preprocessing/staging/tests/test_data_cleaning_pandas.py'
 
 jobs:
   test:
