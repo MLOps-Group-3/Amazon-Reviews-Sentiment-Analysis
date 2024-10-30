@@ -29,7 +29,7 @@ EXPECTED_SCHEMA = {
 
 def validate_schema(data: pd.DataFrame) -> bool:
     """
-    Comapre the exsiting schema to the New schema
+    Validate the schema of the given DataFrame.
 
     Parameters:
     data : DataFrame 
@@ -37,21 +37,23 @@ def validate_schema(data: pd.DataFrame) -> bool:
     Returns:
     bool: True if the schema is valid, False otherwise.
     """
-    
-    logging.info("Schema validation Started ..")
-    
+    logging.info("Schema validation started.")
+
     # Check for missing columns
     for column, expected_dtype in EXPECTED_SCHEMA.items():
         if column not in data.columns:
             logging.error(f"Missing column: {column}")
             return False
-        
+
         # Check if the data type matches the expected type
         actual_dtype = str(data[column].dtype)
         if actual_dtype != expected_dtype:
+            # Log a few sample rows with incorrect data type
+            sample_rows = data[column].head(5).to_dict()
             logging.error(
                 f"Invalid type for column '{column}'. "
-                f"Expected {expected_dtype}, found {actual_dtype}."
+                f"Expected {expected_dtype}, found {actual_dtype}. "
+                f"Sample data: {sample_rows}"
             )
             return False
 
@@ -63,6 +65,13 @@ def validate_schema(data: pd.DataFrame) -> bool:
     logging.info("Schema validation passed.")
     return True
 
+# Example usage
+if __name__ == "__main__":
+    # Example DataFrame for testing
+    df = pd.read_csv("/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/milestones/data-pipeline-requirements/02-data-validation/staging/data/sampled_data_2018_2019.csv")
+    
+    result = validate_schema(df)
 
-# Example Test :
-#validate_schema(pd.read_csv("/home/shirish/Desktop/mlops/Project/Amazon-Reviews-Sentiment-Analysis/milestones/data-pipeline-requirements/02-data-validation/staging/data/sampled_data_2018_2019.csv"))
+    # Print results
+    
+    print(f"Validation Passed: {result}")
