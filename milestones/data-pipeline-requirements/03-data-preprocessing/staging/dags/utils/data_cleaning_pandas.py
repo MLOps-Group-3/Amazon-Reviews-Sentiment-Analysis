@@ -17,17 +17,17 @@ def clean_amazon_reviews(df_raw):
     # 1. Drop duplicates
     df_raw = df_raw.drop_duplicates()
 
+    # 2- Drop reviews with missing text or rating
+    df_raw = df_raw.dropna(subset=["text", "rating"])
 
-    # 2. Converting dtype based on range to reduce memory usage
+    # 3. Converting dtype based on range to reduce memory usage
     df_raw['rating'] = df_raw['rating'].astype('int8')
     df_raw["helpful_vote"] = df_raw["helpful_vote"].astype('int32')
     df_raw["average_rating"] = df_raw["average_rating"].astype('float32')
     df_raw["year"] = df_raw["year"].astype('int16')
     df_raw["review_month"] = df_raw["review_month"].astype('int8')
 
-    # 3. Handle missing values
-    # - Drop reviews with missing text or rating
-    df_raw = df_raw.dropna(subset=["text", "rating"])
+    # 4. Handle missing values
 
     # - Handle missing values by replacing NaN with 'unknown', helpful_vote with 0
     df_raw["title"].fillna("unknown", inplace=True)
