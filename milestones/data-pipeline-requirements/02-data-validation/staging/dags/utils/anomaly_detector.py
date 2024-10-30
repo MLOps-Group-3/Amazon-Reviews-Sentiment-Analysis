@@ -5,7 +5,6 @@ utils/anomaly_detector.py
 import pandas as pd
 import logging
 import json
-from scipy.stats import zscore
 
 # Configure logging to store logs in a file with JSON format
 log_file_path = "anomaly_logs.json"
@@ -21,6 +20,7 @@ logger = logging.getLogger(__name__)
 EXPECTED_MAIN_CATEGORIES = {"Electronics", "Books", "Clothing", "Beauty", "Toys"}
 EXPECTED_VERIFIED_PURCHASE_VALUES = {"Y", "N"}
 EXPECTED_CATEGORIES = {"Gadget", "Novel", "Apparel", "Cosmetics", "Games"}  # Sample expected categories
+# check what goes into the lists
 
 def detect_anomalies(data: pd.DataFrame) -> bool:
     """
@@ -37,16 +37,24 @@ def detect_anomalies(data: pd.DataFrame) -> bool:
     logging.info("Starting anomaly detection.")
     logging.debug(f"Data columns available for analysis: {list(data.columns)}")
 
-    # 1. Outlier detection using z-score for numeric columns
+    # 1. Outlier detection using z-score for numeric columns (without scipy)
     numeric_columns = ["rating", "helpful_vote", "price", "average_rating", "rating_number"]
     for column in numeric_columns:
         if column in data.columns:
             logger.info(f"Checking for outliers in '{column}' column.")
             column_data = data[column]
             logger.debug(f"Column '{column}' - data type: {column_data.dtype}, number of entries: {len(column_data)}")
-            z_scores = zscore(column_data.fillna(0))  # fillna to avoid errors with missing data
-            outliers = data[abs(z_scores) > 3]  # Define outliers as values with |z-score| > 3
-            outlier_count = len(outliers)
+            
+            # Calculate mean and standard deviation for z-score
+            mean = column_data.mean()
+            std = column_data.std()
+            if std > 0:
+                z_scores = (column_data - mean) / std
+                outliers = data[abs(z_scores) > 3]  # Define outliers as values with |z-score| > 3
+                outlier_count = len(outliers)
+            else:
+                outlier_count = 0
+            
             logger.debug(f"Outlier detection in '{column}' complete. Total outliers found: {outlier_count}")
             if outlier_count > 0:
                 logger.warning(json.dumps({
@@ -62,25 +70,29 @@ def detect_anomalies(data: pd.DataFrame) -> bool:
         else:
             logger.debug(f"Skipping '{column}' as it is not present in the data.")
 
-    # 2. Temporal anomalies (e.g., future dates in timestamps)
+    # 2. Temporal anomalies (e.g., dates beyond the data range end in 2023)
     if "review_date_timestamp" in data.columns:
-        logger.info("Checking for future dates in 'review_date_timestamp' column.")
+        logger.info("Checking for dates beyond 2023 in 'review_date_timestamp' column.")
         logger.debug("Converting 'review_date_timestamp' to datetime format.")
         data["review_date_timestamp"] = pd.to_datetime(data["review_date_timestamp"], errors="coerce")
-        future_dates = data[data["review_date_timestamp"] > pd.Timestamp.now()]
+        
+        # Set end of data date to December 31, 2023
+        end_date = pd.Timestamp("2023-12-31")
+        future_dates = data[data["review_date_timestamp"] > end_date]
         future_date_count = len(future_dates)
-        logger.debug(f"Future date check complete. Entries with future dates: {future_date_count}")
+        logger.debug(f"Future date check complete. Entries with dates beyond 2023: {future_date_count}")
+        
         if future_date_count > 0:
             logger.error(json.dumps({
                 "function": "detect_anomalies",
-                "issue": "future_dates",
+                "issue": "dates_beyond_end_of_data",
                 "column": "review_date_timestamp",
                 "future_date_count": future_date_count,
-                "message": f"{future_date_count} entries have future dates in 'review_date_timestamp'."
+                "message": f"{future_date_count} entries have dates beyond 2023 in 'review_date_timestamp'."
             }))
             anomalies_found = True
         else:
-            logger.info("No future dates found in 'review_date_timestamp' column.")
+            logger.info("No dates beyond 2023 found in 'review_date_timestamp' column.")
     else:
         logger.debug("Skipping 'review_date_timestamp' as it is not present in the data.")
 
