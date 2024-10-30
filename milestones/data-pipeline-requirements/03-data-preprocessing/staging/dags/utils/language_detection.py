@@ -81,7 +81,7 @@ def detect_language(data: pd.DataFrame, text_column: str = "text") -> (list, boo
 # Example usage:
 if __name__ == "__main__":
     data = pd.DataFrame({
-        'text': ['Hello world!', '', 'Bonjour le monde!', None, '    ', 'Hola mundo!']
+        'text': ['Hello world!','Hello how are you doing', '', 'Bonjour le monde!', None, '    ', 'Hola mundo!']
     })
     result = detect_language(data)
     print(result)
