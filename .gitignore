@@ -27,5 +27,8 @@ _SUCCESS
 
 __pycache__
 
-# ignore docker-compose.yaml
-docker-compose.yaml
+# ignore .env
+.env
+
+# ignore log files
+*.log
