@@ -1,9 +1,9 @@
-# labeling_utils.py
-
 import pandas as pd
 from snorkel.labeling import labeling_function, LFApplier
 from snorkel.labeling.model import LabelModel
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import time 
+import logging
 
 # Initialize VADER sentiment analyzer
 vader_analyzer = SentimentIntensityAnalyzer()
@@ -120,21 +120,52 @@ def apply_labelling(df_cleaned):
     Returns:
         DataFrame: DataFrame with predicted labels added as a new column.
     """
-    # Convert DataFrame to list of dictionaries
-    data_points = df_cleaned.to_dict(orient="records")
-    lfs = [lf_positive_negative_ratio, lf_high_rating, lf_low_rating, lf_vader_sentiment]
+    # lfs = [lf_positive_negative_ratio, lf_high_rating, lf_low_rating, lf_vader_sentiment]
+    try:
+        # Convert DataFrame to list of dictionaries
+        data_points = df_cleaned.to_dict(orient="records")
+        lfs = [lf_high_rating, lf_low_rating, lf_vader_sentiment]
+        logging.info("Applying labeling functions...")
+        
+        # Apply labeling functions
+        try:
+            applier = LFApplier(lfs)
+            start_time = time.time()
+            L = applier.apply(data_points)
+            apply_time = time.time() - start_time
+            logging.info(f"Labeling functions applied in {apply_time:.2f} seconds.")
+        except Exception as e:
+            logging.error("Error applying labeling functions.", exc_info=True)
+            raise e
 
-    # Apply labeling functions
-    applier = LFApplier(lfs)
-    L = applier.apply(data_points)
+        # Train LabelModel
+        try:
+            label_model = LabelModel(cardinality=3, verbose=True)
+            logging.info("Fitting the label model...")
+            start_time = time.time()
+            label_model.fit(L_train=L, n_epochs=500, log_freq=100)
+            fit_time = time.time() - start_time
+            logging.info(f"Model fitting completed in {fit_time:.2f} seconds.")
+        except Exception as e:
+            logging.error("Error fitting the label model.", exc_info=True)
+            raise e
 
-    # Train LabelModel and predict
-    label_model = LabelModel(cardinality=3, verbose=True)
-    label_model.fit(L_train=L, n_epochs=500, log_freq=100)
+        # Predict labels
+        try:
+            label_mapping = {0: "NEUTRAL", 1: "POSITIVE", 2: "NEGATIVE"}
+            logging.info("Predicting labels...")
+            start_time = time.time()
+            df_cleaned['label_snorkel'] = [label_mapping[label] for label in label_model.predict(L)]
+            predict_time = time.time() - start_time
+            logging.info(f"Prediction on all rows completed in {predict_time:.2f} seconds.")
+        except Exception as e:
+            logging.error("Error during prediction.", exc_info=True)
+            raise e
 
-    # Map numeric labels to sentiment strings
-    label_mapping = {0: "NEUTRAL", 1: "POSITIVE", 2: "NEGATIVE"}
-    df_cleaned['label_snorkel'] = [label_mapping[label] for label in label_model.predict(L)]
+    except Exception as e:
+        logging.critical("An error occurred in the labeling and prediction process.", exc_info=True)
+        raise e
+
     return df_cleaned
 
 if __name__ == "__main__":
