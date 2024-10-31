@@ -16,7 +16,7 @@ class TestDataCleaning(unittest.TestCase):
         """Set up a simple DataFrame for testing."""
         # Define test data with relevant columns, matching your sample data structure
         self.test_data = [
-            (2, 1.0, "B001DTE5Q2", "B001DTE5Q2", 0, "Very flimsy hooks. Purses fall off constantly. Not worth money.", 
+            (2, 1.0, "B001DTE5Q2", "B001DTE5Q2", 0, "Very flimsy hooks.🤣 Purses fall off constantly. Not worth money.", 
              1581880140993, "Waste of money", "AFAHC6E2UT4DJT4E2GBGNE5C2LPQ", True, 1581880140993, 
              "Amazon Home", "Perfect Curve Purse Rack HPC", "Home & Kitchen,Storage & Organization,Clothing & Closet Storage", 
              None, 4.1, 1973, 2020),
@@ -41,7 +41,7 @@ class TestDataCleaning(unittest.TestCase):
 
     def test_clean_amazon_reviews(self):
         """Test the data cleaning function."""
-        cleaned_df = clean_amazon_reviews(self.df_raw)
+        cleaned_df = clean_amazon_reviews(self.df_raw,[0])
 
         # Check if null values in 'price' are replaced with 'unknown'
         self.assertEqual((cleaned_df["price"] == "unknown").sum(), 1)  # Adjust count as needed
