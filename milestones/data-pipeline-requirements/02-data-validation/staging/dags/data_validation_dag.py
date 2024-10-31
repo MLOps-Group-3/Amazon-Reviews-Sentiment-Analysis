@@ -27,25 +27,16 @@ default_args = {
 data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def update_results_xcom(ti, function_name, row_indices, status):
-    """Push task results to XCom. JSON format nested structures for specific tasks."""
-    
-    # Flatten row indices and status for review_length_checker
-    if function_name == 'review_title_length':
-        row_indices_flat = json.dumps(row_indices)  # Convert nested structure to JSON string
-        status_flat = json.dumps(status)  # Convert nested structure to JSON string
-    else:
-        row_indices_flat = row_indices
-        status_flat = status
-
-    # Push flattened or original results to XCom
+def update_results_xcom(ti, function_name, row_indices=None, status=None):
+    """Push task results to XCom, allowing `None` values for `row_indices` or `status`."""
     ti.xcom_push(key=f"{function_name}_results", value={
         'function': function_name,
-        'row_indices': row_indices_flat,
-        'status': status_flat
+        'row_indices': row_indices,
+        'status': status
     })
 
 
+# Define task functions
 def schema_validation_task(ti):
     logging.info("Starting schema validation task")
     df = pd.read_csv(data_file)
@@ -91,62 +82,85 @@ def anomaly_detection_task(ti):
 def special_characters_detection_task(ti):
     logging.info("Starting special characters detection task")
     df = pd.read_csv(data_file)
-
-    # Since check_only_special_characters only returns one value, we update the code to match
     rows = check_only_special_characters(df)
     status = False if rows else True
-    
     update_results_xcom(ti, 'special_characters_detection', rows, status)
     logging.info("Special characters detection completed with status: %s", status)
-
 
 def review_length_checker_task(ti):
     logging.info("Starting review length check task")
     df = pd.read_csv(data_file)
     
-    result = check_review_title_length(df)
-    rows = {
-        "short_reviews": result["short_reviews"],
-        "long_reviews": result["long_reviews"],
-        "short_titles": result["short_titles"],
-        "long_titles": result["long_titles"]
-    }
-    status = {
-        "short_reviews": result['status_flags']['short_reviews_flag'],
-        "long_reviews": result['status_flags']['long_reviews_flag'],
-        "short_titles": result['status_flags']['short_titles_flag'],
-        "long_titles": result['status_flags']['long_titles_flag']
-    }
+    short_reviews, long_reviews, short_titles, long_titles, \
+    short_reviews_flag, long_reviews_flag, short_titles_flag, long_titles_flag = check_review_title_length(df)
 
-    update_results_xcom(ti, 'review_title_length', rows, status)
-    logging.info("Review length check completed with status flags: %s", status)
+    # Store results in XCom individually, passing None for `status` if not required
+    update_results_xcom(ti, 'short_reviews', short_reviews, short_reviews_flag)
+    update_results_xcom(ti, 'long_reviews', long_reviews, long_reviews_flag)
+    update_results_xcom(ti, 'short_titles', short_titles, short_titles_flag)
+    update_results_xcom(ti, 'long_titles', long_titles, long_titles_flag)
+
+    logging.info("Review length check completed.")
 
 def save_results(ti):
     """Collect and save results from XCom to a CSV file."""
-    task_names = [
+    # Define all individual task components to retrieve from XCom
+    review_length_components = [
+        'short_reviews', 'long_reviews', 'short_titles', 'long_titles'
+    ]
+    review_length_flags = [
+        'short_reviews_flag', 'long_reviews_flag', 'short_titles_flag', 'long_titles_flag'
+    ]
+    
+    # Other tasks to retrieve
+    other_task_names = [
         'schema_validation', 'range_check', 'missing_duplicates',
         'privacy_compliance', 'emoji_detection', 'anomaly_detection',
-        'special_characters_detection', 'review_title_length'
+        'special_characters_detection'
     ]
 
     results = []
-    for task in task_names:
+
+    # Process review length components
+    for component in review_length_components:
+        task_result = ti.xcom_pull(key=f"{component}_results", task_ids='review_length_checker')
+        if task_result:
+            results.append({
+                "function": component,
+                "row_indices": str(task_result.get("row_indices", "")),  # Convert list to string if present
+                "status": task_result.get("status", "")  # Capture status if present
+            })
+        else:
+            logging.warning(f"No result found for component: {component}")
+
+    # Process review length flags
+    for flag in review_length_flags:
+        task_result = ti.xcom_pull(key=f"{flag}_results", task_ids='review_length_checker')
+        if task_result:
+            results.append({
+                "function": flag,
+                "row_indices": "",  # No row indices for flags
+                "status": task_result.get("status", "")  # Capture status if present
+            })
+        else:
+            logging.warning(f"No result found for flag: {flag}")
+
+    # Process other tasks
+    for task in other_task_names:
         task_result = ti.xcom_pull(key=f"{task}_results", task_ids=task)
         if task_result:
-            if task == 'review_title_length':
-                # Load JSON strings back to dictionaries
-                task_result['row_indices'] = json.loads(task_result['row_indices'])
-                task_result['status'] = json.loads(task_result['status'])
-            results.append(task_result)
+            results.append({
+                "function": task,
+                "row_indices": str(task_result.get("row_indices", "")),  # Convert list to string if present
+                "status": task_result.get("status", "")  # Capture status if present
+            })
         else:
-            logging.warning(f"Result missing for task: {task}")
+            logging.warning(f"No result found for task: {task}")
 
-    # Convert list of results to DataFrame and save
-    results_df = pd.json_normalize(results, sep='_')  # Unnest dictionary columns
+    # Convert the list of results to a DataFrame and save
+    results_df = pd.DataFrame(results)
     results_df.to_csv("/opt/airflow/data/validation_results.csv", index=False)
     logging.info("Results saved successfully to validation_results.csv")
-
-# DAG definition remains the same
 
 # Define the DAG
 with DAG(
@@ -196,7 +210,6 @@ with DAG(
         task_id='special_characters_detection',
         python_callable=special_characters_detection_task,
     )
-
 
     review_length_checker = PythonOperator(
         task_id='review_length_checker',
