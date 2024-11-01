@@ -1,0 +1,30 @@
+name: Run Tests
+
+on:
+  push:
+    paths:
+      - 'milestones/data-pipeline-requirements/02-data-validation/**'
+  pull_request:
+    paths:
+      - 'milestones/data-pipeline-requirements/02-data-validation/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r milestones/data-pipeline-requirements/02-data-validation/staging/requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest milestones/data-pipeline-requirements/02-data-validation/staging/tests
