@@ -14,12 +14,22 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -27,4 +37,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest milestones/data-pipeline-requirements/02-data-validation/staging/tests
+          pytest --disable-warnings milestones/data-pipeline-requirements/02-data-validation/staging/tests
