@@ -21,3 +21,6 @@ __pycache__
 logs
 #Ignore python environment (CONDA)
 .conda
+
+#adding it for secrets
+.env

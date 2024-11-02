@@ -29,11 +29,12 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    AIRFLOW__SMTP__SMTP_HOST: smtp.gmail.com         # SMTP host
-    AIRFLOW__SMTP__SMTP_PORT: 587                    # SMTP port
-    AIRFLOW__SMTP__SMTP_USER: mlopsgrp3@gmail.com    # Your Gmail address
-    AIRFLOW__SMTP__SMTP_PASSWORD: wytcgoitfimounsx   # App-specific password
-    AIRFLOW__SMTP__SMTP_MAIL_FROM: mlopsgrp3@gmail.com # From email
+    AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST} # SMTP host
+    AIRFLOW__SMTP__SMTP_PORT: ${SMTP_PORT} # SMTP port
+    AIRFLOW__SMTP__SMTP_USER: ${SMTP_USER} # Your Gmail address
+    AIRFLOW__SMTP__SMTP_PASSWORD: ${SMTP_PASSWORD} # App-specific password
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${SMTP_MAIL_FROM} # From email
+    
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
