@@ -6,11 +6,10 @@ import pandas as pd
 import logging
 
 # Import utility functions
-from utils.data_cleaning_pandas import clean_amazon_reviews
-from utils.data_labeling import apply_labelling
-from utils.aspect_extraction import tag_and_expand_aspects, get_synonyms
-# from utils.aspect_extraction_parallel import parallel_process_aspects
-from utils.aspect_data_labeling import apply_vader_labeling
+from utils.data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
+from utils.data_preprocessing.data_labeling import apply_labelling
+from utils.data_preprocessing.aspect_extraction import tag_and_expand_aspects, get_synonyms
+from utils.data_preprocessing.aspect_data_labeling import apply_vader_labeling
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
