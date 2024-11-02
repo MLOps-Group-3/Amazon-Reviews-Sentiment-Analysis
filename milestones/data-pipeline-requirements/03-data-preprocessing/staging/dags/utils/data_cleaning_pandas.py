@@ -3,6 +3,7 @@ import re
 import emoji
 import logging
 import os
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def clean_amazon_reviews(df_raw, emoji_indices):
     """

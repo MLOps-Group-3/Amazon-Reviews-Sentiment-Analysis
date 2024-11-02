@@ -4,6 +4,7 @@ from snorkel.labeling.model import LabelModel
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import time 
 import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize VADER sentiment analyzer
 vader_analyzer = SentimentIntensityAnalyzer()
