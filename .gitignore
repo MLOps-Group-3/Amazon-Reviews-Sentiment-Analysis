@@ -24,7 +24,9 @@ _SUCCESS
 
 # Ignore macOS .DS_Store files
 *.DS_Store
-
+.DS_Store
+.idea
+.ipynb_checkpoints
 __pycache__
 
 # ignore .env
