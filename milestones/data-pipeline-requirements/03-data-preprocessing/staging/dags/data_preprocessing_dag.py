@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import logging
@@ -8,6 +9,7 @@ import logging
 from utils.data_cleaning_pandas import clean_amazon_reviews
 from utils.data_labeling import apply_labelling
 from utils.aspect_extraction import tag_and_expand_aspects, get_synonyms
+# from utils.aspect_extraction_parallel import parallel_process_aspects
 from utils.aspect_data_labeling import apply_vader_labeling
 
 # Set up logging
@@ -100,6 +102,7 @@ def aspect_extraction_task():
 
         # Apply extraction
         df_aspect = tag_and_expand_aspects(df,aspects)
+        # df_aspect = parallel_process_aspects(df,aspects)
         logger.info(f"Data labeling completed. Labeled data shape: {df_aspect.shape}")
 
         # Save labeled data
@@ -109,6 +112,8 @@ def aspect_extraction_task():
     except Exception as e:
         logger.error("Error during data labeling task.", exc_info=True)
         raise e
+
+
 
 def data_labeling_aspect_task():
     """Task to perform data labeling."""
@@ -130,6 +135,7 @@ def data_labeling_aspect_task():
     except Exception as e:
         logger.error("Error during aspect data labeling task.", exc_info=True)
         raise e
+
 
 
 # Define the DAG

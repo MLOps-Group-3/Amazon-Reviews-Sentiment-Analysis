@@ -54,6 +54,10 @@ def tag_and_expand_aspects_chunk(chunk, aspects):
     rows = []
     for idx, row in chunk.iterrows():
         review_text = row['text']
+
+        if not isinstance(review_text, str):
+            continue
+
         user_id = row.get('user_id', 'N/A')
         asin = row.get('asin', 'N/A')
         
