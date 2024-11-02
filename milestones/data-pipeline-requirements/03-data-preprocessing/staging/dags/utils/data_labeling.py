@@ -156,7 +156,7 @@ def apply_labelling(df_cleaned):
             label_mapping = {0: "NEUTRAL", 1: "POSITIVE", 2: "NEGATIVE"}
             logging.info("Predicting labels...")
             start_time = time.time()
-            df_cleaned['label_snorkel'] = [label_mapping[label] for label in label_model.predict(L)]
+            df_cleaned['sentiment_label'] = [label_mapping[label] for label in label_model.predict(L)]
             predict_time = time.time() - start_time
             logging.info(f"Prediction on all rows completed in {predict_time:.2f} seconds.")
         except Exception as e:
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     
     labeled_data.to_csv('milestones/data-pipeline-requirements/03-data-preprocessing/staging/data/labeled_data/labeled_data_2018_2019.csv')
     # Display labeled data distribution
-    print(labeled_data['label_snorkel'].value_counts())
+    print(labeled_data['sentiment_label'].value_counts())
