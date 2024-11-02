@@ -12,7 +12,7 @@ EXPECTED_SCHEMA = {
     "parent_asin": "object",              # Parent product ASIN
     "asin": "object",                     # Product-specific ASIN
     "helpful_vote": "int64",              # Number of helpful votes
-    "text": "object",                     # Review text
+    "text": "int64",                     # Review text
     "timestamp": "int64",                 # Unix timestamp
     "title": "object",                    # Review title
     "user_id": "object",                  # User identifier

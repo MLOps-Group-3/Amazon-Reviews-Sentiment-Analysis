@@ -21,7 +21,11 @@ default_args = {
     'owner': 'airflow',
     'start_date': datetime(2024, 10, 22),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
+    'email_on_failure': True,         # Send email on failure
+    'email_on_retry': True,           # Send email on retry
+    'email_on_success': False,        # Optional: email on success
+    'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
 
 data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
@@ -41,8 +45,14 @@ def schema_validation_task(ti):
     logging.info("Starting schema validation task")
     df = pd.read_csv(data_file)
     status = validate_schema(df)
+    
+    if not status:
+        logging.error("Schema validation failed.")
+        raise ValueError("Schema validation failed due to column type mismatch.")
+    
     update_results_xcom(ti, 'schema_validation', None, status)
     logging.info("Schema validation completed with status: %s", status)
+
 
 def range_check_task(ti):
     logging.info("Starting range check task")
@@ -219,7 +229,7 @@ with DAG(
     final_task = PythonOperator(
         task_id='save_results',
         python_callable=save_results,
-        trigger_rule='all_done',
+        trigger_rule='all_success',  # Ensures save_results runs only if all previous tasks succeed
     )
 
     parallel_tasks = [
