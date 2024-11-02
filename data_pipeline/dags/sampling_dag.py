@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from utils.data_collection.sampling import process_category
 from airflow.models import Variable
 from utils.data_collection.config import CATEGORIES
+from utils.data_collection.data_concat import concatenate_and_save_csv_files
 
 # Set the LOG_DIRECTORY variable
 Variable.set("LOG_DIRECTORY", "/opt/airflow/logs", description="Directory for storing logs")
@@ -41,9 +42,13 @@ for category in CATEGORIES:
     )
     category_tasks.append(task)
 
-# Set task dependencies if needed
-# For example, if you want tasks to run in sequence:
-for i in range(1, len(category_tasks)):
-    category_tasks[i-1] >> category_tasks[i]
+# Create a task to concatenate data
+concat_task = PythonOperator(
+    task_id='concatenate_data',
+    python_callable=concatenate_and_save_csv_files,
+    dag=dag,
+)
 
-# Alternatively, if you want tasks to run in parallel, you don't need to set dependencies
+# Set up task dependencies
+for task in category_tasks:
+    task >> concat_task
