@@ -34,3 +34,5 @@ __pycache__
 
 # ignore log files
 *.log
+
+*.gz
