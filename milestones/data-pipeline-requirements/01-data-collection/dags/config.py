@@ -13,11 +13,17 @@ CATEGORIES = [
     "Amazon_Fashion"
 ]
 
-# Target directory for downloads
+# Target directory for raw downloads
 TARGET_DIRECTORY = "/opt/airflow/data/raw"
+
+# Target directory for processed sample files
+TARGET_DIRECTORY_PROCESSED = "/opt/airflow/data/processed"
 
 # Number of worker threads for concurrent downloads
 MAX_WORKERS = 6
 
 # Logging directory
 LOG_DIRECTORY = "/opt/airflow/logs"
+
+# Sampling fraction for data processing
+SAMPLING_FRACTION = 0.01
