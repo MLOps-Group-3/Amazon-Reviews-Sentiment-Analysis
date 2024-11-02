@@ -7,6 +7,7 @@ import logging
 # Import utility functions
 from utils.data_cleaning_pandas import clean_amazon_reviews
 from utils.data_labeling import apply_labelling
+from utils.aspect_extraction import tag_and_expand_aspects, get_synonyms
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -26,6 +27,7 @@ data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
 cleaned_data_file = "/opt/airflow/data/airflow/cleaned_data.csv"
 validation_data_file = "/opt/airflow/data/validation_data/validation_results.csv"
 labeled_data_file = "/opt/airflow/data/airflow/labeled_data.csv"
+aspect_data_file = "/opt/airflow/data/cleaned_data/aspect_based.csv"
 
 # Define tasks
 def data_cleaning_task():
@@ -76,6 +78,36 @@ def data_labeling_task():
     except Exception as e:
         logger.error("Error during data labeling task.", exc_info=True)
         raise e
+    
+def aspect_extraction_task():
+    """Task to perform aspect extraction."""
+    try:
+        logger.info("Starting aspect extraction task...")
+        
+        # Load cleaned data
+        df = pd.read_csv(cleaned_data_file)
+        logger.info(f"Loaded cleaned data with shape: {df.shape} from {cleaned_data_file}")
+
+        aspects = {
+            "delivery": get_synonyms("delivery") | {"arrive", "shipping"},
+            "quality": get_synonyms("quality") | {"craftsmanship", "durable"},
+            "customer_service": get_synonyms("service") | {"support", "helpful", "response"},
+            "product_design": get_synonyms("design") | {"appearance", "look", "style"},
+            "cost": get_synonyms("cost") | get_synonyms("price") | {"value", "expensive", "cheap", "affordable"}
+            }
+
+        # Apply extraction
+        df_aspect = tag_and_expand_aspects(df,aspects)
+        logger.info(f"Data labeling completed. Labeled data shape: {df_aspect.shape}")
+
+        # Save labeled data
+        df_aspect.to_csv(aspect_data_file, index=False)
+        logger.info(f"Labeled data saved to {aspect_data_file}")
+        
+    except Exception as e:
+        logger.error("Error during data labeling task.", exc_info=True)
+        raise e
+
 
 # Define the DAG
 with DAG(
@@ -97,4 +129,10 @@ with DAG(
         python_callable=data_labeling_task,
     )
 
-    data_cleaning >> data_labeling
+    aspect_extraction = PythonOperator(
+        task_id='aspect_extraction',
+        python_callable=aspect_extraction_task,
+    )
+
+
+    data_cleaning >> [aspect_extraction, data_labeling]
