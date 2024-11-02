@@ -8,6 +8,7 @@ import logging
 from utils.data_cleaning_pandas import clean_amazon_reviews
 from utils.data_labeling import apply_labelling
 from utils.aspect_extraction import tag_and_expand_aspects, get_synonyms
+from utils.aspect_data_labeling import apply_vader_labeling
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -27,7 +28,8 @@ data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
 cleaned_data_file = "/opt/airflow/data/airflow/cleaned_data.csv"
 validation_data_file = "/opt/airflow/data/validation_data/validation_results.csv"
 labeled_data_file = "/opt/airflow/data/airflow/labeled_data.csv"
-aspect_data_file = "/opt/airflow/data/cleaned_data/aspect_based.csv"
+aspect_data_file = "/opt/airflow/data/cleaned_data/aspect_extracted_data.csv"
+labeled_aspect_data_file = "/opt/airflow/data/airflow/labeled_aspect_data.csv"
 
 # Define tasks
 def data_cleaning_task():
@@ -108,6 +110,27 @@ def aspect_extraction_task():
         logger.error("Error during data labeling task.", exc_info=True)
         raise e
 
+def data_labeling_aspect_task():
+    """Task to perform data labeling."""
+    try:
+        logger.info("Starting data labeling task...")
+        
+        # Load cleaned data
+        df = pd.read_csv(aspect_data_file)
+        logger.info(f"Loaded cleaned aspect data with shape: {df.shape} from {aspect_data_file}")
+
+        # Apply labeling
+        df_labeled = apply_vader_labeling(df)
+        logger.info(f"Aspect Data labeling completed. Labeled data shape: {df_labeled.shape}")
+
+        # Save labeled data
+        df_labeled.to_csv(labeled_aspect_data_file, index=False)
+        logger.info(f"Labeled data saved to {labeled_aspect_data_file}")
+        
+    except Exception as e:
+        logger.error("Error during aspect data labeling task.", exc_info=True)
+        raise e
+
 
 # Define the DAG
 with DAG(
@@ -123,16 +146,23 @@ with DAG(
         python_callable=data_cleaning_task,
     )
 
-    # Task 2: Data Labeling
+    # Task 2.1: Data Labeling for overall sentiment
     data_labeling = PythonOperator(
         task_id='data_labeling',
         python_callable=data_labeling_task,
     )
+
+    # Task 2.2: Aspect Capturing
 
     aspect_extraction = PythonOperator(
         task_id='aspect_extraction',
         python_callable=aspect_extraction_task,
     )
 
+    # Task 3: Aspect Data Labeling for aspect based sentiment
+    data_labeling_aspect = PythonOperator(
+        task_id='data_labeling_aspect',
+        python_callable=data_labeling_aspect_task,
+    )
 
-    data_cleaning >> [aspect_extraction, data_labeling]
+    data_cleaning >> [aspect_extraction, data_labeling] >> data_labeling_aspect
