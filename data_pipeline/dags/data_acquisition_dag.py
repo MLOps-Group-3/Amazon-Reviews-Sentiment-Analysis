@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
 from utils.data_collection.data_acquisition import acquire_data
@@ -61,5 +62,13 @@ acquire_data_task = PythonOperator(
 #     trigger_rule='one_failed'
 # )
 
-acquire_data_task 
+trigger_sampling_dag = TriggerDagRunOperator(
+    task_id='trigger_sampling_dag',
+    trigger_dag_id='sampling',  # ID of the next DAG to trigger
+    wait_for_completion=True,  # Wait until sampling_dag completes
+    dag=dag,
+)
+
+
+acquire_data_task >> trigger_sampling_dag
 # >> [send_success_email, send_failure_email]
