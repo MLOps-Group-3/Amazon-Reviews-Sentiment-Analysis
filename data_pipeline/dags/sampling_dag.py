@@ -23,7 +23,7 @@ default_args = {
 }
 
 dag = DAG(
-    'sampling',
+    '02_data_sampling_pipeline',
     default_args=default_args,
     description='A DAG for sampling data',
     schedule_interval=timedelta(days=1),

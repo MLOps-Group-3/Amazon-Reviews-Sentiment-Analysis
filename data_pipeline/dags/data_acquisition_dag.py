@@ -8,18 +8,29 @@ from airflow.models import Variable
 # Set the LOG_DIRECTORY variable
 Variable.set("LOG_DIRECTORY", "/opt/airflow/logs", description="Directory for storing logs")
 
+# default_args = {
+#     'owner': 'airflow',
+#     'depends_on_past': False,
+#     'start_date': datetime(2024, 10, 30),
+#     'email_on_failure': True,
+#     'email_on_retry': True,
+#     'retries': 1,
+#     'retry_delay': timedelta(minutes=5)
+# }
 default_args = {
     'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2024, 10, 30),
-    'email_on_failure': True,
-    'email_on_retry': True,
+    'start_date': datetime(2024, 10, 22),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
+    'email_on_failure': True,         # Send email on failure
+    'email_on_retry': True,           # Send email on retry
+    'email_on_success': False,        # Optional: email on success
+    'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
 
+
 dag = DAG(
-    'amazon_reviews_data_pipeline',
+    '01_data_collection_pipeline',
     default_args=default_args,
     description='A DAG for acquiring Amazon review data',
     schedule_interval=timedelta(days=1),
