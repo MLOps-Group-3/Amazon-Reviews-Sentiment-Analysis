@@ -33,21 +33,22 @@ acquire_data_task = PythonOperator(
     dag=dag,
 )
 
-send_success_email = EmailOperator(
-    task_id='send_success_email',
-    # to='subramanian.ni@northeastern.edu',
-    subject='Data Acquisition Task Completed Successfully',
-    html_content='The data acquisition task for Amazon reviews has been completed successfully.',
-    dag=dag,
-)
+# send_success_email = EmailOperator(
+#     task_id='send_success_email',
+#     # to='subramanian.ni@northeastern.edu',
+#     subject='Data Acquisition Task Completed Successfully',
+#     html_content='The data acquisition task for Amazon reviews has been completed successfully.',
+#     dag=dag,
+# )
 
-send_failure_email = EmailOperator(
-    task_id='send_failure_email',
-    to='subraamanian.ni@northeastern.edu',
-    subject='Data Acquisition Task Failed',
-    html_content='The data acquisition task for Amazon reviews has failed.',
-    dag=dag,
-    trigger_rule='one_failed'
-)
+# send_failure_email = EmailOperator(
+#     task_id='send_failure_email',
+#     to='subraamanian.ni@northeastern.edu',
+#     subject='Data Acquisition Task Failed',
+#     html_content='The data acquisition task for Amazon reviews has failed.',
+#     dag=dag,
+#     trigger_rule='one_failed'
+# )
 
-acquire_data_task >> [send_success_email, send_failure_email]
+acquire_data_task 
+# >> [send_success_email, send_failure_email]
