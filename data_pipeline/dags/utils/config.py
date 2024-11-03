@@ -8,10 +8,11 @@ CATEGORIES = [
     #"Clothing_Shoes_and_Jewelry",
     #"Health_and_Household",
     #"Beauty_and_Personal_Care",
-    # "Baby_Products",
+    "Baby_Products",
+    # "All_Beauty",
     # "Appliances",
     # "Amazon_Fashion",
-    "Subscription_Boxes"
+    # "Subscription_Boxes"
 ]
 
 # Target directory for downloads

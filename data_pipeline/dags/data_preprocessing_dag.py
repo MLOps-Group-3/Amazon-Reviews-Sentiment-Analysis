@@ -16,13 +16,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Default arguments for the DAG
+# default_args = {
+#     'owner': 'airflow',
+#     'start_date': datetime(2024, 10, 30),
+#     'retries': 1,
+#     'retry_delay': timedelta(minutes=5),
+#     'catchup': False
+# }
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 10, 30),
+    'start_date': datetime(2024, 10, 22),
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
-    'catchup': False
+    'email_on_failure': True,         # Send email on failure
+    'email_on_retry': True,           # Send email on retry
+    'email_on_success': False,        # Optional: email on success
+    'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
+
 
 # File paths
 data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
@@ -139,7 +150,7 @@ def data_labeling_aspect_task():
 
 # Define the DAG
 with DAG(
-    dag_id='data_preprocessing_dag',
+    dag_id='04_data_preprocessing_dag',
     default_args=default_args,
     schedule_interval='@daily',
     description='DAG for data cleaning and labeling',
