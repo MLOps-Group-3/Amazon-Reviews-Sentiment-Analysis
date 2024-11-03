@@ -49,6 +49,16 @@ concat_task = PythonOperator(
     dag=dag,
 )
 
+# Trigger data validation dag after concatenation
+trigger_validation_dag = TriggerDagRunOperator(
+    task_id='trigger_data_validation_dag',
+    trigger_dag_id='03_data_validation_pipeline',  # ID of the next DAG to trigger
+    wait_for_completion=True,  # Wait until sampling_dag completes
+    dag=dag,
+)
+
 # Set up task dependencies
 for task in category_tasks:
     task >> concat_task
+
+concat_task >> trigger_validation_dag

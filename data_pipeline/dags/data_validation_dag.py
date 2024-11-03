@@ -240,8 +240,8 @@ with DAG(
 
         # Task to trigger the preprocessing DAG
     trigger_preprocessing_dag = TriggerDagRunOperator(
-        task_id='trigger_preprocessing_dag',
-        trigger_dag_id='data_preprocessing_dag',  # Replace with the actual DAG ID of your preprocessing DAG
+        task_id='trigger_preprocessing_data_pipeline',
+        trigger_dag_id='04_data_preprocessing_dag',  # Replace with the actual DAG ID of your preprocessing DAG
         dag=dag,
     )
 
@@ -251,4 +251,4 @@ with DAG(
         special_characters_detection, review_length_checker
     ]
     
-    load_data >> schema_validation>> parallel_tasks >> final_task>> trigger_preprocessing_dag
+    load_data >> schema_validation >> parallel_tasks >> final_task >> trigger_preprocessing_dag
