@@ -1,9 +1,6 @@
 # Start with the official Apache Airflow image
 FROM apache/airflow:2.10.2
 
-# Set the environment variable for the data file path
-ENV FILE_PATH=/opt/airflow/data/sampled_data_2018_2019.csv
-
 # Copy the requirements.txt file and install dependencies
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
