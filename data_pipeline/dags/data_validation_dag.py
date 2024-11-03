@@ -4,17 +4,18 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import logging
-import json
+import os
+from dotenv import load_dotenv
 
 # Import validation functions
-from utils.schema_validation import validate_schema
-from utils.range_checker import check_range
-from utils.missing_duplicates_checker import find_missing_and_duplicates
-from utils.privacy_compliance import check_data_privacy
-from utils.emoji_detection import detect_emoji
-from utils.special_characters_detector import check_only_special_characters
-from utils.review_length_checker import check_review_title_length
-from utils.anomaly_detector import detect_anomalies
+from utils.data_validation.schema_validation import validate_schema
+from utils.data_validation.range_checker import check_range
+from utils.data_validation.missing_duplicates_checker import find_missing_and_duplicates
+from utils.data_validation.privacy_compliance import check_data_privacy
+from utils.data_validation.emoji_detection import detect_emoji
+from utils.data_validation.special_characters_detector import check_only_special_characters
+from utils.data_validation.review_length_checker import check_review_title_length
+from utils.data_validation.anomaly_detector import detect_anomalies
 
 # Default arguments for the DAG
 default_args = {
@@ -27,8 +28,10 @@ default_args = {
     'email_on_success': False,        # Optional: email on success
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
-
-data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
+###########need to change here ############
+# Load environment variables from .env file
+load_dotenv()
+data_file  = os.getenv('FILE_PATH')
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 def update_results_xcom(ti, function_name, row_indices=None, status=None):
