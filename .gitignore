@@ -23,6 +23,10 @@ _SUCCESS
 *.sql
 
 # Ignore macOS .DS_Store files
+*.DS_Store
+.DS_Store
+.idea
+.ipynb_checkpoints
 .DS_Store
 
 secrets.env
@@ -36,6 +40,8 @@ __pycache__
 
 # ignore log files
 *.log
+
+*.gz
 #log
 logs
 #Ignore python environment (CONDA)
