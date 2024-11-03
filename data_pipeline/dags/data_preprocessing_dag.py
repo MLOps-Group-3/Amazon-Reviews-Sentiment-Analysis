@@ -11,6 +11,7 @@ from utils.data_preprocessing.data_labeling import apply_labelling
 from utils.data_preprocessing.aspect_extraction import tag_and_expand_aspects, get_synonyms
 from utils.data_preprocessing.aspect_data_labeling import apply_vader_labeling
 
+from utils.config import SAMPLED_DATA_PATH, VALIDATION_RESULT_DATA_PATH, CLEANED_DATA_PATH, CLEANED_ASPECT_DATA_PATH, LABELED_DATA_PATH , LABELED_ASPECT_DATA_PATH 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -36,12 +37,12 @@ default_args = {
 
 
 # File paths
-data_file = "/opt/airflow/data/sampled_data_2018_2019.csv"
-cleaned_data_file = "/opt/airflow/data/airflow/cleaned_data.csv"
-validation_data_file = "/opt/airflow/data/validation_data/validation_results.csv"
-labeled_data_file = "/opt/airflow/data/airflow/labeled_data.csv"
-aspect_data_file = "/opt/airflow/data/cleaned_data/aspect_extracted_data.csv"
-labeled_aspect_data_file = "/opt/airflow/data/airflow/labeled_aspect_data.csv"
+data_file = SAMPLED_DATA_PATH #"/opt/airflow/data/sampled_data_2018_2019.csv"
+cleaned_data_file = CLEANED_DATA_PATH #"/opt/airflow/data/airflow/cleaned_data.csv"
+validation_data_file = VALIDATION_RESULT_DATA_PATH #"/opt/airflow/data/validation_data/validation_results.csv"
+aspect_data_file = CLEANED_ASPECT_DATA_PATH#"/opt/airflow/data/cleaned_data/aspect_extracted_data.csv"
+labeled_data_file = LABELED_DATA_PATH#"/opt/airflow/data/airflow/labeled_data.csv"
+labeled_aspect_data_file = LABELED_ASPECT_DATA_PATH#"/opt/airflow/data/airflow/labeled_aspect_data.csv"
 
 # Define tasks
 def data_cleaning_task():

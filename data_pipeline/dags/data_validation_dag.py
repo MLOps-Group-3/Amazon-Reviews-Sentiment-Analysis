@@ -18,6 +18,8 @@ from utils.data_validation.special_characters_detector import check_only_special
 from utils.data_validation.review_length_checker import check_review_title_length
 from utils.data_validation.anomaly_detector import detect_anomalies
 
+from utils.config import SAMPLED_DATA_PATH,VALIDATION_RESULT_DATA_PATH
+
 # Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
@@ -32,7 +34,7 @@ default_args = {
 ###########need to change here ############
 # Load environment variables from .env file
 load_dotenv()
-data_file  = os.getenv('FILE_PATH')
+data_file  = SAMPLED_DATA_PATH#os.getenv('FILE_PATH')
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 def update_results_xcom(ti, function_name, row_indices=None, status=None):
@@ -173,7 +175,7 @@ def save_results(ti):
 
     # Convert the list of results to a DataFrame and save
     results_df = pd.DataFrame(results)
-    results_df.to_csv("/opt/airflow/data/validation_results.csv", index=False)
+    results_df.to_csv(VALIDATION_RESULT_DATA_PATH, index=False)
     logging.info("Results saved successfully to validation_results.csv")
 
 # Define the DAG
