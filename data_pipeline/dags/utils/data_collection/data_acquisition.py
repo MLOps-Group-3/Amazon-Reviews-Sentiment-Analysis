@@ -5,7 +5,8 @@ import requests
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from airflow.models import Variable
-from config import REVIEW_BASE_URL, META_BASE_URL, CATEGORIES, TARGET_DIRECTORY, MAX_WORKERS
+
+from .config import REVIEW_BASE_URL, META_BASE_URL, CATEGORIES, TARGET_DIRECTORY, MAX_WORKERS
 
 def setup_logging():
     log_directory = Variable.get("LOG_DIRECTORY", "/opt/airflow/logs")

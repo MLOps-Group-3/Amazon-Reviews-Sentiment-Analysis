@@ -9,7 +9,7 @@ CATEGORIES = [
     #"Health_and_Household",
     #"Beauty_and_Personal_Care",
     # "Baby_Products",
-    "Appliances",
+    # "Appliances",
     # "Amazon_Fashion",
     "Subscription_Boxes"
 ]

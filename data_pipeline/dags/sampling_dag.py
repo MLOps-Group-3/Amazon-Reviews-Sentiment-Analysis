@@ -4,8 +4,8 @@ from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
 from utils.data_collection.sampling import process_category
 from airflow.models import Variable
-from utils.data_collection.config import CATEGORIES
 from utils.data_collection.data_concat import concatenate_and_save_csv_files
+from utils.data_collection.config import CATEGORIES
 
 # Set the LOG_DIRECTORY variable
 Variable.set("LOG_DIRECTORY", "/opt/airflow/logs", description="Directory for storing logs")

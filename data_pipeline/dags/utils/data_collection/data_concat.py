@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from config import TARGET_DIRECTORY_SAMPLED
+from .config import TARGET_DIRECTORY_SAMPLED
 
 
 def concatenate_and_save_csv_files():
