@@ -246,9 +246,9 @@ with DAG(
     )
 
     parallel_tasks = [
-        schema_validation, range_check, missing_duplicates,
+        range_check, missing_duplicates,
         privacy_compliance, emoji_detection, anomaly_detection,
         special_characters_detection, review_length_checker
     ]
     
-    load_data >> parallel_tasks >> final_task>> trigger_preprocessing_dag
+    load_data >> schema_validation>> parallel_tasks >> final_task>> trigger_preprocessing_dag

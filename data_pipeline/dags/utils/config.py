@@ -33,8 +33,10 @@ SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/sampled_data_2018_2019.csv"
 # Validation Data Result Path
 VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation/validation_results.csv"
 
+# Post preprocessing cleaned data path
 CLEANED_DATA_PATH = "/opt/airflow/data/cleaned/cleaned_data.csv"
 
+# 
 CLEANED_ASPECT_DATA_PATH = "/opt/airflow/data/cleaned/aspect_extracted_data.csv"
 
 LABELED_DATA_PATH = "/opt/airflow/data/labeled/labeled_data.csv"
