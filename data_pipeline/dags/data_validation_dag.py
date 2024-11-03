@@ -6,6 +6,7 @@ import pandas as pd
 import logging
 import os
 from dotenv import load_dotenv
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
 
 # Import validation functions
 from utils.data_validation.schema_validation import validate_schema
@@ -235,10 +236,17 @@ with DAG(
         trigger_rule='all_success',  # Ensures save_results runs only if all previous tasks succeed
     )
 
+        # Task to trigger the preprocessing DAG
+    trigger_preprocessing_dag = TriggerDagRunOperator(
+        task_id='trigger_preprocessing_dag',
+        trigger_dag_id='data_preprocessing_dag',  # Replace with the actual DAG ID of your preprocessing DAG
+        dag=dag,
+    )
+
     parallel_tasks = [
         schema_validation, range_check, missing_duplicates,
         privacy_compliance, emoji_detection, anomaly_detection,
         special_characters_detection, review_length_checker
     ]
     
-    load_data >> parallel_tasks >> final_task
+    load_data >> parallel_tasks >> final_task>> trigger_preprocessing_dag
