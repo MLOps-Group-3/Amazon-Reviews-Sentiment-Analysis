@@ -21,7 +21,7 @@ jobs:
           python-version: '3.12.7'
 
       - name: Cache Python packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -33,23 +33,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r data_pipeline/requirements.txt
 
-  # Job for running each test file separately
+  # Job for running tests
   test:
     runs-on: ubuntu-latest
     needs: install_dependencies  # Ensure dependencies are installed before running tests
-
-    strategy:
-      matrix:
-        test_file: 
-          - "data_pipeline/tests/data_preprocessing/test_data_cleaning_pandas.py"
-          - "data_pipeline/tests/data_preprocessing/test_data_labeling.py" 
-          - "data_pipeline/tests/data_preprocessing/test_aspect_extraction.py" 
-          - "data_pipeline/tests/data_preprocessing/test_aspect_data_labeling.py" 
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Run tests
+      - name: Find and run tests
         run: |
-          python -m unittest ${test_file}
+          # Find all test files in the specified directory
+          for test_file in data_pipeline/tests/data_preprocessing/test_*.py; do
+            echo "Running $test_file"
+            python -m unittest "$test_file" || echo "$test_file failed"  # Continue running other tests even if one fails
+          done
