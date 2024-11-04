@@ -38,6 +38,5 @@ class TestAspectDataLabeling(unittest.TestCase):
         # Check if the sentiment labels are correctly assigned
         self.assertTrue(labeled_df['sentiment_label'].notnull().all())  # Ensure no null values in 'sentiment_label'
 
-
 if __name__ == "__main__":
     unittest.main()
