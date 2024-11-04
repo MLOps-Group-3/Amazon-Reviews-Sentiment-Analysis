@@ -2,13 +2,13 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../dags/utils')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../dags/utils/data_preprocessing')))
 
 import sys
 import os
 import unittest
 import pandas as pd
-from data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
+from data_cleaning_pandas import clean_amazon_reviews
 
 class TestDataCleaning(unittest.TestCase):
 
@@ -26,7 +26,8 @@ class TestDataCleaning(unittest.TestCase):
             (2, None, "B00PILE4SK", "B00FZ1JR6M", 0, "Good brand, but received a used model", 
              1582822571741, "Used model received", "AGIEN7AW4DV6OMUK25PCPFZAU6KQ", True, 1582822571741, 
              "Amazon Home", "KitchenAid Blender", "Home & Kitchen,Kitchen & Dining", None, 4.5, 3905, 2020),  # Null rating and price
-            # Add additional rows if necessary...
+            (12, 4.5, "B00NEW", "B001NEW123", 999999, " ", 1582721348591, "   ", 
+             "USER0001", False, 1582721348591, "Category", "Product Name", "Category", "NULL", 5.0, 500, 2020)  # eLarge helpful_votempty text, whitespace title
         ]
         
         # Define columns for the DataFrame
@@ -43,12 +44,16 @@ class TestDataCleaning(unittest.TestCase):
         """Test the data cleaning function."""
         cleaned_df = clean_amazon_reviews(self.df_raw,[0])
 
+        # Check empty DataFrame handling
+        empty_df = pd.DataFrame(columns=self.columns)
+        self.assertTrue(clean_amazon_reviews(empty_df, []).empty)
+
         # Check if null values in 'price' are replaced with 'unknown'
         self.assertEqual((cleaned_df["price"] == "unknown").sum(), 1)  # Adjust count as needed
 
         # Check for duplicates (assuming duplicates are removed based on `asin` and `user_id` or other criteria)
         # Adjust count to match expected rows after removing duplicates
-        self.assertEqual(len(cleaned_df.drop_duplicates()), len(self.test_data) - 1) 
+        self.assertEqual(len(cleaned_df.drop_duplicates()), len(self.test_data) - 2) 
 
         # Check for nulls in 'text' and 'rating'
         self.assertEqual(cleaned_df["text"].isnull().sum(), 0)  # Expecting no null 'text'
@@ -61,6 +66,12 @@ class TestDataCleaning(unittest.TestCase):
         # Additional checks for this dataset
         # Check if 'review_date_timestamp' is not null or invalid
         self.assertEqual(cleaned_df["review_date_timestamp"].isnull().sum(), 0)
+
+        # Emoji handling: ensure demojization for specific index only
+        self.assertIn(":face_with_tears_of_joy:", cleaned_df.loc[0, "text"])
+
+        # Check if excessive whitespace removed
+        self.assertNotIn("   ", cleaned_df["title"].iloc[0])
 
         # Check if 'verified_purchase' values are standardized (assuming True/False only)
         self.assertTrue(cleaned_df["verified_purchase"].isin([True, False]).all())
