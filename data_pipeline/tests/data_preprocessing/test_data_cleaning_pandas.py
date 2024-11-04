@@ -3,12 +3,12 @@ import sys
 import os
 
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), './dags/utils/')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 import unittest
 import pandas as pd
-from dags.utils.data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
+from data_pipeline.dags.utils.data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
 
 class TestDataCleaning(unittest.TestCase):
 
