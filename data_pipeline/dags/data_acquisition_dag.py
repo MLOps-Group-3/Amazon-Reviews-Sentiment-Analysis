@@ -31,7 +31,7 @@ default_args = {
 
 
 dag = DAG(
-    '01_data_collection_pipeline',
+    '01_data_collection_dag',
     default_args=default_args,
     description='A DAG for acquiring Amazon review data',
     schedule_interval=timedelta(days=1),
@@ -64,7 +64,7 @@ acquire_data_task = PythonOperator(
 
 trigger_sampling_dag = TriggerDagRunOperator(
     task_id='trigger_sampling_dag',
-    trigger_dag_id='02_data_sampling_pipeline',  # ID of the next DAG to trigger
+    trigger_dag_id='02_data_sampling_dag',  # ID of the next DAG to trigger
     wait_for_completion=False,  # Wait until sampling_dag completes
     dag=dag,
 )
