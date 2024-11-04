@@ -10,9 +10,8 @@ CATEGORIES = [
     #"Beauty_and_Personal_Care",
     "Baby_Products",
     # "All_Beauty",
-    # "Appliances",
-    # "Amazon_Fashion",
-    # "Subscription_Boxes"
+    "Appliances",
+    # "Amazon_Fashion"
 ]
 
 # Target directory for downloads
@@ -23,6 +22,9 @@ TARGET_DIRECTORY_SAMPLED = "/opt/airflow/data/sampled"
 
 # Number of worker threads for concurrent downloads
 MAX_WORKERS = 6
+
+# Sampling fraction
+SAMPLING_FRACTION = 0.1
 
 # Logging directory
 LOG_DIRECTORY = "/opt/airflow/logs"
