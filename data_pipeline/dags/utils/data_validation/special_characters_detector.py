@@ -35,3 +35,4 @@ def check_only_special_characters(data: pd.DataFrame):
 
     return invalid_reviews
 
+
