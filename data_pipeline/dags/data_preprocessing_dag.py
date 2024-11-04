@@ -30,7 +30,7 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,         # Send email on failure
-    'email_on_retry': True,           # Send email on retry
+    'email_on_retry': False,           # Send email on retry
     'email_on_success': False,        # Optional: email on success
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
@@ -153,7 +153,7 @@ def data_labeling_aspect_task():
 with DAG(
     dag_id='04_data_preprocessing_dag',
     default_args=default_args,
-    schedule_interval='@daily',
+    schedule_interval=None,
     description='DAG for data cleaning and labeling',
 ) as dag:
 
