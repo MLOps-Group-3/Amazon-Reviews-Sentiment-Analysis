@@ -35,6 +35,5 @@ def check_only_special_characters(data: pd.DataFrame):
 
     return invalid_reviews
 
-# Example usage:
-# df = pd.read_csv("path_to_your_data.csv")
-# invalid_indices = check_only_special_characters(df)
+
+

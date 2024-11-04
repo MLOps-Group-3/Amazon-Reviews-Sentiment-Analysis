@@ -94,59 +94,69 @@ Ensure you have the following installed:
     docker build -t Amazon-Reviews-Sentiment-Analysis .
     docker run -it -v $(pwd):/app Amazon-Reviews-Sentiment-Analysis
     ```
-## Infrastructure Setup with Terraform on GCP
 
-This project includes a Terraform configuration to create the necessary Google Cloud infrastructure.
+## DVC Setup
+
+This guide will help you set up DVC and configure it to pull data files from Google Cloud Storage for this project.
 
 ### Prerequisites
 
-- [Terraform](https://www.terraform.io/downloads.html) (v1.0+)
-- [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install) installed and configured
-- A Google Cloud account with billing enabled
+1. **Install DVC**  
+   Install DVC by running the following command:
+   ```bash
+   pip install dvc
+   ```
 
-### Steps
+2. **Google Cloud Service Key**  
+   Ensure you have a Google Cloud service account key JSON file, which is necessary for authentication.
 
-1. **Clone the repository** (if not done already):
-    ```bash
-    git clone https://github.com/Amazon-Reviews-Sentiment-Analysis/Amazon-Reviews-Sentiment-Analysis.git
-    cd Amazon-Reviews-Sentiment-Analysis
-    ```
+### Configuration
 
-2. **Navigate to the `terraform` directory**:
-    ```bash
-    cd infrastructure/terraform
-    ```
+1. **Configure DVC Remote**  
+   Set the following configuration in your DVC config file (this may already be set):
+   ```ini
+   [core]
+       remote = gcp_remote
+   ['remote "gcp_remote"']
+       url = gs://sentiment-analysis-amazon-reviews-data/dvcstore
+   ```
 
-3. **Authenticate with GCP**:
-    ```bash
-    gcloud auth application-default login
-    gcloud config set project [PROJECT_ID]
-    ```
+2. **Export Google Cloud Credentials**  
+   Export the path to your GCP service account key file. Replace `/path/to/your/google-service-key.json` with the actual path to your key:
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS='/path/to/your/google-service-key.json'
+   ```
 
-4. **Initialize Terraform**:
-    This step initializes the configuration and downloads necessary GCP provider plugins:
-    ```bash
-    terraform init
-    ```
+### Pulling Data
 
-5. **Create and apply the infrastructure plan**:
-    - To see the infrastructure that will be created:
-      ```bash
-      terraform plan
-      ```
-    - To create resources on GCP:
-      ```bash
-      terraform apply
-      ```
-
-6. **Destroy the infrastructure (optional)**:
-    When done, to tear down the infrastructure:
-    ```bash
-    terraform destroy
-    ```
-
-### Usage
-
-To run the scripts for training the model:
+Once you have set up the configuration and credentials, you can pull the data files from the remote storage by running:
 ```bash
-python src/train_model.py
+dvc pull
+```
+
+### Expected Output
+
+You should see an output similar to this in your terminal:
+```plaintext
+Collecting                                                                                                                               |17.0 [00:03, 5.32entry/s]
+Fetching
+Building workspace index                                                                                                                 |2.00 [00:00, 9.91entry/s]
+Comparing indexes                                                                                                                        |20.0 [00:00, 44.3entry/s]
+Applying changes                                                                                                                         |13.0 [00:00, 209file/s]
+A       ../../../../data_pipeline/data/cleaned/
+A       ../../../../data_pipeline/data/labeled/
+A       ../../../../data_pipeline/data/validation/
+A       ../../../../data_pipeline/data/sampled/
+4 files added and 12 files fetched
+```
+
+### Directory Structure
+
+After running `dvc pull`, the files will be saved in the `data_pipeline/data` folder with the following structure:
+- `cleaned/`
+- `labeled/`
+- `validation/`
+- `sampled/`
+
+These folders contain the various stages of processed data ready for use in the project.
+
