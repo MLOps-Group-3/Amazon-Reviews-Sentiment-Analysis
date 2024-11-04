@@ -37,4 +37,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --disable-warnings data_pipeline/dags/utils/data_validation/tests
+          pytest --disable-warnings data_pipeline/tests/data_validation

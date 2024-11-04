@@ -10,7 +10,7 @@ import pytest
 # Add the utils directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../dags/utils')))
 
-from schema_validation import validate_schema  # Import after setting up the path
+from data_pipeline.dags.utils.data_validation.schema_validation import validate_schema  # Import after setting up the path
 
 # Fixture for a valid DataFrame sample that matches the EXPECTED_SCHEMA
 @pytest.fixture
