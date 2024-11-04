@@ -25,4 +25,4 @@ jobs:
 
     - name: Run tests
       run: |
-        python -m unittest discover -s data_pipeline/tests -p "test_data_preprocessing_*.py"
+        python -m unittest discover -s data_pipeline/tests/data_preprocessing -p "test_*.py"
