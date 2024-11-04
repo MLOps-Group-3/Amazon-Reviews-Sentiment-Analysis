@@ -3,7 +3,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
-from utils.data_collection.sampling import process_category
+from utils.data_collection.sampling import sample_category
 from airflow.models import Variable
 from utils.data_collection.data_concat import concatenate_and_save_csv_files
 from utils.config import CATEGORIES
@@ -34,11 +34,11 @@ dag = DAG(
 
 # Create tasks for each category
 category_tasks = []
-for category in CATEGORIES:
+for category_name in CATEGORIES:
     task = PythonOperator(
-        task_id=f'process_{category}',
-        python_callable=process_category,
-        op_kwargs={'category': category},
+        task_id=f'sample_{category_name}',
+        python_callable=sample_category,
+        op_kwargs={'category_name': category_name},
         dag=dag,
     )
     category_tasks.append(task)
