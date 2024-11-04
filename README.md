@@ -112,7 +112,7 @@ This repository contains Airflow DAGs designed to handle multiple stages of data
 
 ### DAG: Data Acquisition
 
-**DAG ID**: `amazon_reviews_data_pipeline`
+**DAG ID**: `01_data_collection_dag`
 
 This DAG performs data acquisition for Amazon review data. The DAG consists of two main tasks:
 
@@ -120,58 +120,62 @@ This DAG performs data acquisition for Amazon review data. The DAG consists of t
 
 - **Objective**: Acquires and ingests Amazon review data.
 - **Process**:
-  - Calls the `acquire_data` function from the `data_acquisition` module to perform the data extraction.
+  - Calls the `acquire_data` function from the `data_acquisition` module to perform the data extraction. 
+  - Skips redownloading if file exists in `data/raw` directory.
   - This function handles the logic of retrieving data from the source and saving it locally.
 - **Output**: Data is saved in a designated directory, ready for further processing.
 
-#### Task 2: Send Success Email (`send_success_email`)
-
-- **Objective**: Sends an email notification upon successful completion of the data acquisition task.
-- **Process**:
-  - Utilizes the `EmailOperator` to send an email notification with details of the successful task completion.
-- **Output**: An email is sent to the specified recipient.
-
-#### Task 3: Send Failure Email (`send_failure_email`)
-
-- **Objective**: Sends an email notification if the data acquisition task fails.
-- **Process**:
-  - Utilizes the `EmailOperator` with a trigger rule of `one_failed` to notify in case of task failure.
-- **Output**: An email is sent to the specified recipient in case of failure.
-
----
-
-### DAG: Data Sampling
-
-**DAG ID**: `amazon_reviews_data_sampling`
-
-This DAG performs data sampling for Amazon reviews using Apache Spark. The DAG consists of multiple tasks, one for each category defined in the configuration.
-
-#### Task 1: Sample Data by Category (`sample_data_{category}`)
-
-- **Objective**: Samples data for each specified category.
-- **Process**:
-  - For each category defined in the `CATEGORIES` configuration, a `SparkSubmitOperator` task is created to run the sampling script.
-  - The sampling is performed using the Spark job located at `/opt/airflow/dags/data_sampling.py`.
-- **Output**: Sampled data for each category is processed in sequence, allowing for individual analysis and handling.
-
-#### Task 2: Join Sampling Tasks (`join_sampling_tasks`)
-
-- **Objective**: Acts as a dummy task to signify the completion of all sampling tasks.
-- **Process**:
-  - This task does not perform any operations but serves as an end point for the sequence of sampling tasks.
-- **Output**: Indicates that all data sampling tasks have been completed successfully.
-
----
-
-### Task Dependencies
+<!-- ### Task Dependencies
 
 - **Flow**:
   - In the **Data Acquisition** DAG, the flow starts with `acquire_data`, leading to either the success or failure email tasks based on the outcome.
-  
+   -->
+---
+### DAG: Data Sampling
 
+**DAG ID**: `02_data_sampling_dag`
+
+This DAG is designed to sample and process Amazon review data by category using Python and Pandas. It orchestrates a sequence of tasks that handle data loading, filtering, joining with metadata, and sampling by specified review categories.
+
+#### Task 1: Sample Data by Category (`sample_data_{category}`)
+
+- **Objective**: Sample data for each specified Amazon review category.
+- **Details**:
+  - For each category listed in the `CATEGORIES` configuration, a `PythonOperator` task is created to execute the `sample_category` function.
+  - Each task loads, filters, joins, and samples review data using Pandas.
+  - The `sample_category` function in `sampling.py`:
+    - Reads and decompresses JSONL.GZ files containing reviews and metadata.
+    - Filters reviews by date and removes unnecessary fields.
+    - Joins review data with product metadata for enriched sampling.
+    - Performs stratified sampling to ensure diverse representation across months and ratings.
+  - The sampled data is then saved to CSV files, split by year (2018–2019 and 2020).
+- **Output**: Saves sampled data as CSV files for each category in `TARGET_DIRECTORY_SAMPLED`, enabling further analysis by year.
+
+#### Task 2: Concatenate Sampled Data (`concatenate_data`)
+
+- **Objective**: Combine all sampled data CSV files across categories into unified datasets.
+- **Details**:
+  - This task reads the sampled data files from each category and consolidates them into two comprehensive CSVs: one for 2018–2019 and another for 2020.
+  - The output CSV files are saved in the specified directory (`TARGET_DIRECTORY_SAMPLED`).
+- **Output**: Produces `sampled_data_2018_2019.csv` and `sampled_data_2020.csv` containing concatenated review data for each time period.
+
+#### Task 3: Trigger Data Validation DAG (`trigger_data_validation_dag`)
+
+- **Objective**: Initiate the `03_data_validation_dag` after data concatenation is completed.
+- **Details**:
+  - This task triggers a separate DAG to validate the concatenated data, ensuring data quality and completeness.
+  - It acts as a starting point for further data validation or processing steps in a separate pipeline.
+- **Output**: Marks the completion of data sampling and concatenation, ensuring readiness for validation.
+
+#### Configuration and Logging
+
+- **Logging**: Logging is set up to capture both console and file logs. Detailed logs are saved in `/opt/airflow/logs`, as specified by the `LOG_DIRECTORY` variable, and each task's operations are recorded, including any errors.
+- **Error Handling**: In case of task failure, an email alert is sent to `vallimeenaavellaiyan@gmail.com`.
+
+---
 ### DAG: Data Validation
 
-**DAG ID**: `data_validation_dag`
+**DAG ID**: `03_data_validation_dag`
 
 This DAG performs validation checks on the dataset to ensure data quality, integrity, and compliance with predefined standards. The DAG consists of several main tasks:
 
@@ -244,7 +248,7 @@ This DAG performs validation checks on the dataset to ensure data quality, integ
 
 ### DAG: Data Preprocessing
 
-**DAG ID**: `data_preprocessing_dag`
+**DAG ID**: `04_data_preprocessing_dag`
 
 This DAG performs data cleaning, labeling, and aspect-based sentiment analysis on Amazon review data. The DAG consists of four main tasks:
 
