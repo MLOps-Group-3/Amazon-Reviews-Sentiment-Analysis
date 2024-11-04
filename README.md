@@ -47,54 +47,81 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
 
 ## Folder Structure
 
+
 ```bash
-├── README.md                   # Overview of the project, installation instructions, and usage guidelines
-├── LICENSE                     # License outlining terms and conditions for using the repository
-├── .github/                    # GitHub-related files (e.g., workflows, templates, GitHub actions)
-│   └── workflows/              # CI/CD workflows (e.g., GitHub actions)
-├── data/                       # Raw and unprocessed data files
-├── models/                     # Saved machine learning models and related metadata
-├── notebooks/                  # Jupyter/Colab notebooks for exploration, prototyping, and modeling
-├── scripts/                    # Deployment and monitoring scripts
-├── src/                        # Source code for data processing, modeling, evaluation, and DAGs for Airflow
-├── tests/                      # Unit tests for scripts and methods
-└── milestones/                 # Files logging milestones and project progress
-    └── scoping/                # Scoping documents and reports
+.
+├── data_pipeline                  # Main directory for all data pipeline assets and configurations
+│   ├── archive                    # Contains deprecated files and early versions of scripts
+│   │   ├── docker-compose-collection.yaml.txt  
+│   │   ├── docker-compose python.txt
+│   │   └── sampling_old.py                  
+│   ├── config                     # Directory for configuration files
+│   │   └── config.ini             # Configuration file for pipeline settings and parameters
+│   ├── dags                       # Directory containing all Airflow DAGs
+│   │   ├── data_acquisition_dag.py   # DAG for data acquisition and ingestion
+│   │   ├── data_preprocessing_dag.py # DAG for data cleaning, labeling, and sentiment analysis
+│   │   ├── data_validation_dag.py    # DAG for data validation to ensure quality and consistency
+│   │   ├── __init__.py               # Initialization for the DAGs package
+│   │   ├── sampling_dag.py           # DAG for sampling Amazon review data by category
+│   │   └── utils                     # Utility scripts used across DAGs for modular functionality
+│   ├── data                       # Data directory containing datasets across different pipeline stages
+│   │   ├── cleaned                # Cleaned data generated in preprocessing
+│   │   ├── cleaned.dvc            # DVC tracking file for cleaned data directory
+│   │   ├── labeled                # Labeled data with sentiment tags
+│   │   ├── labeled.dvc            # DVC tracking file for labeled data directory
+│   │   ├── raw                    # Raw, unprocessed data files from data acquisition
+│   │   ├── sampled                # Sampled data across categories
+│   │   ├── sampled.dvc            # DVC tracking file for sampled data directory
+│   │   ├── validation             # Validated data directory, storing outputs from data validation
+│   │   └── validation.dvc         # DVC tracking file for validation data directory
+│   ├── docker-compose.yaml        # Docker Compose file to set up the environment for the pipeline
+│   ├── Dockerfile                 # Dockerfile for building the application environment
+│   ├── __init__.py                # Initialization file for data_pipeline package
+│   ├── logs                       # Log directory for Airflow task and DAG execution logs
+│   │   ├── dag_id=...             # Log subdirectories for each DAG by DAG ID
+│   ├── plugins                    # Directory for custom Airflow plugins if needed
+│   ├── README.md                  # Detailed README for data pipeline configuration
+│   ├── requirements.txt           # List of Python dependencies for the pipeline
+│   └── tests                      # Test suite for different stages of the data pipeline
+│       ├── data_collection        # Tests for data collection functionality
+│       ├── data_preprocessing     # Tests for data preprocessing tasks
+│       ├── data_validation        # Tests for validation steps
+│       └── __init__.py            # Initialization file for tests
+├── LICENSE                        # License for the repository
+├── milestones                     # Archived milestone files from earlier project stages
+│   ├── data-pipeline-requirements # Requirements and specifications for each data pipeline stage
+│   ├── scoping                    # Scoping documents for project planning
+├── model_pipeline                 # Placeholder for model-specific pipeline assets
+└── README.md                      # Main README for repository overview and usage instructions
 ```
-## Initial Installation Requirements (Updated with progress)
+
+## Repository Setup
 
 ### Prerequisites
 Ensure you have the following installed:
 - Python 3.8+
 - `pip` or `conda` for managing Python packages
-- Docker for containerized environments
 
 ### Steps
 
-1. Clone the repository:
+1. #### Clone the repository:
     ```bash
     git clone https://github.com/MLOps-Group-3/Amazon-Reviews-Sentiment-Analysis.git
-
     cd Amazon-Reviews-Sentiment-Analysis
     ```
 
-2. Create a virtual environment:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
+<!-- For setting up the `data_pipeline`, please refer to [data_pipeline/README.md](data_pipeline/README.md). -->
+2. #### Data Pipeline Setup
 
-3. Install required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
+    To run the services in Docker, navigate to the `data_pipeline` directory and follow the instructions to build the Docker image and start Docker Compose.
 
-4. (Optional) If using Docker:
-    ```bash
-    docker build -t Amazon-Reviews-Sentiment-Analysis .
-    docker run -it -v $(pwd):/app Amazon-Reviews-Sentiment-Analysis
-    
-    ```
+    For detailed setup instructions, including installing dependencies and configuring the environment for the `data_pipeline`, refer to [data_pipeline/README.md](data_pipeline/README.md).
+
+
+
+
+
+
 
 
 # Data Pipelines in Airflow

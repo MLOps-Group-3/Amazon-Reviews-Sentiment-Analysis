@@ -2,6 +2,63 @@
 
 This repository contains Airflow DAGs designed to handle multiple stages of data preprocessing, validation, and analytics for datasets. Below are the details of each DAG and their respective tasks.
 
+
+# Data Pipeline Docker Setup
+
+This setup guide walks you through building and running the data pipeline environment using Docker, including a custom Airflow image and Docker Compose for service management.
+
+## Prerequisites
+- **Docker Desktop** installed on your system.
+
+## Setup Instructions
+
+### 1. Build the Docker Image
+
+To build the custom Docker image for the Airflow environment, run:
+
+```bash
+docker build -t custom-airflow:latest .
+```
+
+This will create an image based on the `Dockerfile` provided, which includes all necessary dependencies and directory structure for running the pipeline.
+
+### 2. Start the Docker Compose Services
+
+The `docker-compose.yaml` file configures the services, including Airflow, PostgreSQL, and Redis. Ensure environment variables for SMTP and Airflow user configurations are either set in your environment or in a `.env` file.
+
+Setting up airflow service, run:
+
+```bash
+docker compose up airflow-init
+```
+
+This command will:
+- Start Airflow services (web server, scheduler, worker, and triggerer).
+
+
+To start all services, run:
+
+```bash
+docker compose up -d
+```
+
+This command will:
+- Restart Airflow services (web server, scheduler, worker, and triggerer).
+- Set up **Redis** as the message broker.
+- Set up **PostgreSQL** as the Airflow database backend.
+
+### 3. Access the Airflow Web Interface
+
+Once all services are running, you can access the Airflow web interface at [http://localhost:8080](http://localhost:8080).
+
+The default credentials for Airflow are:
+- **Username**: `airflow`
+- **Password**: `airflow`
+
+### 4. Verify Setup
+
+After logging in, you should see the DAGs located in the `data_pipeline/dags` folder displayed in the Airflow interface.
+
 ## DAGs Overview
 
 1. **Data Acquisition**: This DAG handles the extraction and ingestion of Amazon review data.

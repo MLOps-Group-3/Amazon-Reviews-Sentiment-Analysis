@@ -4,7 +4,7 @@ from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import logging
-
+import os
 # Import utility functions
 from utils.data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
 from utils.data_preprocessing.data_labeling import apply_labelling
@@ -66,6 +66,7 @@ def data_cleaning_task():
         logger.info(f"Data cleaning completed. Cleaned data shape: {df_cleaned.shape}")
 
         # Save cleaned data
+        os.makedirs(os.path.dirname(cleaned_data_file), exist_ok=True)
         df_cleaned.to_csv(cleaned_data_file, index=False)
         logger.info(f"Cleaned data saved to {cleaned_data_file}")
         
@@ -87,6 +88,7 @@ def data_labeling_task():
         logger.info(f"Data labeling completed. Labeled data shape: {df_labeled.shape}")
 
         # Save labeled data
+        os.makedirs(os.path.dirname(labeled_data_file), exist_ok=True)
         df_labeled.to_csv(labeled_data_file, index=False)
         logger.info(f"Labeled data saved to {labeled_data_file}")
         
@@ -117,6 +119,7 @@ def aspect_extraction_task():
         logger.info(f"Data labeling completed. Labeled data shape: {df_aspect.shape}")
 
         # Save labeled data
+        os.makedirs(os.path.dirname(aspect_data_file), exist_ok=True)
         df_aspect.to_csv(aspect_data_file, index=False)
         logger.info(f"Labeled data saved to {aspect_data_file}")
         
@@ -140,6 +143,7 @@ def data_labeling_aspect_task():
         logger.info(f"Aspect Data labeling completed. Labeled data shape: {df_labeled.shape}")
 
         # Save labeled data
+        os.makedirs(os.path.dirname(labeled_aspect_data_file), exist_ok=True)
         df_labeled.to_csv(labeled_aspect_data_file, index=False)
         logger.info(f"Labeled data saved to {labeled_aspect_data_file}")
         
