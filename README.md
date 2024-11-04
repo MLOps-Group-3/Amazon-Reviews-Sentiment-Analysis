@@ -93,7 +93,208 @@ Ensure you have the following installed:
     ```bash
     docker build -t Amazon-Reviews-Sentiment-Analysis .
     docker run -it -v $(pwd):/app Amazon-Reviews-Sentiment-Analysis
+    
     ```
+
+
+# Data Preprocessing and Validation Pipelines in Airflow
+
+This repository contains Airflow DAGs designed to handle multiple stages of data preprocessing, validation, and analytics for datasets. Below are the details of each DAG and their respective tasks.
+
+## DAGs Overview
+
+1. **Data Acquisition**: This DAG handles the extraction and ingestion of Amazon review data.
+2. **Data Sampling**: This DAG samples the data across various categories.
+3. **Data Validation**: This DAG validates the quality and structure of the data.
+4. **Data Preprocessing**: This DAG cleans, labels, and extracts aspects from the data.
+
+---
+
+### DAG: Data Acquisition
+
+**DAG ID**: `amazon_reviews_data_pipeline`
+
+This DAG performs data acquisition for Amazon review data. The DAG consists of two main tasks:
+
+#### Task 1: Acquire Data (`acquire_data`)
+
+- **Objective**: Acquires and ingests Amazon review data.
+- **Process**:
+  - Calls the `acquire_data` function from the `data_acquisition` module to perform the data extraction.
+  - This function handles the logic of retrieving data from the source and saving it locally.
+- **Output**: Data is saved in a designated directory, ready for further processing.
+
+#### Task 2: Send Success Email (`send_success_email`)
+
+- **Objective**: Sends an email notification upon successful completion of the data acquisition task.
+- **Process**:
+  - Utilizes the `EmailOperator` to send an email notification with details of the successful task completion.
+- **Output**: An email is sent to the specified recipient.
+
+#### Task 3: Send Failure Email (`send_failure_email`)
+
+- **Objective**: Sends an email notification if the data acquisition task fails.
+- **Process**:
+  - Utilizes the `EmailOperator` with a trigger rule of `one_failed` to notify in case of task failure.
+- **Output**: An email is sent to the specified recipient in case of failure.
+
+---
+
+### DAG: Data Sampling
+
+**DAG ID**: `amazon_reviews_data_sampling`
+
+This DAG performs data sampling for Amazon reviews using Apache Spark. The DAG consists of multiple tasks, one for each category defined in the configuration.
+
+#### Task 1: Sample Data by Category (`sample_data_{category}`)
+
+- **Objective**: Samples data for each specified category.
+- **Process**:
+  - For each category defined in the `CATEGORIES` configuration, a `SparkSubmitOperator` task is created to run the sampling script.
+  - The sampling is performed using the Spark job located at `/opt/airflow/dags/data_sampling.py`.
+- **Output**: Sampled data for each category is processed in sequence, allowing for individual analysis and handling.
+
+#### Task 2: Join Sampling Tasks (`join_sampling_tasks`)
+
+- **Objective**: Acts as a dummy task to signify the completion of all sampling tasks.
+- **Process**:
+  - This task does not perform any operations but serves as an end point for the sequence of sampling tasks.
+- **Output**: Indicates that all data sampling tasks have been completed successfully.
+
+---
+
+### Task Dependencies
+
+- **Flow**:
+  - In the **Data Acquisition** DAG, the flow starts with `acquire_data`, leading to either the success or failure email tasks based on the outcome.
+  
+
+### DAG: Data Validation
+
+**DAG ID**: `data_validation_dag`
+
+This DAG performs validation checks on the dataset to ensure data quality, integrity, and compliance with predefined standards. The DAG consists of several main tasks:
+
+#### Task 1: Schema Validation (`schema_validation`)
+
+- **Objective**: Validates the schema of the dataset against expected column types.
+- **Process**:
+  - Loads the dataset and checks if the schema matches the defined structure using the `validate_schema` function.
+  - If validation fails, an error is raised, and the process stops.
+- **Output**: Logs the status of schema validation.
+
+#### Task 2: Range Check (`range_check`)
+
+- **Objective**: Checks numerical columns for valid value ranges.
+- **Process**:
+  - Loads the dataset and applies the `check_range` function to identify any values that fall outside of acceptable limits.
+- **Output**: Logs the rows that failed the range check and the overall status.
+
+#### Task 3: Missing and Duplicates Check (`missing_duplicates`)
+
+- **Objective**: Identifies any missing or duplicate entries in the dataset.
+- **Process**:
+  - Loads the dataset and uses the `find_missing_and_duplicates` function to determine if there are any missing values or duplicate rows.
+- **Output**: Logs the indices of missing and duplicate rows along with the status.
+
+#### Task 4: Privacy Compliance Check (`privacy_compliance`)
+
+- **Objective**: Ensures that data complies with privacy regulations.
+- **Process**:
+  - Loads the dataset and applies the `check_data_privacy` function to identify any rows that may breach privacy guidelines.
+- **Output**: Logs the rows that failed the privacy check and the status.
+
+#### Task 5: Emoji Detection (`emoji_detection`)
+
+- **Objective**: Detects and flags any emojis in the dataset.
+- **Process**:
+  - Loads the dataset and uses the `detect_emoji` function to identify any rows containing emojis.
+- **Output**: Logs the indices of rows with emojis and the overall status.
+
+#### Task 6: Anomaly Detection (`anomaly_detection`)
+
+- **Objective**: Detects anomalies within the dataset.
+- **Process**:
+  - Loads the dataset and applies the `detect_anomalies` function to identify unusual patterns or outliers.
+- **Output**: Logs the status of anomaly detection.
+
+#### Task 7: Special Characters Detection (`special_characters_detection`)
+
+- **Objective**: Checks for the presence of special characters in the dataset.
+- **Process**:
+  - Loads the dataset and applies the `check_only_special_characters` function to identify any rows with only special characters.
+- **Output**: Logs the rows with special characters and the status.
+
+#### Task 8: Review Length Check (`review_length_checker`)
+
+- **Objective**: Validates the length of reviews and titles in the dataset.
+- **Process**:
+  - Loads the dataset and applies the `check_review_title_length` function to determine if any reviews or titles are too short or too long.
+- **Output**: Logs the results of review length checks.
+
+---
+
+### Task Dependencies
+
+- **Flow**:
+  - All validation tasks are executed in parallel.
+  - The final task, `save_results`, runs after all validation tasks complete successfully to aggregate results and save them to a CSV file.
+
+
+
+### DAG: Data Preprocessing
+
+**DAG ID**: `data_preprocessing_dag`
+
+This DAG performs data cleaning, labeling, and aspect-based sentiment analysis on Amazon review data. The DAG consists of four main tasks:
+
+#### Task 1: Data Cleaning (`data_cleaning`)
+
+- **Objective**: Cleans the raw data, removes unwanted emojis based on a validation file, and saves the cleaned data.
+- **Process**:
+  - Loads raw data and a validation file with emoji indices to be removed.
+  - Applies the `clean_amazon_reviews` function from the `data_cleaning_pandas` module, which removes unwanted content and emojis.
+  - Saves the cleaned data to a specified file path.
+- **Output**: `cleaned_data.csv` - the cleaned dataset without unwanted emojis.
+
+#### Task 2.1: Data Labeling (`data_labeling`)
+
+- **Objective**: Labels the cleaned data with overall sentiment.
+- **Process**:
+  - Loads the cleaned data file.
+  - Applies the `apply_labelling` function from the `data_labeling` module, which generates sentiment labels based on the content.
+  - Saves the labeled data.
+- **Output**: `labeled_data.csv` - dataset labeled with overall sentiment.
+
+#### Task 2.2: Aspect Extraction (`aspect_extraction`)
+
+- **Objective**: Identifies and extracts specific aspects within the reviews, such as "delivery," "quality," and "cost."
+- **Process**:
+  - Loads the cleaned data file.
+  - Uses synonyms for predefined aspects (e.g., "delivery" includes "shipping," "arrive") and applies the `tag_and_expand_aspects` function from the `aspect_extraction` module to tag relevant text.
+  - Saves the aspect-extracted data.
+- **Output**: `aspect_extracted_data.csv` - dataset with tagged aspects for further sentiment analysis.
+
+#### Task 3: Aspect-Based Data Labeling (`data_labeling_aspect`)
+
+- **Objective**: Applies sentiment labeling to specific aspects within the reviews.
+- **Process**:
+  - Loads the aspect-extracted data file.
+  - Uses the `apply_vader_labeling` function from `aspect_data_labeling` to assign sentiment labels based on each identified aspect.
+  - Saves the aspect-labeled data.
+- **Output**: `labeled_aspect_data.csv` - dataset with aspect-specific sentiment labels.
+
+---
+
+### Task Dependencies
+
+- **Flow**:
+  - The `data_cleaning` task is executed first.
+  - `data_cleaning` is followed by parallel tasks `aspect_extraction` and `data_labeling`.
+  - Finally, both `aspect_extraction` and `data_labeling` tasks must complete before starting the `data_labeling_aspect` task.
+
+
+
 
 ## DVC Setup
 
