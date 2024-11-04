@@ -8,6 +8,13 @@ ENV FILE_PATH=/opt/airflow/data/sampled_data_2018_2019.csv
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
 
+# Create the necessary folders in the /opt/airflow/data directory
+RUN mkdir -p /opt/airflow/data/cleaned \
+             /opt/airflow/data/labeled \
+             /opt/airflow/data/sampled \
+             /opt/airflow/data/validation \
+             /opt/airflow/data/raw
+
 # Copy DAGs, plugins, config, and tests
 COPY dags /opt/airflow/dags
 #COPY plugins /opt/airflow/plugins
