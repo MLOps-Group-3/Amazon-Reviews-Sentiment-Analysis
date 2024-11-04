@@ -120,6 +120,12 @@ def review_length_checker_task(ti):
 
 def save_results(ti):
     """Collect and save results from XCom to a CSV file."""
+    # Ensure directory exists for saving validation results
+    results_dir = os.path.dirname(VALIDATION_RESULT_DATA_PATH)
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+        logging.info(f"Created directory for results at {results_dir}")
+    
     # Define all individual task components to retrieve from XCom
     review_length_components = [
         'short_reviews', 'long_reviews', 'short_titles', 'long_titles'
@@ -143,8 +149,8 @@ def save_results(ti):
         if task_result:
             results.append({
                 "function": component,
-                "row_indices": str(task_result.get("row_indices", "")),  # Convert list to string if present
-                "status": task_result.get("status", "")  # Capture status if present
+                "row_indices": str(task_result.get("row_indices", "")),
+                "status": task_result.get("status", "")
             })
         else:
             logging.warning(f"No result found for component: {component}")
@@ -155,8 +161,8 @@ def save_results(ti):
         if task_result:
             results.append({
                 "function": flag,
-                "row_indices": "",  # No row indices for flags
-                "status": task_result.get("status", "")  # Capture status if present
+                "row_indices": "",
+                "status": task_result.get("status", "")
             })
         else:
             logging.warning(f"No result found for flag: {flag}")
@@ -167,8 +173,8 @@ def save_results(ti):
         if task_result:
             results.append({
                 "function": task,
-                "row_indices": str(task_result.get("row_indices", "")),  # Convert list to string if present
-                "status": task_result.get("status", "")  # Capture status if present
+                "row_indices": str(task_result.get("row_indices", "")),
+                "status": task_result.get("status", "")
             })
         else:
             logging.warning(f"No result found for task: {task}")
@@ -177,6 +183,7 @@ def save_results(ti):
     results_df = pd.DataFrame(results)
     results_df.to_csv(VALIDATION_RESULT_DATA_PATH, index=False)
     logging.info("Results saved successfully to validation_results.csv")
+
 
 # Define the DAG
 with DAG(
