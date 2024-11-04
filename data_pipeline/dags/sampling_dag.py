@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
 from utils.data_collection.sampling import process_category
@@ -53,7 +54,7 @@ concat_task = PythonOperator(
 trigger_validation_dag = TriggerDagRunOperator(
     task_id='trigger_data_validation_dag',
     trigger_dag_id='03_data_validation_pipeline',  # ID of the next DAG to trigger
-    wait_for_completion=True,  # Wait until sampling_dag completes
+    wait_for_completion=False,  # Wait until sampling_dag completes
     dag=dag,
 )
 
