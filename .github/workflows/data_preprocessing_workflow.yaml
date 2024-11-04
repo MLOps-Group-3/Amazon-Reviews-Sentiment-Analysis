@@ -3,8 +3,8 @@ name: Data Preprocessing Tests -- Data Clean
 on:
   push:
     paths:
-      - 'data_pipeline/dags/utils?data_preprocessing/data_cleaning_pandas.py'
-      - 'data_pipeline/tests/test_data_cleaning_pandas.py'
+      - 'data_pipeline/dags/utils/data_preprocessing/data_cleaning_pandas.py'
+      - 'data_pipeline/tests/data_preprocessing/test_data_cleaning_pandas.py'
 
 jobs:
   test:
