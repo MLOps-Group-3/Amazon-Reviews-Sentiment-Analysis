@@ -35,6 +35,10 @@ jobs:
         run: |
           pip install -r data_pipeline/tests/data_validation/test_requirements.txt
 
+      - name: Set PYTHONPATH
+        run: |
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
       - name: Run tests
         run: |
           pytest --disable-warnings data_pipeline/tests/data_validation
