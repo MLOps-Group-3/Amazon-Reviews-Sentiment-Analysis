@@ -10,11 +10,9 @@ data_pipeline_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'
 
 # Add the data_pipeline directory to sys.path
 sys.path.insert(0, data_pipeline_dir)
-print(data_pipeline_dir)
 
-# Now you can import from utils.data_collection
-from utils.data_collection.data_acquisition import acquire_data, download_file, download_category, setup_logging
-from config import REVIEW_BASE_URL, META_BASE_URL, CATEGORIES, TARGET_DIRECTORY, MAX_WORKERS
+# Now you can import from dags.utils.data_collection
+from dags.utils.data_collection.data_acquisition import acquire_data, download_file, download_category, setup_logging
 
 @pytest.fixture
 def mock_requests_get():
