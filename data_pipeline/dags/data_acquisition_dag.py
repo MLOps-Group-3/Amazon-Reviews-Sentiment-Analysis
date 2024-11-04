@@ -24,7 +24,7 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,         # Send email on failure
-    'email_on_retry': True,           # Send email on retry
+    'email_on_retry': False,           # Send email on retry
     'email_on_success': False,        # Optional: email on success
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
@@ -34,7 +34,7 @@ dag = DAG(
     '01_data_collection_dag',
     default_args=default_args,
     description='A DAG for acquiring Amazon review data',
-    schedule_interval=timedelta(days=1),
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
 )

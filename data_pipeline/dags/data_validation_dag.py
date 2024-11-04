@@ -27,7 +27,7 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,         # Send email on failure
-    'email_on_retry': True,           # Send email on retry
+    'email_on_retry': False,           # Send email on retry
     'email_on_success': False,        # Optional: email on success
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
@@ -182,7 +182,7 @@ def save_results(ti):
 with DAG(
     dag_id='03_data_validation_dag',
     default_args=default_args,
-    schedule_interval='@daily',
+    schedule_interval=None,
     catchup=False,
     description='DAG to perform data validation checks',
 ) as dag:

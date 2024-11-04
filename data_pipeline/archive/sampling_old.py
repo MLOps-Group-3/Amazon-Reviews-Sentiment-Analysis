@@ -9,7 +9,7 @@ import json
 import os
 import logging
 from datetime import datetime
-from ..config import CATEGORIES, TARGET_DIRECTORY_SAMPLED, TARGET_DIRECTORY
+from ..dags.utils.config import CATEGORIES, TARGET_DIRECTORY_SAMPLED, TARGET_DIRECTORY
 
 
 def setup_logging():
