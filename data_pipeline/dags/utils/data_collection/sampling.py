@@ -145,7 +145,7 @@ def process_sampled_data(sampled_df):
     logger.info(f"Split data into {len(sampled_2018_2019_df)} rows for 2018-2019 and {len(sampled_2020_df)} rows for 2020")
     return sampled_2018_2019_df, sampled_2020_df
 
-def main(category_name):
+def sample_category(category_name):
     try:
         logger.info(f"Starting data processing for category: {category_name}")
         
