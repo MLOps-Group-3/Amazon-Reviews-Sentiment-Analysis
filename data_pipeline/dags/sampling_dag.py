@@ -25,7 +25,7 @@ default_args = {
 }
 
 dag = DAG(
-    '02_data_sampling_pipeline',
+    '02_data_sampling_dag',
     default_args=default_args,
     description='A DAG for sampling data',
     schedule_interval=None,
@@ -54,7 +54,7 @@ concat_task = PythonOperator(
 # Trigger data validation dag after concatenation
 trigger_validation_dag = TriggerDagRunOperator(
     task_id='trigger_data_validation_dag',
-    trigger_dag_id='03_data_validation_pipeline',  # ID of the next DAG to trigger
+    trigger_dag_id='03_data_validation_dag',  # ID of the next DAG to trigger
     wait_for_completion=False,  # Wait until sampling_dag completes
     dag=dag,
 )
