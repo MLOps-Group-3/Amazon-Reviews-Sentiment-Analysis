@@ -2,9 +2,10 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.email import EmailOperator
+from airflow.models import Variable
+from airflow.models.baseoperator import chain
 from datetime import datetime, timedelta
 from utils.data_collection.sampling import sample_category
-from airflow.models import Variable
 from utils.data_collection.data_concat import concatenate_and_save_csv_files
 from utils.config import CATEGORIES
 
@@ -16,7 +17,7 @@ default_args = {
     'depends_on_past': False,
     'start_date': datetime(2024, 10, 30),
     'email_on_failure': True,
-    'email_on_retry': True,
+    'email_on_retry': False,
     'email_on_success': False,
     'email': 'vallimeenaavellaiyan@gmail.com',
     'retries': 1,
@@ -27,7 +28,7 @@ dag = DAG(
     '02_data_sampling_pipeline',
     default_args=default_args,
     description='A DAG for sampling data',
-    schedule_interval=timedelta(days=1),
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
 )
@@ -58,8 +59,5 @@ trigger_validation_dag = TriggerDagRunOperator(
     dag=dag,
 )
 
-# Set up task dependencies
-for task in category_tasks:
-    task >> concat_task
-
-concat_task >> trigger_validation_dag
+# Set up sequential task dependencies
+chain(category_tasks + [concat_task, trigger_validation_dag])
