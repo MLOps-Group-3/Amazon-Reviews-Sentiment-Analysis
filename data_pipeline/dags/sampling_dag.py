@@ -60,4 +60,8 @@ trigger_validation_dag = TriggerDagRunOperator(
 )
 
 # Set up sequential task dependencies
-chain(category_tasks + [concat_task, trigger_validation_dag])
+for i in range(len(category_tasks) - 1):
+    category_tasks[i] >> category_tasks[i + 1]
+
+# Connect the last category task to the concat task
+category_tasks[-1] >> concat_task >> trigger_validation_dag
