@@ -1,0 +1,358 @@
+# # version: '3.8'
+# x-spark-common: &spark-common
+#   image: bitnami/spark:latest
+#   volumes:
+#     - .${AIRFLOW_PROJ_DIR:-.}/dags:/opt/bitnami/spark/dags
+#     - .${AIRFLOW_PROJ_DIR:-.}/data:/opt/bitnami/spark/data
+#   networks:
+#       - airflow-network
+
+# x-airflow-common: &airflow-common
+#   build:
+#     context: .
+#     dockerfile: Dockerfile  # Use your Dockerfile with Java and PySpark installed
+#   environment:
+#     &airflow-common-env
+#     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+#     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+#     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+#     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+#     AIRFLOW__CORE__FERNET_KEY: ''
+#     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+#     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+#     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+#     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+#     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+#     JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64  # Java path for Spark compatibility
+#   volumes:
+#     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+#     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+#     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
+#     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+#     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+#   user: "${AIRFLOW_UID:-50000}:0"
+#   depends_on:
+#     &airflow-common-depends-on
+#     redis:
+#       condition: service_healthy
+#     postgres:
+#       condition: service_healthy
+
+# services:
+#   postgres:
+#     image: postgres:13
+#     environment:
+#       POSTGRES_USER: airflow
+#       POSTGRES_PASSWORD: airflow
+#       POSTGRES_DB: airflow
+#     volumes:
+#       - postgres-db-volume:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD", "pg_isready", "-U", "airflow"]
+#       interval: 10s
+#       retries: 5
+#       start_period: 5s
+#     restart: always
+
+#   redis:
+#     image: redis:7.2-bookworm
+#     expose:
+#       - 6379
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 10s
+#       timeout: 30s
+#       retries: 50
+#       start_period: 30s
+#     restart: always
+
+#   airflow-webserver:
+#     <<: *airflow-common
+#     command: webserver
+#     ports:
+#       - "8080:8080"
+#     healthcheck:
+#       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     restart: always
+#     depends_on:
+#       <<: *airflow-common-depends-on
+#       airflow-init:
+#         condition: service_completed_successfully
+
+#   airflow-scheduler:
+#     <<: *airflow-common
+#     command: scheduler
+#     healthcheck:
+#       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     restart: always
+#     depends_on:
+#       <<: *airflow-common-depends-on
+#       airflow-init:
+#         condition: service_completed_successfully
+
+#   airflow-worker:
+#     <<: *airflow-common
+#     command: celery worker
+#     environment:
+#       <<: *airflow-common-env
+#       DUMB_INIT_SETSID: "0"
+#     restart: always
+#     depends_on:
+#       <<: *airflow-common-depends-on
+#       airflow-init:
+#         condition: service_completed_successfully
+
+#   airflow-triggerer:
+#     <<: *airflow-common
+#     command: triggerer
+#     healthcheck:
+#       test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     restart: always
+#     depends_on:
+#       <<: *airflow-common-depends-on
+#       airflow-init:
+#         condition: service_completed_successfully
+
+#   airflow-init:
+#     <<: *airflow-common
+#     entrypoint: /bin/bash
+#     command:
+#       - -c
+#       - |
+#         exec /entrypoint airflow version
+#     environment:
+#       <<: *airflow-common-env
+#       _AIRFLOW_DB_MIGRATE: 'true'
+#       _AIRFLOW_WWW_USER_CREATE: 'true'
+#       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+#       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+#       _PIP_ADDITIONAL_REQUIREMENTS: ''
+#     user: "0:0"
+#     volumes:
+#       - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+#   # Spark master service
+#   spark-master:
+#     <<: *spark-common
+#     container_name: spark-master
+#     # image: bitnami/spark:latest
+#     command: bin/spark-class org.apache.spark.deploy.master.Master
+#     ports:
+#       - "9090:8080"  # Spark UI port
+#       - "7077:7077"  # Spark master port
+#     networks:
+#       - airflow-network
+
+#   # Spark worker service
+#   spark-worker:
+#     <<: *spark-common  
+#     container_name: spark-worker
+#     # image: bitnami/spark:latest
+#     command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+#     depends_on:
+#       - spark-master
+#     environment:
+#       SPARK_WORKER_CORES: 2
+#       SPARK_WORKER_MEMORY: 1g
+#     networks:
+#       - airflow-network
+
+# volumes:
+#   postgres-db-volume:
+
+# networks:
+#   airflow-network:
+version: '3.8'
+
+# Common Spark configuration
+x-spark-common: &spark-common
+  image: bitnami/spark:latest
+  volumes:
+    # - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/bitnami/spark/dags
+    # - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/bitnami/spark/data
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+
+  networks:
+    - airflow-network
+
+# Common Airflow configuration
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile  # Use your Dockerfile with Java and PySpark installed
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64  # Java path for Spark compatibility
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+  networks:
+    - airflow-network
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - airflow-network
+
+  redis:
+    image: redis:7.2-bookworm
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+    networks:
+      - airflow-network
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+  # Spark master service
+  spark-master:
+    <<: *spark-common
+    container_name: spark-master
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "9090:8080"  # Spark UI port
+      - "7077:7077"  # Spark master port
+
+  # Spark worker service
+  spark-worker:
+    <<: *spark-common  
+    container_name: spark-worker
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2g
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  airflow-network:

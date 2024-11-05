@@ -47,106 +47,98 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
 
 ## Folder Structure
 
+
 ```bash
-├── README.md                   # Overview of the project, installation instructions, and usage guidelines
-├── LICENSE                     # License outlining terms and conditions for using the repository
-├── .github/                    # GitHub-related files (e.g., workflows, templates, GitHub actions)
-│   └── workflows/              # CI/CD workflows (e.g., GitHub actions)
-├── data/                       # Raw and unprocessed data files
-├── models/                     # Saved machine learning models and related metadata
-├── notebooks/                  # Jupyter/Colab notebooks for exploration, prototyping, and modeling
-├── scripts/                    # Deployment and monitoring scripts
-├── src/                        # Source code for data processing, modeling, evaluation, and DAGs for Airflow
-├── tests/                      # Unit tests for scripts and methods
-└── milestones/                 # Files logging milestones and project progress
-    └── scoping/                # Scoping documents and reports
+.
+├── data_pipeline                  # Main directory for all data pipeline assets and configurations
+│   ├── archive                    # Contains deprecated files and early versions of scripts
+│   │   ├── docker-compose-collection.yaml.txt  
+│   │   ├── docker-compose python.txt
+│   │   └── sampling_old.py                  
+│   ├── config                     # Directory for configuration files
+│   │   └── config.ini             # Configuration file for pipeline settings and parameters
+│   ├── dags                       # Directory containing all Airflow DAGs
+│   │   ├── data_acquisition_dag.py   # DAG for data acquisition and ingestion
+│   │   ├── data_preprocessing_dag.py # DAG for data cleaning, labeling, and sentiment analysis
+│   │   ├── data_validation_dag.py    # DAG for data validation to ensure quality and consistency
+│   │   ├── __init__.py               # Initialization for the DAGs package
+│   │   ├── sampling_dag.py           # DAG for sampling Amazon review data by category
+│   │   └── utils                     # Utility scripts used across DAGs for modular functionality
+│   ├── data                       # Data directory containing datasets across different pipeline stages
+│   │   ├── cleaned                # Cleaned data generated in preprocessing
+│   │   ├── cleaned.dvc            # DVC tracking file for cleaned data directory
+│   │   ├── labeled                # Labeled data with sentiment tags
+│   │   ├── labeled.dvc            # DVC tracking file for labeled data directory
+│   │   ├── raw                    # Raw, unprocessed data files from data acquisition
+│   │   ├── sampled                # Sampled data across categories
+│   │   ├── sampled.dvc            # DVC tracking file for sampled data directory
+│   │   ├── validation             # Validated data directory, storing outputs from data validation
+│   │   └── validation.dvc         # DVC tracking file for validation data directory
+│   ├── docker-compose.yaml        # Docker Compose file to set up the environment for the pipeline
+│   ├── Dockerfile                 # Dockerfile for building the application environment
+│   ├── __init__.py                # Initialization file for data_pipeline package
+│   ├── logs                       # Log directory for Airflow task and DAG execution logs
+│   │   ├── dag_id=...             # Log subdirectories for each DAG by DAG ID
+│   ├── plugins                    # Directory for custom Airflow plugins if needed
+│   ├── README.md                  # Detailed README for data pipeline configuration
+│   ├── requirements.txt           # List of Python dependencies for the pipeline
+│   └── tests                      # Test suite for different stages of the data pipeline
+│       ├── data_collection        # Tests for data collection functionality
+│       ├── data_preprocessing     # Tests for data preprocessing tasks
+│       ├── data_validation        # Tests for validation steps
+│       └── __init__.py            # Initialization file for tests
+├── LICENSE                        # License for the repository
+├── milestones                     # Archived milestone files from earlier project stages
+│   ├── data-pipeline-requirements # Requirements and specifications for each data pipeline stage
+│   ├── scoping                    # Scoping documents for project planning
+├── model_pipeline                 # Placeholder for model-specific pipeline assets
+└── README.md                      # Main README for repository overview and usage instructions
 ```
-## Initial Installation Requirements (Updated with progress)
+
+## Repository Setup
 
 ### Prerequisites
 Ensure you have the following installed:
 - Python 3.8+
 - `pip` or `conda` for managing Python packages
-- Docker for containerized environments
 
 ### Steps
 
-1. Clone the repository:
+1. #### Clone the repository:
     ```bash
     git clone https://github.com/MLOps-Group-3/Amazon-Reviews-Sentiment-Analysis.git
-
     cd Amazon-Reviews-Sentiment-Analysis
     ```
 
-2. Create a virtual environment:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
+<!-- For setting up the `data_pipeline`, please refer to [data_pipeline/README.md](data_pipeline/README.md). -->
+2. #### Data Pipeline Setup
 
-3. Install required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
+    To run the services in Docker, navigate to the `data_pipeline` directory and follow the instructions to build the Docker image and start Docker Compose.
 
-4. (Optional) If using Docker:
-    ```bash
-    docker build -t Amazon-Reviews-Sentiment-Analysis .
-    docker run -it -v $(pwd):/app Amazon-Reviews-Sentiment-Analysis
-    ```
-## Infrastructure Setup with Terraform on GCP
+    For detailed setup instructions, including installing dependencies and configuring the environment for the `data_pipeline`, refer to [data_pipeline/README.md](data_pipeline/README.md#setup-instructions).
 
-This project includes a Terraform configuration to create the necessary Google Cloud infrastructure.
 
-### Prerequisites
 
-- [Terraform](https://www.terraform.io/downloads.html) (v1.0+)
-- [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install) installed and configured
-- A Google Cloud account with billing enabled
 
-### Steps
 
-1. **Clone the repository** (if not done already):
-    ```bash
-    git clone https://github.com/Amazon-Reviews-Sentiment-Analysis/Amazon-Reviews-Sentiment-Analysis.git
-    cd Amazon-Reviews-Sentiment-Analysis
-    ```
 
-2. **Navigate to the `terraform` directory**:
-    ```bash
-    cd infrastructure/terraform
-    ```
 
-3. **Authenticate with GCP**:
-    ```bash
-    gcloud auth application-default login
-    gcloud config set project [PROJECT_ID]
-    ```
 
-4. **Initialize Terraform**:
-    This step initializes the configuration and downloads necessary GCP provider plugins:
-    ```bash
-    terraform init
-    ```
+# Data Pipelines in Airflow
 
-5. **Create and apply the infrastructure plan**:
-    - To see the infrastructure that will be created:
-      ```bash
-      terraform plan
-      ```
-    - To create resources on GCP:
-      ```bash
-      terraform apply
-      ```
+This repository contains Airflow DAGs for preprocessing, validating, and analyzing Amazon review data through a series of modular tasks. Each DAG corresponds to a distinct stage in the data pipeline, leveraging Python and Pandas for data transformation, sampling, validation, and sentiment analysis.
 
-6. **Destroy the infrastructure (optional)**:
-    When done, to tear down the infrastructure:
-    ```bash
-    terraform destroy
-    ```
+## Pipeline Stages Overview
 
-### Usage
+1. **Data Acquisition**: Extracts and ingests Amazon review data.
+2. **Data Sampling**: Samples review data across specified categories, consolidating it for further processing.
+3. **Data Validation**: Validates dataset quality and structure, ensuring integrity for downstream analysis.
+4. **Data Preprocessing**: Cleans, labels, and tags aspects within review data for sentiment analysis.
 
-To run the scripts for training the model:
-```bash
-python src/train_model.py
+Each DAG stage runs independently, enabling focused transformations while maintaining a sequential flow between acquisition, sampling, validation, and preprocessing.
+
+### DVC Integration
+
+This project uses DVC for version control of data files, with storage configured via Google Cloud. Ensure you have the required credentials and configuration in place to pull the latest data files.
+
+For a detailed breakdown of each DAG and setup instructions, refer to the [data_pipeline/README.md](data_pipeline/README.md#dvc-setup).

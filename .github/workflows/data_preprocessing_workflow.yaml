@@ -1,0 +1,42 @@
+name: Data Preprocessing Tests
+
+on:
+  push:
+    paths:
+      - 'data_pipeline/dags/utils/data_preprocessing/**'  # Monitor all changes in utils
+      - 'data_pipeline/tests/data_preprocessing/**'        # Monitor all changes in tests
+
+jobs:
+  # Job for installing dependencies and running tests
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12.7'  
+
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r data_pipeline/requirements.txt
+
+      - name: Run all tests
+        run: |
+          # Find and run all test files in the specified directory
+          for test_file in data_pipeline/tests/data_preprocessing/test_*.py; do
+            echo "Running $test_file"
+            python -m unittest "$test_file" || exit 1  # Exit if any test fails
+          done

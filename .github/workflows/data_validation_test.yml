@@ -1,0 +1,44 @@
+name: Data validation Function Test [Schema Validation]
+
+on:
+  push:
+    paths:
+      - 'data_pipeline/dags/utils/data_validation/**'
+  pull_request:
+    paths:
+      - 'data_pipeline/dags/utils/data_validation/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/test_requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install -r data_pipeline/tests/data_validation/test_requirements.txt
+
+      - name: Set PYTHONPATH
+        run: |
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
+      - name: Run tests
+        run: |
+          pytest --disable-warnings data_pipeline/tests/data_validation

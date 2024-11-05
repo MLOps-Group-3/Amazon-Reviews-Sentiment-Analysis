@@ -1,6 +1,19 @@
 # Ignore all CSV files
 *.csv
 
+# Ignore CRC files
+*.crc
+
+# Ignore _SUCCESS files
+_SUCCESS
+._SUCCESS.crc
+
+# Ignore part files with CRC extension
+*.part-*.csv.crc
+
+# Ignore all part files
+*.part-*
+
 # Ignore SQLite database files
 *.db
 *.sqlite
@@ -11,3 +24,31 @@
 
 # Ignore macOS .DS_Store files
 *.DS_Store
+.DS_Store
+.idea
+.ipynb_checkpoints
+.DS_Store
+
+secrets.env
+
+__pycache__
+
+# ignore .env
+.env
+# ignore docker-compose.yaml
+# docker-compose.yaml
+
+# ignore log files
+*.log
+
+*.gz
+#log
+logs
+#Ignore python environment (CONDA)
+.conda
+
+#adding it for secrets
+.env
+
+
+

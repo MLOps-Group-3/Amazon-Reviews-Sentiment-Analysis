@@ -1,0 +1,5 @@
+pandas == 2.2.2
+emoji == 2.14.0
+nltk == 3.9.1
+snorkel==0.10.0 
+vaderSentiment==3.3.2

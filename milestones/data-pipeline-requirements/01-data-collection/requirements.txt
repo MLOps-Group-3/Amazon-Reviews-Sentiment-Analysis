@@ -1,0 +1,6 @@
+apache-airflow==2.7.1
+requests
+tqdm
+pandas
+scikit-learn
+kneed
