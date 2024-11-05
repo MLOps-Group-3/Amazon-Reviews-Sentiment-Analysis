@@ -177,3 +177,4 @@ def sample_category(category_name):
         logger.info("Data processing completed successfully")
     except Exception as e:
         logger.exception(f"An error occurred during data processing: {str(e)}")
+
