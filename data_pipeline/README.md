@@ -83,6 +83,8 @@ This DAG performs data acquisition for Amazon review data. The DAG consists of t
   - This function handles the logic of retrieving data from the source and saving it locally.
 - **Output**: Data is saved in a designated directory, ready for further processing.
 
+![alt text](<01 DAG Gantt Chart.jpeg>)
+
 <!-- ### Task Dependencies
 
 - **Flow**:
@@ -129,6 +131,8 @@ This DAG is designed to sample and process Amazon review data by category using 
 
 - **Logging**: Logging is set up to capture both console and file logs. Detailed logs are saved in `/opt/airflow/logs`, as specified by the `LOG_DIRECTORY` variable, and each task's operations are recorded, including any errors.
 - **Error Handling**: In case of task failure, an email alert is sent to `vallimeenaavellaiyan@gmail.com`.
+
+![alt text](<02 DAG Gantt Chart.jpeg>)
 
 ---
 ### DAG: Data Validation
@@ -202,7 +206,7 @@ This DAG performs validation checks on the dataset to ensure data quality, integ
   - All validation tasks are executed in parallel.
   - The final task, `save_results`, runs after all validation tasks complete successfully to aggregate results and save them to a CSV file.
 
-
+![alt text](<03 DAG Gantt Chart.jpeg>)
 
 ### DAG: Data Preprocessing
 
@@ -255,8 +259,7 @@ This DAG performs data cleaning, labeling, and aspect-based sentiment analysis o
   - `data_cleaning` is followed by parallel tasks `aspect_extraction` and `data_labeling`.
   - Finally, both `aspect_extraction` and `data_labeling` tasks must complete before starting the `data_labeling_aspect` task.
 
-
-
+![alt text](<04 DAG Gantt Chart.jpeg>)
 
 ## DVC Setup
 
