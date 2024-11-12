@@ -236,7 +236,7 @@ services:
       - --nthreads
       - "4"
       - --nworkers
-      - "2"
+      - "3"
     depends_on:
       - dask-scheduler
     volumes:
