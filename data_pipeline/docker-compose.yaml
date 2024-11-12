@@ -14,12 +14,10 @@
 # See the License for the specific language governing permissions and limitations
 # under the License.
 ---
-x-airflow-common:
-  &airflow-common
-  build: .  # Build the image from the Dockerfile in the current directory
+x-airflow-common: &airflow-common
+  build: .
   image: custom-airflow:latest
-  environment:
-    &airflow-common-env
+  environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
@@ -29,12 +27,13 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST} # SMTP host
-    AIRFLOW__SMTP__SMTP_PORT: ${SMTP_PORT} # SMTP port
-    AIRFLOW__SMTP__SMTP_USER: ${SMTP_USER} # Your Gmail address
-    AIRFLOW__SMTP__SMTP_PASSWORD: ${SMTP_PASSWORD} # App-specific password
-    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${SMTP_MAIL_FROM} # From email
-    
+    AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST}
+    AIRFLOW__SMTP__SMTP_PORT: ${SMTP_PORT}
+    AIRFLOW__SMTP__SMTP_USER: ${SMTP_USER}
+    AIRFLOW__SMTP__SMTP_PASSWORD: ${SMTP_PASSWORD}
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${SMTP_MAIL_FROM}
+    DASK_SCHEDULER_ADDRESS: tcp://dask-scheduler:8786
+    PYTHONPATH: /opt/airflow/dags
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
@@ -42,12 +41,13 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
   user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
+  depends_on: &airflow-common-depends-on
     redis:
       condition: service_healthy
     postgres:
       condition: service_healthy
+    dask-scheduler:
+      condition: service_started
 
 services:
   postgres:
@@ -115,7 +115,7 @@ services:
     healthcheck:
       test:
         - "CMD-SHELL"
-        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@${HOSTNAME}"'
       interval: 30s
       timeout: 10s
       retries: 5
@@ -128,12 +128,17 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
 
   airflow-triggerer:
     <<: *airflow-common
     command: ["airflow", "triggerer"]
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "${HOSTNAME}"']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -201,10 +206,51 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-      _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+  dask-scheduler:
+    image: ghcr.io/dask/dask:2024.9.1-py3.11
+    hostname: dask-scheduler
+    ports:
+      - "8786:8786"
+      - "8787:8787"
+    command: ["dask-scheduler"]
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+      - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      - PYTHONPATH=/opt/airflow/dags
+
+  dask-worker:
+    image: ghcr.io/dask/dask:2024.9.1-py3.11
+    hostname: dask-worker
+    command:
+      - dask-worker
+      - tcp://dask-scheduler:8786
+      - --memory-limit
+      - 6GB
+      - --nthreads
+      - "4"
+      - --nworkers
+      - "2"
+    depends_on:
+      - dask-scheduler
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+      - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      - PYTHONPATH=/opt/airflow/dags
+    deploy:
+      resources:
+        limits:
+          cpus: '12'
+          memory: 8G
 
 volumes:
   postgres-db-volume:

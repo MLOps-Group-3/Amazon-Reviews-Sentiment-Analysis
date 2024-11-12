@@ -71,4 +71,3 @@ trigger_sampling_dag = TriggerDagRunOperator(
 
 
 acquire_data_task >> trigger_sampling_dag
-# >> [send_success_email, send_failure_email]

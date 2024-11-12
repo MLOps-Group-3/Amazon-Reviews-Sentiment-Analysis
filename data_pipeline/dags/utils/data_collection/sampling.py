@@ -1,180 +1,153 @@
-import pandas as pd
-import gzip
-import json
-from tqdm import tqdm
-import logging
-import logging.config
+import sys
 import os
+import dask.bag as db
+import json
+import logging
+import gzip
+from dask.distributed import Client
 from datetime import datetime
-from ..config import CATEGORIES, TARGET_DIRECTORY_SAMPLED, TARGET_DIRECTORY, SAMPLING_FRACTION
+import pandas as pd
 
-# Set up logging configuration
-logging.config.dictConfig({
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'standard': {
-            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-        },
-    },
-    'handlers': {
-        'default': {
-            'level': 'INFO',
-            'formatter': 'standard',
-            'class': 'logging.StreamHandler',
-        },
-        'file_handler': {
-            'level': 'DEBUG',
-            'formatter': 'standard',
-            'class': 'logging.FileHandler',
-            'filename': f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
-            'mode': 'w'
-        }
-    },
-    'loggers': {
-        '': {  # root logger
-            'handlers': ['default', 'file_handler'],
-            'level': 'DEBUG',
-            'propagate': True
-        }
-    }
-})
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
+# Now import from utils
+from utils.config import TARGET_DIRECTORY, TARGET_DIRECTORY_SAMPLED, SAMPLING_FRACTION
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def read_jsonl_gz_in_chunks(file_path, chunksize=10000):
-    """
-    Read a JSONL.GZ file in chunks and yield DataFrames.
-    """
-    logger.info(f"Reading file: {file_path}")
-    with gzip.open(file_path, 'rt') as f:
-        while True:
-            chunk = []
-            for _ in range(chunksize):
-                line = f.readline()
-                if not line:
-                    break
-                chunk.append(json.loads(line))
-            if not chunk:
-                break
-            yield pd.DataFrame(chunk)
+def setup_dask_client():
+    logger.info("Setting up Dask client")
+    client = Client("tcp://dask-scheduler:8786")
+    logger.info(f"Dask dashboard available at: {client.dashboard_link}")
+    return client
 
-def load_jsonl_gz(file_path, nrows=None):
-    """
-    Load a large JSONL.GZ file into a pandas DataFrame.
-    """
-    chunks = []
-    total_rows = 0
+def preprocess_file(input_file, output_dir, chunk_size=100000):
+    logger.info(f"Starting preprocessing of file: {input_file}")
+    filename = os.path.basename(input_file)
+    output_prefix = os.path.join(output_dir, filename.split('.')[0])
     
-    for chunk in tqdm(read_jsonl_gz_in_chunks(file_path), desc="Loading data"):
-        chunks.append(chunk)
-        total_rows += len(chunk)
-        if nrows is not None and total_rows >= nrows:
-            break
+    with gzip.open(input_file, 'rt') as f:
+        chunk = []
+        chunk_num = 0
+        total_lines = 0
+        for line in f:
+            chunk.append(json.loads(line))
+            if len(chunk) == chunk_size:
+                output_file = f"{output_prefix}_{chunk_num}.jsonl.gz"
+                with gzip.open(output_file, 'wt') as out:
+                    for item in chunk:
+                        out.write(json.dumps(item) + '\n')
+                logger.info(f"Wrote chunk {chunk_num} to {output_file}")
+                chunk = []
+                chunk_num += 1
+            total_lines += 1
+        
+        if chunk:
+            output_file = f"{output_prefix}_{chunk_num}.jsonl.gz"
+            with gzip.open(output_file, 'wt') as out:
+                for item in chunk:
+                    out.write(json.dumps(item) + '\n')
+            logger.info(f"Wrote final chunk {chunk_num} to {output_file}")
     
-    df = pd.concat(chunks, ignore_index=True)
-    if nrows is not None:
-        df = df.head(nrows)
-    
-    logger.info(f"Loaded {len(df)} rows from {file_path}")
-    return df
+    logger.info(f"Finished preprocessing {input_file}. Total lines processed: {total_lines}")
 
-def process_reviews_df(reviews_df):
-    """
-    Process the reviews DataFrame.
-    """
-    logger.info("Processing reviews DataFrame")
-    reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
-    
-    filtered_reviews_df = reviews_df[
-        (reviews_df['review_date_timestamp'] >= '2018-01-01 00:00:00') & 
-        (reviews_df['review_date_timestamp'] <= '2020-12-31 23:59:59')
-    ].drop(columns=['images'])
-    
-    logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
-    return filtered_reviews_df
+def process_reviews(item):
+    timestamp = item.get('timestamp', 0)
+    review_date = datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    if '2018-01-01 00:00:00' <= review_date <= '2020-12-31 23:59:59':
+        item['review_date_timestamp'] = review_date
+        return item
+    return None
 
-def join_dataframes(filtered_reviews_df, metadata_df):
-    """
-    Join the filtered reviews DataFrame with the metadata DataFrame.
-    """
-    logger.info("Joining filtered reviews and metadata DataFrames")
-    metadata_df_renamed = metadata_df.rename(columns={'title': 'product_name'})
-    metadata_df_renamed = metadata_df_renamed[
-        ['parent_asin', 'main_category', 'product_name', 'categories', 'price', 'average_rating', 'rating_number']
-    ]
-    
-    joined_df = filtered_reviews_df.merge(
-        metadata_df_renamed,
-        on='parent_asin',
-        how='left'
-    )
-    
-    logger.info(f"Joined DataFrame has {len(joined_df)} rows")
-    return joined_df
+def process_metadata(item):
+    item['product_name'] = item.pop('title', '')
+    return item
 
-def sample_data(joined_df):
-    """
-    Perform stratified sampling on the joined DataFrame.
-    """
-    logger.info("Performing stratified sampling")
-    joined_df['review_month'] = pd.to_datetime(joined_df['review_date_timestamp']).dt.month
-    grouped_df = joined_df.groupby(['review_month', 'rating']).size().reset_index(name='count')
-    joined_with_count_df = pd.merge(joined_df, grouped_df, on=['review_month', 'rating'], how='inner')
-    
-    sampled_df = joined_with_count_df.groupby(['review_month', 'rating']).apply(
-        lambda x: x.sample(frac=SAMPLING_FRACTION, random_state=42)
-    ).reset_index(drop=True)
-    
-    logger.info(f"Sampled {len(sampled_df)} rows")
-    return sampled_df
+def read_jsonl_gz_dask(file_pattern, process_func):
+    logger.info(f"Reading files with pattern: {file_pattern}")
+    bag = db.read_text(file_pattern).map(json.loads).map(process_func).filter(lambda x: x is not None)
+    logger.info("Computing Dask bag")
+    result = bag.compute()
+    logger.info(f"Finished computing Dask bag. Number of items: {len(result)}")
+    return result
 
-def process_sampled_data(sampled_df):
-    """
-    Process the sampled data and split into two DataFrames.
-    """
-    logger.info("Processing sampled data")
-    sampled_df['review_date_timestamp'] = pd.to_datetime(sampled_df['review_date_timestamp'], format='%Y-%m-%d %H:%M:%S')
-    sampled_df['year'] = sampled_df['review_date_timestamp'].dt.year
-    sampled_df['categories'] = sampled_df['categories'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-    sampled_df = sampled_df.drop(columns=['count'])
+def sample_data(df):
+    logger.info("Starting data sampling")
+    logger.info(f"Initial DataFrame shape: {df.shape}")
+    logger.info(f"DataFrame columns: {df.columns}")
+    logger.info(f"DataFrame dtypes: {df.dtypes}")
     
-    sampled_2018_2019_df = sampled_df[sampled_df['year'].isin([2018, 2019])]
-    sampled_2020_df = sampled_df[sampled_df['year'] == 2020]
+    logger.info("Converting 'review_date_timestamp' to datetime")
+    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'], errors='coerce')
     
-    logger.info(f"Split data into {len(sampled_2018_2019_df)} rows for 2018-2019 and {len(sampled_2020_df)} rows for 2020")
-    return sampled_2018_2019_df, sampled_2020_df
+    logger.info("Extracting review month")
+    df['review_month'] = df['review_date_timestamp'].dt.month
+    
+    logger.info("Converting 'rating' to numeric")
+    df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+    
+    logger.info("Dropping rows with NaN values in 'review_month' or 'rating'")
+    df = df.dropna(subset=['review_month', 'rating'])
+    logger.info(f"DataFrame shape after dropping NaNs: {df.shape}")
+    
+    logger.info("Grouping and sampling data")
+    grouped = df.groupby(['review_month', 'rating'])
+    sampled = grouped.apply(lambda x: x.sample(frac=SAMPLING_FRACTION, random_state=42))
+    logger.info(f"Sampled data shape: {sampled.shape}")
+    return sampled
 
 def sample_category(category_name):
+    client = setup_dask_client()
     try:
         logger.info(f"Starting data processing for category: {category_name}")
         
-        # File paths
-        reviews_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_reviews.jsonl.gz")
-        meta_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_meta.jsonl.gz")
+        reviews_pattern = os.path.join(TARGET_DIRECTORY_SAMPLED, f"{category_name}_reviews_*.jsonl.gz")
+        meta_pattern = os.path.join(TARGET_DIRECTORY_SAMPLED, f"{category_name}_meta_*.jsonl.gz")
         
-        # Load the data
-        reviews_df = load_jsonl_gz(reviews_file)
-        metadata_df = load_jsonl_gz(meta_file)
+        logger.info(f"Processing reviews for {category_name}")
+        reviews_df = pd.DataFrame(read_jsonl_gz_dask(reviews_pattern, process_reviews))
+        logger.info(f"Reviews DataFrame shape: {reviews_df.shape}")
         
-        # Process the reviews DataFrame
-        filtered_reviews_df = process_reviews_df(reviews_df)
+        logger.info(f"Processing metadata for {category_name}")
+        metadata_df = pd.DataFrame(read_jsonl_gz_dask(meta_pattern, process_metadata))
+        logger.info(f"Metadata DataFrame shape: {metadata_df.shape}")
         
-        # Join DataFrames
-        joined_df = join_dataframes(filtered_reviews_df, metadata_df)
+        logger.info(f"Joining reviews and metadata for {category_name}")
+        joined_df = reviews_df.merge(metadata_df, on='parent_asin', how='left')
+        logger.info(f"Joined DataFrame shape: {joined_df.shape}")
+        logger.info(f"Joined DataFrame columns: {joined_df.columns}")
+        logger.info(f"Joined DataFrame dtypes: {joined_df.dtypes}")
+        logger.info(f"Sample of review_date_timestamp: {joined_df['review_date_timestamp'].head()}")
         
-        # Sample data
         sampled_df = sample_data(joined_df)
         
-        # Process sampled data
-        sampled_2018_2019_df, sampled_2020_df = process_sampled_data(sampled_df)
+        logger.info(f"Splitting sampled data for {category_name}")
+        sampled_2018_2019_df = sampled_df[sampled_df['review_date_timestamp'].dt.year.isin([2018, 2019])]
+        sampled_2020_df = sampled_df[sampled_df['review_date_timestamp'].dt.year == 2020]
         
-        # Save to CSV
-        os.makedirs(TARGET_DIRECTORY_SAMPLED, exist_ok=True)
-        sampled_2018_2019_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2018_2019_{category_name}.csv"), index=False)
-        sampled_2020_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2020_{category_name}.csv"), index=False)
+        output_2018_2019 = os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2018_2019_{category_name}.csv")
+        output_2020 = os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2020_{category_name}.csv")
         
-        logger.info("Data processing completed successfully")
+        logger.info(f"Saving sampled data for {category_name}")
+        sampled_2018_2019_df.to_csv(output_2018_2019, index=False)
+        sampled_2020_df.to_csv(output_2020, index=False)
+        
+        logger.info(f"Data processing completed successfully for {category_name}")
+        return True
     except Exception as e:
-        logger.exception(f"An error occurred during data processing: {str(e)}")
+        logger.exception(f"An error occurred during data processing for {category_name}: {str(e)}")
+        raise
+    finally:
+        client.close()
 
+if __name__ == "__main__":
+    logger.info("Starting sampling process")
+    logger.info(f"Current working directory: {os.getcwd()}")
+    logger.info(f"Python path: {sys.path}")
+    for category in CATEGORIES:
+        logger.info(f"Processing category: {category}")
+        sample_category(category)
+    logger.info("Sampling process completed")
