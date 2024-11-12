@@ -35,6 +35,8 @@ __pycache__
 
 # ignore .env
 .env
+.venv
+venv
 # ignore docker-compose.yaml
 # docker-compose.yaml
 
@@ -49,6 +51,19 @@ logs
 
 #adding it for secrets
 .env
+
+# Ignore MLflow files
+mlruns/
+
+# Ignore model output directories
+saved_model/
+saved_roberta_model/
+
+# Ignore any HDF5 files
+*.h5
+
+# Ignore any temporary files
+*.tmp
 
 
 
