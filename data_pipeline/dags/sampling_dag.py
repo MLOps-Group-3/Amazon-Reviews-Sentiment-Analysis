@@ -1,19 +1,16 @@
 import sys
 import os
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
 from datetime import datetime, timedelta
 
-# Now import the modules using absolute imports
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 from utils.data_collection.sampling import preprocess_file, sample_category, setup_dask_client
 from utils.data_collection.data_concat import concatenate_and_save_csv_files
-from utils.config import CATEGORIES, TARGET_DIRECTORY, TARGET_DIRECTORY_SAMPLED
+from utils.config import CATEGORIES, GCS_RAW_DATA_PATH, GCS_SAMPLED_DATA_PATH
 
 default_args = {
     'owner': 'airflow',
@@ -37,11 +34,10 @@ dag = DAG(
 )
 
 def preprocess_category(category_name):
-    reviews_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_reviews.jsonl.gz")
-    meta_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_meta.jsonl.gz")
-    
-    preprocess_file(reviews_file, TARGET_DIRECTORY_SAMPLED)
-    preprocess_file(meta_file, TARGET_DIRECTORY_SAMPLED)
+    reviews_file = f"{GCS_RAW_DATA_PATH}/{category_name}_reviews.jsonl.gz"
+    meta_file = f"{GCS_RAW_DATA_PATH}/{category_name}_meta.jsonl.gz"
+    preprocess_file(reviews_file, GCS_SAMPLED_DATA_PATH)
+    preprocess_file(meta_file, GCS_SAMPLED_DATA_PATH)
 
 def run_sample_category(category_name):
     client = setup_dask_client()
@@ -52,7 +48,6 @@ def run_sample_category(category_name):
     return result
 
 with dag:
-    # Preprocessing step
     with TaskGroup(group_id='preprocess_files') as preprocess_group:
         preprocess_tasks = [
             PythonOperator(
@@ -62,7 +57,6 @@ with dag:
             ) for category in CATEGORIES
         ]
 
-    # Sampling step (sequential)
     sample_tasks = []
     for category in CATEGORIES:
         sample_task = PythonOperator(
@@ -72,20 +66,17 @@ with dag:
         )
         sample_tasks.append(sample_task)
 
-    # Concatenation task
     concat_task = PythonOperator(
-       task_id='concatenate_data',
-       python_callable=concatenate_and_save_csv_files,
-    )   
+        task_id='concatenate_data',
+        python_callable=concatenate_and_save_csv_files,
+    )
 
-    # Trigger next DAG
     trigger_validation_dag = TriggerDagRunOperator(
         task_id='trigger_data_validation_dag',
         trigger_dag_id='03_data_validation_dag',
         wait_for_completion=False,
     )
 
-    # Set up dependencies
     preprocess_group >> sample_tasks[0]
     for i in range(len(sample_tasks) - 1):
         sample_tasks[i] >> sample_tasks[i + 1]
