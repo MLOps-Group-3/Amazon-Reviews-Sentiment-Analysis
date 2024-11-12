@@ -9,6 +9,6 @@ snorkel==0.10.0
 vaderSentiment==3.3.2
 dask[complete]==2024.9.1
 distributed==2024.9.1
-numpy==1.26.2
+numpy==2.1.1
 cloudpickle==3.0.0
 toolz==0.12.0
