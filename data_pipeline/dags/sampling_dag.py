@@ -74,9 +74,9 @@ with dag:
 
     # Concatenation task
     concat_task = PythonOperator(
-        task_id='concatenate_data',
-        python_callable=concatenate_and_save_csv_files,
-    )
+       task_id='concatenate_data',
+       python_callable=concatenate_and_save_csv_files,
+    )   
 
     # Trigger next DAG
     trigger_validation_dag = TriggerDagRunOperator(

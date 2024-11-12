@@ -2,10 +2,12 @@ import os
 import dask.dataframe as dd
 from ..config import TARGET_DIRECTORY_SAMPLED
 import logging
+from distributed import Client
 
 logger = logging.getLogger(__name__)
 
-def concatenate_and_save_csv_files(client):
+def concatenate_and_save_csv_files():
+    client = Client('tcp://dask-scheduler:8786')
     logger.info(f"Using Dask client with {len(client.scheduler_info()['workers'])} workers")
 
     try:
@@ -45,12 +47,9 @@ def concatenate_and_save_csv_files(client):
     except Exception as e:
         logger.error(f"An error occurred during data concatenation: {str(e)}")
         raise
+    finally:
+        client.close()
 
 if __name__ == "__main__":
     # This block is for testing purposes only
-    from distributed import Client
-    client = Client('tcp://dask-scheduler:8786')
-    try:
-        concatenate_and_save_csv_files(client)
-    finally:
-        client.close()
+    concatenate_and_save_csv_files()
