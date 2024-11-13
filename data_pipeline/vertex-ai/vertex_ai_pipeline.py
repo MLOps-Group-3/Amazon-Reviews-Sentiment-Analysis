@@ -2,7 +2,7 @@ import os
 from google.cloud import aiplatform
 from google.cloud.aiplatform import pipeline_jobs
 from kfp import dsl
-from kfp.dsl import component, Output, Dataset
+from kfp.dsl import component, Output, Dataset, Model, Metrics, ClassificationMetrics
 import mlflow
 
 # Set up Google Cloud project details
@@ -28,6 +28,8 @@ mlflow.set_tracking_uri(f"{PIPELINE_ROOT}/mlflow")
     base_image="python:3.9",
 )
 def prepare_data(
+    project_id: str,
+    region: str,
     dataset_id: str,
     train_data: Output[Dataset],
     val_data: Output[Dataset],
@@ -39,11 +41,15 @@ def prepare_data(
     from sklearn.preprocessing import LabelEncoder
 
     # Initialize Vertex AI
-    aiplatform.init(project=PROJECT_ID, location=REGION)
+    aiplatform.init(project=project_id, location=region)
 
     # Load the dataset
     dataset = aiplatform.TabularDataset(dataset_id)
-    df = dataset.to_pandas()
+    
+    # Get the data as a pandas DataFrame
+    df = dataset.gca()
+    if not isinstance(df, pd.DataFrame):
+        df = pd.DataFrame(df)
 
     # Your existing data processing code
     df['text'] = df['text'].fillna('')
@@ -78,9 +84,15 @@ def prepare_data(
     description="A pipeline for sentiment analysis data preparation",
 )
 def sentiment_analysis_pipeline(
+    project_id: str,
+    region: str,
     dataset_id: str,
 ):
-    prepare_data_task = prepare_data(dataset_id=dataset_id)
+    prepare_data_task = prepare_data(
+        project_id=project_id,
+        region=region,
+        dataset_id=dataset_id
+    )
 
 # Compile the pipeline
 from kfp import compiler
@@ -96,6 +108,8 @@ pipeline_job = pipeline_jobs.PipelineJob(
     template_path="sentiment_analysis_pipeline.json",
     pipeline_root=PIPELINE_ROOT,
     parameter_values={
+        "project_id": PROJECT_ID,
+        "region": REGION,
         "dataset_id": DATASET_ID,
     }
 )

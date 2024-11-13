@@ -6,6 +6,12 @@
         "parameters": {
           "dataset_id": {
             "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
           }
         }
       },
@@ -56,7 +62,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    # Initialize Vertex AI\n    aiplatform.init(project=PROJECT_ID, location=REGION)\n\n    # Load the dataset\n    dataset = aiplatform.TabularDataset(dataset_id)\n    df = dataset.to_pandas()\n\n    # Your existing data processing code\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    # Split the data\n    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])\n    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)\n\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    project_id: str,\n    region: str,\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    # Initialize Vertex AI\n    aiplatform.init(project=project_id, location=region)\n\n    # Load the dataset\n    dataset = aiplatform.TabularDataset(dataset_id)\n\n    # Get the data as a pandas DataFrame\n    df = dataset.gca()\n    if not isinstance(df, pd.DataFrame):\n        df = pd.DataFrame(df)\n\n    # Your existing data processing code\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    # Split the data\n    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])\n    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)\n\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
           ],
           "image": "python:3.9"
         }
@@ -81,6 +87,12 @@
             "parameters": {
               "dataset_id": {
                 "componentInputParameter": "dataset_id"
+              },
+              "project_id": {
+                "componentInputParameter": "project_id"
+              },
+              "region": {
+                "componentInputParameter": "region"
               }
             }
           },
@@ -93,6 +105,12 @@
     "inputDefinitions": {
       "parameters": {
         "dataset_id": {
+          "parameterType": "STRING"
+        },
+        "project_id": {
+          "parameterType": "STRING"
+        },
+        "region": {
           "parameterType": "STRING"
         }
       }
