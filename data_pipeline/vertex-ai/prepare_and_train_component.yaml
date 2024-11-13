@@ -1,0 +1,191 @@
+# PIPELINE DEFINITION
+# Name: prepare-and-train
+# Inputs:
+#    batch_size: int
+#    data_path: str
+#    dropout_rate: float
+#    learning_rate: float
+#    model_name: str
+#    num_epochs: int
+#    weight_decay: float
+# Outputs:
+#    metrics: system.Metrics
+#    trained_model: system.Model
+components:
+  comp-prepare-and-train:
+    executorLabel: exec-prepare-and-train
+    inputDefinitions:
+      parameters:
+        batch_size:
+          parameterType: NUMBER_INTEGER
+        data_path:
+          parameterType: STRING
+        dropout_rate:
+          parameterType: NUMBER_DOUBLE
+        learning_rate:
+          parameterType: NUMBER_DOUBLE
+        model_name:
+          parameterType: STRING
+        num_epochs:
+          parameterType: NUMBER_INTEGER
+        weight_decay:
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-prepare-and-train:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_and_train
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn'\
+          \ 'torch' 'transformers' 'mlflow' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_and_train(\n    data_path: str,  # Changed from Input[Dataset]\
+          \ to str\n    model_name: str,\n    learning_rate: float,\n    batch_size:\
+          \ int,\n    num_epochs: int,\n    weight_decay: float,\n    dropout_rate:\
+          \ float,\n    trained_model: Output[Model],\n    metrics: Output[Metrics],\n\
+          ) -> None:\n    \"\"\"\n    Component to prepare data and train the model.\n\
+          \n    This component loads and processes the data, initializes the model,\n\
+          \    trains it, and logs metrics using MLflow.\n    \"\"\"\n    import pandas\
+          \ as pd\n    import torch\n    import mlflow\n    from datetime import datetime\n\
+          \    from sklearn.preprocessing import LabelEncoder\n    from transformers\
+          \ import BertTokenizer, RobertaTokenizer\n    from utils.data_loader import\
+          \ load_and_process_data, split_data_by_timestamp, SentimentDataset\n   \
+          \ from utils.bert_model import initialize_bert_model, train_bert_model\n\
+          \    from utils.roberta_model import initialize_roberta_model, train_roberta_model\n\
+          \n    # Set up device\n    device = \"cuda\" if torch.cuda.is_available()\
+          \ else \"cpu\"\n\n    # Load and process data\n    df, label_encoder = load_and_process_data(data_path)\n\
+          \    train_df, val_df, test_df = split_data_by_timestamp(df)\n    class_labels\
+          \ = label_encoder.classes_\n\n    # Initialize model and tokenizer\n   \
+          \ if model_name == \"BERT\":\n        model_init = initialize_bert_model\n\
+          \        tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\"\
+          )\n        train_model = train_bert_model\n    elif model_name == \"RoBERTa\"\
+          :\n        model_init = initialize_roberta_model\n        tokenizer = RobertaTokenizer.from_pretrained(\"\
+          roberta-base\")\n        train_model = train_roberta_model\n    else:\n\
+          \        raise ValueError(f\"Model {model_name} is not supported.\")\n\n\
+          \    # Create datasets\n    train_dataset = SentimentDataset(\n        train_df['text'].tolist(),\n\
+          \        train_df['title'].tolist(),\n        train_df['price'].tolist(),\n\
+          \        train_df['price_missing'].tolist(),\n        train_df['helpful_vote'].tolist(),\n\
+          \        train_df['verified_purchase'].tolist(),\n        train_df['label'].tolist(),\n\
+          \        tokenizer\n    )\n    val_dataset = SentimentDataset(\n       \
+          \ val_df['text'].tolist(),\n        val_df['title'].tolist(),\n        val_df['price'].tolist(),\n\
+          \        val_df['price_missing'].tolist(),\n        val_df['helpful_vote'].tolist(),\n\
+          \        val_df['verified_purchase'].tolist(),\n        val_df['label'].tolist(),\n\
+          \        tokenizer\n    )\n\n    # Initialize model\n    model = model_init(num_labels=len(class_labels)).to(device)\n\
+          \n    # Set up training arguments\n    training_args = {\n        \"learning_rate\"\
+          : learning_rate,\n        \"per_device_train_batch_size\": batch_size,\n\
+          \        \"num_train_epochs\": num_epochs,\n        \"weight_decay\": weight_decay,\n\
+          \    }\n\n    # Set up MLflow experiment\n    timestamp = datetime.now().strftime(\"\
+          %Y-%m-%d_%H:%M:%S\")\n    experiment_name = f\"Review_Sentiment_{timestamp}\"\
+          \n    mlflow.set_experiment(experiment_name)\n\n    # Start MLflow run\n\
+          \    with mlflow.start_run() as run:\n        # Log parameters\n       \
+          \ mlflow.log_params({\n            \"model\": model_name,\n            \"\
+          learning_rate\": learning_rate,\n            \"batch_size\": batch_size,\n\
+          \            \"num_epochs\": num_epochs,\n            \"weight_decay\":\
+          \ weight_decay,\n            \"dropout_rate\": dropout_rate,\n        })\n\
+          \n        # Train model\n        eval_results, trainer = train_model(model,\
+          \ train_dataset, val_dataset, **training_args)\n\n        # Log metrics\n\
+          \        for metric_name, metric_value in eval_results.items():\n      \
+          \      mlflow.log_metric(f\"val_{metric_name}\", metric_value)\n\n     \
+          \   # Save model\n        mlflow.pytorch.log_model(model, f\"{model_name}_model\"\
+          )\n\n        # Save metrics\n        metrics.log_metric(\"val_accuracy\"\
+          , eval_results[\"accuracy\"])\n        metrics.log_metric(\"val_f1\", eval_results[\"\
+          f1\"])\n\n    # Save the model to the output\n    mlflow.pytorch.save_model(model,\
+          \ trained_model.path)\n    print(f\"Model saved to {trained_model.path}\"\
+          )\n\n"
+        image: python:3.9
+pipelineInfo:
+  name: prepare-and-train
+root:
+  dag:
+    outputs:
+      artifacts:
+        metrics:
+          artifactSelectors:
+          - outputArtifactKey: metrics
+            producerSubtask: prepare-and-train
+        trained_model:
+          artifactSelectors:
+          - outputArtifactKey: trained_model
+            producerSubtask: prepare-and-train
+    tasks:
+      prepare-and-train:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-and-train
+        inputs:
+          parameters:
+            batch_size:
+              componentInputParameter: batch_size
+            data_path:
+              componentInputParameter: data_path
+            dropout_rate:
+              componentInputParameter: dropout_rate
+            learning_rate:
+              componentInputParameter: learning_rate
+            model_name:
+              componentInputParameter: model_name
+            num_epochs:
+              componentInputParameter: num_epochs
+            weight_decay:
+              componentInputParameter: weight_decay
+        taskInfo:
+          name: prepare-and-train
+  inputDefinitions:
+    parameters:
+      batch_size:
+        parameterType: NUMBER_INTEGER
+      data_path:
+        parameterType: STRING
+      dropout_rate:
+        parameterType: NUMBER_DOUBLE
+      learning_rate:
+        parameterType: NUMBER_DOUBLE
+      model_name:
+        parameterType: STRING
+      num_epochs:
+        parameterType: NUMBER_INTEGER
+      weight_decay:
+        parameterType: NUMBER_DOUBLE
+  outputDefinitions:
+    artifacts:
+      metrics:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      trained_model:
+        artifactType:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.10.0

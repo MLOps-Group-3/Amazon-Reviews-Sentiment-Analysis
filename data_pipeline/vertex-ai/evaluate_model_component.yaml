@@ -1,0 +1,140 @@
+# PIPELINE DEFINITION
+# Name: evaluate-model
+# Inputs:
+#    data_path: system.Dataset
+#    model_path: system.Model
+# Outputs:
+#    metrics: system.ClassificationMetrics
+components:
+  comp-evaluate-model:
+    executorLabel: exec-evaluate-model
+    inputDefinitions:
+      artifacts:
+        data_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_path:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.ClassificationMetrics
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers'\
+          \ 'scikit-learn' 'mlflow' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_model(\n    model_path: Input[Model],\n    data_path:\
+          \ Input[Dataset],\n    metrics: Output[ClassificationMetrics],\n) -> None:\n\
+          \    \"\"\"\n    Component to evaluate the trained model.\n\n    This component\
+          \ loads the trained model, evaluates it on the test set,\n    and logs various\
+          \ metrics including accuracy, F1 score, and confusion matrix.\n    \"\"\"\
+          \n    import torch\n    import pandas as pd\n    import numpy as np\n  \
+          \  from sklearn.metrics import accuracy_score, precision_recall_fscore_support,\
+          \ f1_score\n    import mlflow\n    from transformers import BertTokenizer,\
+          \ RobertaTokenizer\n    from utils.data_loader import load_and_process_data,\
+          \ split_data_by_timestamp, SentimentDataset\n\n    # Load model\n    model\
+          \ = mlflow.pytorch.load_model(model_path.path)\n    device = \"cuda\" if\
+          \ torch.cuda.is_available() else \"cpu\"\n    model.to(device)\n\n    #\
+          \ Load and process data\n    df, label_encoder = load_and_process_data(data_path)\n\
+          \    _, _, test_df = split_data_by_timestamp(df)\n    class_labels = label_encoder.classes_\n\
+          \n    # Determine model type and load appropriate tokenizer\n    if \"bert\"\
+          \ in model.__class__.__name__.lower():\n        tokenizer = BertTokenizer.from_pretrained(\"\
+          bert-base-uncased\")\n    elif \"roberta\" in model.__class__.__name__.lower():\n\
+          \        tokenizer = RobertaTokenizer.from_pretrained(\"roberta-base\")\n\
+          \    else:\n        raise ValueError(\"Unsupported model type\")\n\n   \
+          \ # Create test dataset\n    test_dataset = SentimentDataset(\n        test_df['text'].tolist(),\n\
+          \        test_df['title'].tolist(),\n        test_df['price'].tolist(),\n\
+          \        test_df['price_missing'].tolist(),\n        test_df['helpful_vote'].tolist(),\n\
+          \        test_df['verified_purchase'].tolist(),\n        test_df['label'].tolist(),\n\
+          \        tokenizer\n    )\n\n    # Evaluate model\n    model.eval()\n  \
+          \  all_preds = []\n    all_labels = []\n\n    with torch.no_grad():\n  \
+          \      for item in test_dataset:\n            inputs = {k: v.unsqueeze(0).to(device)\
+          \ for k, v in item.items() if k != 'labels'}\n            labels = item['labels'].unsqueeze(0).to(device)\n\
+          \            outputs = model(**inputs)\n            preds = torch.argmax(outputs.logits,\
+          \ dim=1)\n            all_preds.extend(preds.cpu().numpy())\n          \
+          \  all_labels.extend(labels.cpu().numpy())\n\n    # Calculate metrics\n\
+          \    accuracy = accuracy_score(all_labels, all_preds)\n    precision, recall,\
+          \ f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')\n\
+          \    class_f1_scores = f1_score(all_labels, all_preds, average=None)\n\n\
+          \    # Log metrics\n    metrics.log_accuracy(all_labels, all_preds)\n  \
+          \  metrics.log_confusion_matrix(\n        class_labels.tolist(),\n     \
+          \   all_labels,\n        all_preds\n    )\n    metrics.log_roc_curve(\n\
+          \        all_labels,\n        [np.random.rand() for _ in range(len(all_labels))],\
+          \  # Replace with actual prediction probabilities\n    )\n\n    # Log class-specific\
+          \ F1 scores\n    for i, class_label in enumerate(class_labels):\n      \
+          \  metrics.log_metric(f\"f1_score_{class_label}\", class_f1_scores[i])\n\
+          \n    print(f\"Test Accuracy: {accuracy}\")\n    print(f\"Test F1 Score:\
+          \ {f1}\")\n\n"
+        image: python:3.9
+pipelineInfo:
+  name: evaluate-model
+root:
+  dag:
+    outputs:
+      artifacts:
+        metrics:
+          artifactSelectors:
+          - outputArtifactKey: metrics
+            producerSubtask: evaluate-model
+    tasks:
+      evaluate-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-model
+        inputs:
+          artifacts:
+            data_path:
+              componentInputArtifact: data_path
+            model_path:
+              componentInputArtifact: model_path
+        taskInfo:
+          name: evaluate-model
+  inputDefinitions:
+    artifacts:
+      data_path:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      model_path:
+        artifactType:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+  outputDefinitions:
+    artifacts:
+      metrics:
+        artifactType:
+          schemaTitle: system.ClassificationMetrics
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.10.0
