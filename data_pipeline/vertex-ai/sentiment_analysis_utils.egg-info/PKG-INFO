@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: sentiment_analysis_utils
+Version: 0.1
+Requires-Dist: pandas
+Requires-Dist: scikit-learn
+Requires-Dist: torch
+Requires-Dist: transformers
+Requires-Dist: mlflow

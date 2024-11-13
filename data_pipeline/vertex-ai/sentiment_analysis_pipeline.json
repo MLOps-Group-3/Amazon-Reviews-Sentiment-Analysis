@@ -1,45 +1,10 @@
 {
   "components": {
-    "comp-evaluate-model": {
-      "executorLabel": "exec-evaluate-model",
-      "inputDefinitions": {
-        "artifacts": {
-          "class_labels": {
-            "artifactType": {
-              "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          },
-          "model_path": {
-            "artifactType": {
-              "schemaTitle": "system.Model",
-              "schemaVersion": "0.0.1"
-            }
-          },
-          "test_data": {
-            "artifactType": {
-              "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          }
-        }
-      },
-      "outputDefinitions": {
-        "artifacts": {
-          "metrics": {
-            "artifactType": {
-              "schemaTitle": "system.ClassificationMetrics",
-              "schemaVersion": "0.0.1"
-            }
-          }
-        }
-      }
-    },
     "comp-prepare-data": {
       "executorLabel": "exec-prepare-data",
       "inputDefinitions": {
         "parameters": {
-          "data_path": {
+          "dataset_id": {
             "parameterType": "STRING"
           }
         }
@@ -67,67 +32,6 @@
           "val_data": {
             "artifactType": {
               "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          }
-        }
-      }
-    },
-    "comp-train-model": {
-      "executorLabel": "exec-train-model",
-      "inputDefinitions": {
-        "artifacts": {
-          "class_labels": {
-            "artifactType": {
-              "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          },
-          "train_data": {
-            "artifactType": {
-              "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          },
-          "val_data": {
-            "artifactType": {
-              "schemaTitle": "system.Dataset",
-              "schemaVersion": "0.0.1"
-            }
-          }
-        },
-        "parameters": {
-          "batch_size": {
-            "parameterType": "NUMBER_INTEGER"
-          },
-          "dropout_rate": {
-            "parameterType": "NUMBER_DOUBLE"
-          },
-          "learning_rate": {
-            "parameterType": "NUMBER_DOUBLE"
-          },
-          "model_name": {
-            "parameterType": "STRING"
-          },
-          "num_epochs": {
-            "parameterType": "NUMBER_INTEGER"
-          },
-          "weight_decay": {
-            "parameterType": "NUMBER_DOUBLE"
-          }
-        }
-      },
-      "outputDefinitions": {
-        "artifacts": {
-          "metrics": {
-            "artifactType": {
-              "schemaTitle": "system.Metrics",
-              "schemaVersion": "0.0.1"
-            }
-          },
-          "trained_model": {
-            "artifactType": {
-              "schemaTitle": "system.Model",
               "schemaVersion": "0.0.1"
             }
           }
@@ -137,26 +41,6 @@
   },
   "deploymentSpec": {
     "executors": {
-      "exec-evaluate-model": {
-        "container": {
-          "args": [
-            "--executor_input",
-            "{{$}}",
-            "--function_to_execute",
-            "evaluate_model"
-          ],
-          "command": [
-            "sh",
-            "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers' 'scikit-learn' 'mlflow' && \"$0\" \"$@\"\n",
-            "sh",
-            "-ec",
-            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model(\n  model_path: Input[Model],\n  test_data: Input[Dataset],\n  class_labels: Input[Dataset],\n  metrics: Output[ClassificationMetrics],\n) -> None:\n  import torch\n  import pandas as pd\n  import numpy as np\n  from sklearn.metrics import accuracy_score, precision_recall_fscore_support, f1_score\n\n  # Load model and data for evaluation here...\n\n"
-          ],
-          "image": "python:3.9"
-        }
-      },
       "exec-prepare-data": {
         "container": {
           "args": [
@@ -168,31 +52,11 @@
           "command": [
             "sh",
             "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'google-cloud-aiplatform' && \"$0\" \"$@\"\n",
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    data_path: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n    from utils.data_loader import load_and_process_data, split_data_by_timestamp\n\n    df, label_encoder = load_and_process_data(data_path)\n    train_df, val_df, test_df = split_data_by_timestamp(df)\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
-          ],
-          "image": "python:3.9"
-        }
-      },
-      "exec-train-model": {
-        "container": {
-          "args": [
-            "--executor_input",
-            "{{$}}",
-            "--function_to_execute",
-            "train_model"
-          ],
-          "command": [
-            "sh",
-            "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'mlflow' && \"$0\" \"$@\"\n",
-            "sh",
-            "-ec",
-            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    model_name: str,\n    learning_rate: float,\n    batch_size: int,\n    num_epochs: int,\n    weight_decay: float,\n    dropout_rate: float,\n    trained_model: Output[Model],\n    metrics: Output[Metrics],\n) -> None:\n    import pandas as pd\n    import torch\n    import mlflow\n    from transformers import BertTokenizer, RobertaTokenizer\n    from utils.data_loader import SentimentDataset\n    from utils.bert_model import initialize_bert_model, train_bert_model\n    from utils.roberta_model import initialize_roberta_model, train_roberta_model\n\n    # Load datasets\n    train_df = pd.read_csv(train_data.path)\n    val_df = pd.read_csv(val_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    # Initialize model and tokenizer\n    if model_name == \"BERT\":\n        model_init = initialize_bert_model\n        tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n        train_func = train_bert_model\n    elif model_name == \"RoBERTa\":\n        model_init = initialize_roberta_model\n        tokenizer = RobertaTokenizer.from_pretrained(\"roberta-base\")\n        train_func = train_roberta_model\n    else:\n        raise ValueError(f\"Model {model_name} is not supported.\")\n\n    # Create datasets\n    train_dataset = SentimentDataset(train_df['text'].tolist(), tokenizer)\n    val_dataset = SentimentDataset(val_df['text'].tolist(), tokenizer)\n\n    # Initialize model\n    model = model_init(num_labels=len(class_labels))\n\n    # Train model\n    training_args = {\n        \"learning_rate\": learning_rate,\n        \"per_device_train_batch_size\": batch_size,\n        \"num_train_epochs\": num_epochs,\n        \"weight_decay\": weight_decay,\n        \"dropout_rate\": dropout_rate,\n    }\n\n    eval_results, trainer = train_func(model, train_dataset, val_dataset, **training_args)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    # Initialize Vertex AI\n    aiplatform.init(project=PROJECT_ID, location=REGION)\n\n    # Load the dataset\n    dataset = aiplatform.TabularDataset(dataset_id)\n    df = dataset.to_pandas()\n\n    # Your existing data processing code\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    # Split the data\n    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])\n    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)\n\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
           ],
           "image": "python:3.9"
         }
@@ -200,49 +64,12 @@
     }
   },
   "pipelineInfo": {
-    "description": "A pipeline for sentiment analysis using BERT or RoBERTa",
+    "description": "A pipeline for sentiment analysis data preparation",
     "name": "sentiment-analysis-pipeline"
   },
   "root": {
     "dag": {
       "tasks": {
-        "evaluate-model": {
-          "cachingOptions": {
-            "enableCache": true
-          },
-          "componentRef": {
-            "name": "comp-evaluate-model"
-          },
-          "dependentTasks": [
-            "prepare-data",
-            "train-model"
-          ],
-          "inputs": {
-            "artifacts": {
-              "class_labels": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "class_labels",
-                  "producerTask": "prepare-data"
-                }
-              },
-              "model_path": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "trained_model",
-                  "producerTask": "train-model"
-                }
-              },
-              "test_data": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "test_data",
-                  "producerTask": "prepare-data"
-                }
-              }
-            }
-          },
-          "taskInfo": {
-            "name": "evaluate-model"
-          }
-        },
         "prepare-data": {
           "cachingOptions": {
             "enableCache": true
@@ -252,95 +79,21 @@
           },
           "inputs": {
             "parameters": {
-              "data_path": {
-                "componentInputParameter": "data_path"
+              "dataset_id": {
+                "componentInputParameter": "dataset_id"
               }
             }
           },
           "taskInfo": {
             "name": "prepare-data"
           }
-        },
-        "train-model": {
-          "cachingOptions": {
-            "enableCache": true
-          },
-          "componentRef": {
-            "name": "comp-train-model"
-          },
-          "dependentTasks": [
-            "prepare-data"
-          ],
-          "inputs": {
-            "artifacts": {
-              "class_labels": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "class_labels",
-                  "producerTask": "prepare-data"
-                }
-              },
-              "train_data": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "train_data",
-                  "producerTask": "prepare-data"
-                }
-              },
-              "val_data": {
-                "taskOutputArtifact": {
-                  "outputArtifactKey": "val_data",
-                  "producerTask": "prepare-data"
-                }
-              }
-            },
-            "parameters": {
-              "batch_size": {
-                "componentInputParameter": "batch_size"
-              },
-              "dropout_rate": {
-                "componentInputParameter": "dropout_rate"
-              },
-              "learning_rate": {
-                "componentInputParameter": "learning_rate"
-              },
-              "model_name": {
-                "componentInputParameter": "model_name"
-              },
-              "num_epochs": {
-                "componentInputParameter": "num_epochs"
-              },
-              "weight_decay": {
-                "componentInputParameter": "weight_decay"
-              }
-            }
-          },
-          "taskInfo": {
-            "name": "train-model"
-          }
         }
       }
     },
     "inputDefinitions": {
       "parameters": {
-        "batch_size": {
-          "parameterType": "NUMBER_INTEGER"
-        },
-        "data_path": {
+        "dataset_id": {
           "parameterType": "STRING"
-        },
-        "dropout_rate": {
-          "parameterType": "NUMBER_DOUBLE"
-        },
-        "learning_rate": {
-          "parameterType": "NUMBER_DOUBLE"
-        },
-        "model_name": {
-          "parameterType": "STRING"
-        },
-        "num_epochs": {
-          "parameterType": "NUMBER_INTEGER"
-        },
-        "weight_decay": {
-          "parameterType": "NUMBER_DOUBLE"
         }
       }
     }

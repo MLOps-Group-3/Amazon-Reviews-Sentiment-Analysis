@@ -17,14 +17,16 @@ def main():
     
     initialize_vertex_ai(project_id, region)
     
-    # GCS path to your data
-    gcs_source = "gs://amazon-reviews-sentiment-analysis/pipeline/data/labeled/labeled_data.csv"
+    # GCS path to your 1% sample data
+    gcs_source = "gs://amazon-reviews-sentiment-analysis/pipeline/data/labeled/labeled_data_1perc.csv"
     
     # Create a dataset
     dataset = create_dataset(
-        display_name="amazon_reviews_sentiment_labeled_data",
+        display_name="amazon_reviews_sentiment_labeled_data_1perc",
         gcs_source=gcs_source
     )
+    
+    print(f"Dataset ID: {dataset.name}")
 
 if __name__ == "__main__":
     main()
