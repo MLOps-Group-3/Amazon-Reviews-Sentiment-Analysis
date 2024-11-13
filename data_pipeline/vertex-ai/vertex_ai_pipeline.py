@@ -24,6 +24,7 @@ mlflow.set_tracking_uri(f"{PIPELINE_ROOT}/mlflow")
         "pandas",
         "scikit-learn",
         "google-cloud-aiplatform",
+        "gcsfs"  # Enables reading directly from GCS
     ],
     base_image="python:3.9",
 )
@@ -43,15 +44,14 @@ def prepare_data(
     # Initialize Vertex AI
     aiplatform.init(project=project_id, location=region)
 
-    # Load the dataset
+    # Load the dataset and retrieve the GCS URI
     dataset = aiplatform.TabularDataset(dataset_id)
-    
-    # Get the data as a pandas DataFrame
-    df = dataset.gca()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
+    gcs_uri = dataset._gca_resource.metadata["inputConfig"]["gcsSource"]["uri"][0]
 
-    # Your existing data processing code
+    # Load the data from GCS URI as a pandas DataFrame
+    df = pd.read_csv(gcs_uri)
+
+    # Data processing code
     df['text'] = df['text'].fillna('')
     df['title'] = df['title'].fillna('')
     df['price'] = pd.to_numeric(df['price'].replace("unknown", None), errors='coerce')
