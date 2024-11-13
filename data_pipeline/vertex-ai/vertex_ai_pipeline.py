@@ -24,7 +24,8 @@ mlflow.set_tracking_uri(f"{PIPELINE_ROOT}/mlflow")
         "pandas",
         "scikit-learn",
         "google-cloud-aiplatform",
-        "gcsfs"  # Enables reading directly from GCS
+        "gcsfs",  # Enables reading directly from GCS
+        "accelerate>=0.26.0"
     ],
     base_image="python:3.9",
 )
@@ -86,6 +87,7 @@ def prepare_data(
         "torch",
         "transformers",
         "mlflow",
+        "accelerate>=0.26.0"
     ],
     base_image="python:3.9",
 )
@@ -196,6 +198,7 @@ def train_model(
         "torch",
         "transformers",
         "mlflow",
+        "accelerate>=0.26.0",
     ],
     base_image="python:3.9",
 )
