@@ -80,49 +80,6 @@ def run_experiment(model_name, initialize_model_func, tokenizer, train_df, val_d
         train_and_log(model_name, initialize_model_func, train_dataset, val_dataset, test_dataset, params, class_labels)
 
 # 4. Training and Logging
-# def train_and_log(model_name, initialize_model_func, train_dataset, val_dataset, test_dataset, params, class_labels):
-#     learning_rate, batch_size, num_epochs, weight_decay, dropout_rate = params
-#     with mlflow.start_run(run_name=f"{model_name}_experiment") as run:
-#         # Log hyperparameters
-#         mlflow.log_params({
-#             "model": model_name,
-#             "learning_rate": learning_rate,
-#             "batch_size": batch_size,
-#             "num_epochs": num_epochs,
-#             "weight_decay": weight_decay,
-#             "dropout_rate": dropout_rate
-#         })
-
-#         # Initialize model
-#         model = initialize_model_func(num_labels=len(class_labels)).to(DEVICE)
-#         training_args = {
-#             "learning_rate": learning_rate,
-#             "per_device_train_batch_size": batch_size,
-#             "num_train_epochs": num_epochs,
-#             "weight_decay": weight_decay
-#         }
-
-#         # Train and log metrics
-#         logger.info(f"Starting training for {model_name} with params: {params}")
-#         eval_results, trainer = train_model(model, train_dataset, val_dataset, output_dir=f"./{model_name.lower()}_output", **training_args)
-#         log_metrics("val", eval_results)
-
-#         # Evaluate on test set and log metrics
-#         logger.info(f"Evaluating model {model_name} on test data.")
-#         test_results, test_f1_score = evaluate_and_log_test_metrics(trainer, test_dataset, class_labels)
-#         mlflow.log_metric("test_f1", test_f1_score)  # Log the overall test F1 score
-
-#         # Log model as artifact
-#         mlflow.pytorch.log_model(model, f"{model_name}_model")
-
-#         logger.info(f"Completed experiment for {model_name} with parameters: {params}")
-
-#         # Release memory
-#         del model
-#         del trainer
-#         torch.cuda.empty_cache()
-
-# 4. Training and Logging
 def train_and_log(model_name, initialize_model_func, train_dataset, val_dataset, test_dataset, params, class_labels):
     learning_rate, batch_size, num_epochs, weight_decay, dropout_rate = params
     
