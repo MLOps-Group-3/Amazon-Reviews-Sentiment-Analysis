@@ -30,24 +30,29 @@ def preprocessing_fn(inputs):
     # Encode text using the vocabulary
     encoded_text = tft.apply_vocabulary(tokens, vocab)
     
-    # Convert RaggedTensor to dense tensor and pad
+    # Convert RaggedTensor to dense tensor and pad/truncate
     max_length = 128
-    dense_text = tf.sparse.to_dense(encoded_text.to_sparse(), default_value=0)
     
-    # Ensure the tensor has the correct shape
-    padded_text = tf.pad(
-        dense_text,
-        [[0, 0], [0, tf.maximum(0, max_length - tf.shape(dense_text)[1])]],
-        constant_values=0
+    def ragged_to_dense(rt):
+        values = rt.values
+        row_splits = rt.row_splits
+        dense = tf.RaggedTensor.from_row_splits(values, row_splits).to_tensor(default_value=0, shape=[None, max_length])
+        return dense
+
+    final_text = tf.map_fn(
+        ragged_to_dense,
+        encoded_text,
+        fn_output_signature=tf.TensorSpec(shape=[None, max_length], dtype=tf.int64)
     )
-    final_text = tf.slice(padded_text, [0, 0], [-1, max_length])
     
     # Convert labels to integers
-    label = tft.compute_and_apply_vocabulary(inputs['sentiment_label'])
+    label = inputs['sentiment_label']
+    label_vocab = tft.vocabulary(label, top_k=10)
+    encoded_label = tft.apply_vocabulary(label, label_vocab)
     
     return {
         'encoded_text': tf.cast(final_text, tf.float32),
-        'label': tf.cast(label, tf.int32)
+        'label': tf.cast(encoded_label, tf.int64)
     }
 
 def _input_fn(file_pattern: List[Text],
@@ -62,9 +67,9 @@ def _input_fn(file_pattern: List[Text],
         shuffle=True)
     
     def _clean_data(x):
-        # Ensure 'encoded_text' is float32 and 'label' is int32
+        # Ensure 'encoded_text' is float32 and 'label' is int64
         x['encoded_text'] = tf.cast(x['encoded_text'], tf.float32)
-        x['label'] = tf.cast(x['label'], tf.int32)
+        x['label'] = tf.cast(x['label'], tf.int64)
         return x
     
     return dataset.map(_clean_data).repeat()
