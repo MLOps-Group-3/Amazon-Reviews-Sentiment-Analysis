@@ -101,8 +101,14 @@ def model_fn():
 
 def run_fn(fn_args: FnArgs):
     """Train the model based on given args."""
-    schema = tf.io.gfile.GFile(fn_args.schema_file, "r").read()
-    schema = schema_pb2.Schema.FromString(schema)
+    # Check if schema_file is a string or a file-like object
+    if isinstance(fn_args.schema_file, str):
+        schema_file_contents = fn_args.schema_file.encode('utf-8')
+    else:
+        schema_file_contents = fn_args.schema_file.read()
+    
+    schema = schema_pb2.Schema()
+    schema.ParseFromString(schema_file_contents)
     
     train_dataset = _input_fn(
         fn_args.train_files,
