@@ -61,7 +61,7 @@ def create_pipeline(
         schema=schema_gen.outputs['schema'])
     components.append(example_validator)
 
-    # Transform component (updated)
+    # Transform component
     transform = tfx.components.Transform(
         examples=example_gen.outputs['examples'],
         schema=schema_gen.outputs['schema'],
@@ -120,6 +120,14 @@ def create_pipeline(
     )
 
 def run_pipeline():
+    # Ensure PIPELINE_ROOT directory exists
+    os.makedirs(PIPELINE_ROOT, exist_ok=True)
+
+    # Use SQLite for metadata storage
+    metadata_connection_config = metadata_store_pb2.ConnectionConfig()
+    metadata_connection_config.sqlite.filename_uri = os.path.join(PIPELINE_ROOT, 'metadata.sqlite')
+    metadata_connection_config.sqlite.connection_mode = metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+
     tfx.orchestration.LocalDagRunner().run(
         create_pipeline(
             pipeline_name=PIPELINE_NAME,
@@ -132,7 +140,7 @@ def run_pipeline():
             weight_decay=WEIGHT_DECAY,
             dropout_rate=DROPOUT_RATE,
             enable_cache=True,
-            metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+            metadata_connection_config=metadata_connection_config,
             beam_pipeline_args=[],
         )
     )

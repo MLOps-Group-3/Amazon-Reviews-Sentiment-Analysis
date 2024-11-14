@@ -1,7 +1,11 @@
+# pipeline/config.py
+
+import os
+
 PIPELINE_NAME = "sentiment_analysis_pipeline"
-PIPELINE_ROOT = "pipeline_root"
-METADATA_PATH = "metadata.sqlite"
-DATA_ROOT = "data"
+PIPELINE_ROOT = os.path.join(os.getcwd(), "pipeline_root")
+METADATA_PATH = os.path.join(PIPELINE_ROOT, "metadata.sqlite")
+DATA_ROOT = os.path.join(os.getcwd(), "data")
 
 MODEL_NAME = "BERT"
 LEARNING_RATE = 2e-5
