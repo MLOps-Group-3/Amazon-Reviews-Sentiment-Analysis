@@ -99,10 +99,15 @@ def run_fn(fn_args: FnArgs):
 
 def get_eval_config():
     """Returns the evaluation configuration."""
-    return tf.estimator.EvalConfig(
-        model_dir=None,
-        num_steps=1000,
-        metrics_fn=lambda features, predictions: {
-            'accuracy': tf.keras.metrics.SparseCategoricalAccuracy()
-        }
-    )
+    return {
+        'model_specs': [{'label_key': 'label'}],
+        'slicing_specs': [{}],
+        'metrics_specs': [{
+            'metrics': [
+                {'class_name': 'Accuracy'},
+                {'class_name': 'AUC'},
+                {'class_name': 'Precision'},
+                {'class_name': 'Recall'},
+            ]
+        }]
+    }

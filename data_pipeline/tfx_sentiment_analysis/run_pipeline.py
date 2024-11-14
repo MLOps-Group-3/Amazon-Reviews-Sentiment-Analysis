@@ -1,5 +1,3 @@
-# run_pipeline.py
-
 from absl import app
 from pipeline.pipeline import run_pipeline
 

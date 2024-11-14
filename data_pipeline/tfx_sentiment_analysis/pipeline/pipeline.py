@@ -61,11 +61,12 @@ def create_pipeline(
         schema=schema_gen.outputs['schema'])
     components.append(example_validator)
 
-    # Transform component
+    # Transform component (updated)
     transform = tfx.components.Transform(
         examples=example_gen.outputs['examples'],
         schema=schema_gen.outputs['schema'],
-        preprocessing_fn=custom_components.preprocessing_fn)
+        module_file=os.path.abspath(custom_components.__file__)
+    )
     components.append(transform)
 
     # Trainer component

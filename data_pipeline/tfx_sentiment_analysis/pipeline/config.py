@@ -1,5 +1,3 @@
-# pipeline/config.py
-
 PIPELINE_NAME = "sentiment_analysis_pipeline"
 PIPELINE_ROOT = "pipeline_root"
 METADATA_PATH = "metadata.sqlite"
