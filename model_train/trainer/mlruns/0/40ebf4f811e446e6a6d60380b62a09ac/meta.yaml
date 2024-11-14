@@ -1,0 +1,15 @@
+artifact_uri: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/model_pipeline/model_train/trainer/mlruns/0/40ebf4f811e446e6a6d60380b62a09ac/artifacts
+end_time: 1731558124433
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 40ebf4f811e446e6a6d60380b62a09ac
+run_name: ./roberta_output
+run_uuid: 40ebf4f811e446e6a6d60380b62a09ac
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1731557980995
+status: 3
+tags: []
+user_id: hrs

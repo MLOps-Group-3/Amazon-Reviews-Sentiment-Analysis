@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1731542697392
+current_stage: None
+description: ''
+last_updated_timestamp: 1731542697392
+name: RoBERTa_best
+run_id: cbb1614f49224d22bc497a0cf39803a7
+run_link: ''
+source: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/model_pipeline/src/mlruns/771971057666855191/cbb1614f49224d22bc497a0cf39803a7/artifacts/RoBERTa_model
+status: READY
+status_message: null
+storage_location: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/model_pipeline/src/mlruns/771971057666855191/cbb1614f49224d22bc497a0cf39803a7/artifacts/RoBERTa_model
+user_id: null
+version: 1

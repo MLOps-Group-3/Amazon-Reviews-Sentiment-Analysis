@@ -1,0 +1,15 @@
+artifact_uri: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/model_pipeline/model_train/trainer/mlruns/0/85740935e9f9477f9d43d7f8b0db869f/artifacts
+end_time: 1731539332386
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 85740935e9f9477f9d43d7f8b0db869f
+run_name: capable-auk-759
+run_uuid: 85740935e9f9477f9d43d7f8b0db869f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1731539313364
+status: 3
+tags: []
+user_id: hrs

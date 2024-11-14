@@ -20,9 +20,9 @@ experiment_name = f"Review_Sentiment_{timestamp}"
 mlflow.set_experiment(experiment_name)
 
 # Configuration for data path and device
-DATA_PATH = "labeled_data.csv"
+DATA_PATH = "/opt/airflow/src/labeled_data.csv"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
+logger.info(f"DEVICE: {DEVICE}")
 # Define hyperparameter grid with additional parameters
 param_grid = {
     "learning_rate": [2e-5],

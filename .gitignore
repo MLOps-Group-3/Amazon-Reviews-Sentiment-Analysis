@@ -52,12 +52,10 @@ logs
 #adding it for secrets
 .env
 
-# Ignore MLflow files
-mlruns/
-
 # Ignore model output directories
 saved_model/
 saved_roberta_model/
+roberta_ouput/
 
 # Ignore any HDF5 files
 *.h5
@@ -65,5 +63,13 @@ saved_roberta_model/
 # Ignore any temporary files
 *.tmp
 
-
-
+# Ignore model files
+*.pth
+*.pt
+*.safetensors
+*.bin
+merges.txt
+trainer_state.txt
+special_tokens_map.json
+tokenizer_config.json
+vocab.json
