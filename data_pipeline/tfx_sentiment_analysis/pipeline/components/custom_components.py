@@ -30,22 +30,17 @@ def preprocessing_fn(inputs):
     # Encode text using the vocabulary
     encoded_text = tft.apply_vocabulary(tokens, vocab)
     
-    # Handle both sparse and dense tensors
-    if isinstance(encoded_text, tf.SparseTensor):
-        dense_text = tf.sparse.to_dense(encoded_text, default_value=0)
-    else:
-        dense_text = encoded_text
-    
-    # Pad or truncate sequences to a fixed length
+    # Convert RaggedTensor to dense tensor and pad
     max_length = 128
+    dense_text = tf.sparse.to_dense(encoded_text.to_sparse(), default_value=0)
     
-    def pad_or_truncate(t):
-        shape = tf.shape(t)
-        paddings = [[0, tf.maximum(0, max_length - shape[0])]]
-        padded = tf.pad(t, paddings, constant_values=0)
-        return padded[:max_length]
-    
-    final_text = tf.map_fn(pad_or_truncate, dense_text, dtype=tf.int64)
+    # Ensure the tensor has the correct shape
+    padded_text = tf.pad(
+        dense_text,
+        [[0, 0], [0, tf.maximum(0, max_length - tf.shape(dense_text)[1])]],
+        constant_values=0
+    )
+    final_text = tf.slice(padded_text, [0, 0], [-1, max_length])
     
     # Convert labels to integers
     label = tft.compute_and_apply_vocabulary(inputs['sentiment_label'])
