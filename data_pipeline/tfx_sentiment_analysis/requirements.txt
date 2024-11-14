@@ -1,12 +1,4 @@
-tfx==1.15.1
-tensorflow==2.15.0
-apache-beam==2.47.0
-pandas
-scikit-learn
-torch
+tfx==1.14.0
+tensorflow==2.13.0
 transformers
 mlflow
-accelerate>=0.26.0
-google-cloud-aiplatform
-gcsfs
-kfp

@@ -3,13 +3,13 @@
 import tensorflow as tf
 import tensorflow_transform as tft
 from tfx.components.trainer.fn_args_utils import FnArgs
-from tfx_bsl.public import tfxio
 from typing import List, Text
 from tensorflow_metadata.proto.v0 import schema_pb2
+from transformers import BertTokenizer, TFBertForSequenceClassification
+import mlflow
 
 def preprocessing_fn(inputs):
     """Preprocess input features into transformed features."""
-    # Assuming 'text' is the main feature for sentiment analysis
     text = inputs['text']
     
     # Convert to lowercase
@@ -29,7 +29,7 @@ def preprocessing_fn(inputs):
     
     # Pad or truncate sequences to a fixed length
     encoded_text = tf.keras.preprocessing.sequence.pad_sequences(
-        encoded_text, maxlen=100, padding='post', truncating='post')
+        encoded_text, maxlen=128, padding='post', truncating='post')
     
     # Convert labels to integers
     label = tft.compute_and_apply_vocabulary(inputs['sentiment_label'])
@@ -40,7 +40,7 @@ def preprocessing_fn(inputs):
     }
 
 def _input_fn(file_pattern: List[Text],
-              data_accessor: tfxio.TFXIOProvider,
+              data_accessor: tf.data.Dataset,
               schema: schema_pb2.Schema,
               batch_size: int) -> tf.data.Dataset:
     """Generates features and labels for training or evaluation."""
@@ -51,43 +51,51 @@ def _input_fn(file_pattern: List[Text],
         shuffle=True).repeat()
 
 def model_fn():
-    """Define a simple Keras model."""
-    inputs = tf.keras.Input(shape=(100,), dtype=tf.float32, name='encoded_text')
-    x = tf.keras.layers.Embedding(10000, 64, input_length=100)(inputs)
-    x = tf.keras.layers.GlobalAveragePooling1D()(x)
-    x = tf.keras.layers.Dense(64, activation='relu')(x)
-    outputs = tf.keras.layers.Dense(3, activation='softmax')(x)  # Assuming 3 sentiment classes
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    return model
+    """Define a BERT model for sequence classification."""
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3)
+    
+    inputs = tf.keras.Input(shape=(128,), dtype=tf.int32, name='encoded_text')
+    outputs = model(inputs)[0]
+    
+    return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 def run_fn(fn_args: FnArgs):
     """Train the model based on given args."""
-    schema = tfxio.TensorAdapter.SchemaCoder.load_schema(fn_args.schema_file)
+    schema = tf.io.gfile.GFile(fn_args.schema_file, "r").read()
+    schema = schema_pb2.Schema.FromString(schema)
     
     train_dataset = _input_fn(
         fn_args.train_files,
         fn_args.data_accessor,
         schema,
-        batch_size=fn_args.train_steps)
+        fn_args.train_batch_size)
     
     eval_dataset = _input_fn(
         fn_args.eval_files,
         fn_args.data_accessor,
         schema,
-        batch_size=fn_args.eval_steps)
+        fn_args.eval_batch_size)
     
     model = model_fn()
+    
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=fn_args.custom_config['learning_rate']),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     
     model.fit(
         train_dataset,
         steps_per_epoch=fn_args.train_steps,
         validation_data=eval_dataset,
-        validation_steps=fn_args.eval_steps)
+        validation_steps=fn_args.eval_steps,
+        epochs=fn_args.num_epochs)
     
     model.save(fn_args.serving_model_dir, save_format='tf')
+    
+    # Log metrics with MLflow
+    mlflow.set_tracking_uri(fn_args.custom_config.get('mlflow_tracking_uri'))
+    mlflow.tensorflow.autolog()
 
 def get_eval_config():
     """Returns the evaluation configuration."""
@@ -95,6 +103,6 @@ def get_eval_config():
         model_dir=None,
         num_steps=1000,
         metrics_fn=lambda features, predictions: {
-            'accuracy': tf.keras.metrics.Accuracy()
+            'accuracy': tf.keras.metrics.SparseCategoricalAccuracy()
         }
     )
