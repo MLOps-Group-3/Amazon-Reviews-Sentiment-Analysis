@@ -12,6 +12,9 @@ def preprocessing_fn(inputs):
     """Preprocess input features into transformed features."""
     text = inputs['text']
     
+    # Ensure text is a string
+    text = tf.strings.as_string(text)
+    
     # Convert to lowercase
     text = tf.strings.lower(text)
     
@@ -27,16 +30,29 @@ def preprocessing_fn(inputs):
     # Encode text using the vocabulary
     encoded_text = tft.apply_vocabulary(tokens, vocab)
     
+    # Handle both sparse and dense tensors
+    if isinstance(encoded_text, tf.SparseTensor):
+        dense_text = tf.sparse.to_dense(encoded_text, default_value=0)
+    else:
+        dense_text = encoded_text
+    
     # Pad or truncate sequences to a fixed length
-    encoded_text = tf.keras.preprocessing.sequence.pad_sequences(
-        encoded_text, maxlen=128, padding='post', truncating='post')
+    max_length = 128
+    
+    def pad_or_truncate(t):
+        shape = tf.shape(t)
+        paddings = [[0, tf.maximum(0, max_length - shape[0])]]
+        padded = tf.pad(t, paddings, constant_values=0)
+        return padded[:max_length]
+    
+    final_text = tf.map_fn(pad_or_truncate, dense_text, dtype=tf.int64)
     
     # Convert labels to integers
     label = tft.compute_and_apply_vocabulary(inputs['sentiment_label'])
     
     return {
-        'encoded_text': encoded_text,
-        'label': label
+        'encoded_text': tf.cast(final_text, tf.float32),
+        'label': tf.cast(label, tf.int32)
     }
 
 def _input_fn(file_pattern: List[Text],
@@ -44,18 +60,25 @@ def _input_fn(file_pattern: List[Text],
               schema: schema_pb2.Schema,
               batch_size: int) -> tf.data.Dataset:
     """Generates features and labels for training or evaluation."""
-    return data_accessor.tf_dataset_factory(
+    dataset = data_accessor.tf_dataset_factory(
         file_pattern,
         schema=schema,
         batch_size=batch_size,
-        shuffle=True).repeat()
+        shuffle=True)
+    
+    def _clean_data(x):
+        # Ensure 'encoded_text' is float32 and 'label' is int32
+        x['encoded_text'] = tf.cast(x['encoded_text'], tf.float32)
+        x['label'] = tf.cast(x['label'], tf.int32)
+        return x
+    
+    return dataset.map(_clean_data).repeat()
 
 def model_fn():
     """Define a BERT model for sequence classification."""
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3)
     
-    inputs = tf.keras.Input(shape=(128,), dtype=tf.int32, name='encoded_text')
+    inputs = tf.keras.Input(shape=(128,), dtype=tf.float32, name='encoded_text')
     outputs = model(inputs)[0]
     
     return tf.keras.Model(inputs=inputs, outputs=outputs)
