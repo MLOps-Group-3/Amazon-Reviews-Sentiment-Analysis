@@ -1,0 +1,27 @@
+feature {
+  name: "encoded_text"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+    dim {
+      size: 128
+    }
+  }
+}
+feature {
+  name: "label"
+  type: INT
+  int_domain {
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}

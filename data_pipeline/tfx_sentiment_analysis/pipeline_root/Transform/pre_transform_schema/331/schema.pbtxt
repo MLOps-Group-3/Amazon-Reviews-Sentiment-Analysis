@@ -1,0 +1,364 @@
+feature {
+  name: ""
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "asin"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "average_rating"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "categories"
+  type: BYTES
+  domain: "categories"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+}
+feature {
+  name: "helpful_vote"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "main_category"
+  type: BYTES
+  domain: "main_category"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+}
+feature {
+  name: "parent_asin"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "price"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "product_name"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+}
+feature {
+  name: "rating"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "rating_number"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "review_date_timestamp"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "review_month"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "sentiment_label"
+  type: BYTES
+  domain: "sentiment_label"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "text"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "timestamp"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "title"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "user_id"
+  type: BYTES
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "verified_purchase"
+  type: BYTES
+  domain: "verified_purchase"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "year"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+string_domain {
+  name: "categories"
+  value: "Appliances,Dishwashers,Built-In Dishwashers"
+  value: "Appliances,Dishwashers,Countertop Dishwashers"
+  value: "Appliances,Garbage Disposals & Compactors,Trash Compactors"
+  value: "Appliances,Gerhards Appliances"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,Dryers"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,Portable Dryers"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,Portable Washers"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,Stacked Washer & Dryer Units"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,Washers"
+  value: "Appliances,Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Air Conditioner Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Cooktop Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Dishwasher Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Dishwasher Parts & Accessories,Baskets"
+  value: "Appliances,Parts & Accessories,Dishwasher Parts & Accessories,Hoses"
+  value: "Appliances,Parts & Accessories,Dryer Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Dryer Parts & Accessories,Lint Screens"
+  value: "Appliances,Parts & Accessories,Dryer Parts & Accessories,Replacement Parts"
+  value: "Appliances,Parts & Accessories,Dryer Parts & Accessories,Vents"
+  value: "Appliances,Parts & Accessories,Fasteners"
+  value: "Appliances,Parts & Accessories,Food Waste Disposer Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Freezer Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Humidifier Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Humidifier Parts & Accessories,Accessories"
+  value: "Appliances,Parts & Accessories,Humidifier Parts & Accessories,Chemicals"
+  value: "Appliances,Parts & Accessories,Humidifier Parts & Accessories,Humidity Meters"
+  value: "Appliances,Parts & Accessories,Humidifier Parts & Accessories,Replacement Wicks"
+  value: "Appliances,Parts & Accessories,Oven Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Oven Parts & Accessories,Heating Elements"
+  value: "Appliances,Parts & Accessories,Oven Parts & Accessories,Oven Racks"
+  value: "Appliances,Parts & Accessories,Range Hood Parts & Accessories,Blowers"
+  value: "Appliances,Parts & Accessories,Range Hood Parts & Accessories,Filters"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Accessories"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Burner Rings"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Burners"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Drip Pans"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Exhaust Fans"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Knobs"
+  value: "Appliances,Parts & Accessories,Range Parts & Accessories,Plug Receptacles"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Bins"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Egg Trays"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Grills"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Handles"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Ice Makers"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Motors"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Shelves"
+  value: "Appliances,Parts & Accessories,Refrigerator Parts & Accessories,Water Filters"
+  value: "Appliances,Parts & Accessories,Trash Compactor Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Washer Parts & Accessories"
+  value: "Appliances,Parts & Accessories,Washer Parts & Accessories,Doors"
+  value: "Appliances,Parts & Accessories,Washer Parts & Accessories,Drain Pumps"
+  value: "Appliances,Ranges, Ovens & Cooktops"
+  value: "Appliances,Ranges, Ovens & Cooktops,Cooktops"
+  value: "Appliances,Ranges, Ovens & Cooktops,Range Hoods"
+  value: "Appliances,Ranges, Ovens & Cooktops,Ranges,Freestanding Ranges"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Beverage Refrigerators"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Freezers"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Freezers,Chest Freezers"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Freezers,Upright Freezers"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Ice Makers"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Kegerators"
+  value: "Appliances,Refrigerators, Freezers & Ice Makers,Refrigerators"
+  value: "Restaurant Appliances & Equipment,Commercial Food Preparation Equipment,Commercial Food Packaging Equipment,Bag Sealers"
+  value: "Restaurant Appliances & Equipment,Commercial Food Preparation Equipment,Commercial Food Packaging Equipment,Shrink Wrappers"
+  value: "Small Appliance Parts & Accessories,Coffee & Espresso Machine Parts & Accessories,Coffee Machine Accessories,Coffee Filters,Disposable Filters"
+  value: "Small Appliance Parts & Accessories,Coffee & Espresso Machine Parts & Accessories,Coffee Machine Accessories,Coffee Filters,Permanent Filters"
+  value: "Small Appliance Parts & Accessories,Coffee & Espresso Machine Parts & Accessories,Coffee Machine Accessories,Coffee Filters,Reusable Filters"
+  value: "Small Appliance Parts & Accessories,Coffee & Espresso Machine Parts & Accessories,Espresso Machine Accessories,Milk Frothing Pitchers"
+  value: "Appliances,Laundry Appliances,Washers & Dryers"
+  value: "Appliances,Laundry Appliances,Washers & Dryers,All-in-One Combination Washers & Dryers"
+  value: "Appliances,Ranges, Ovens & Cooktops,Ranges,Slide-In Ranges"
+  value: "Appliances,Ranges, Ovens & Cooktops,Wall Ovens,Combination Microwave & Wall Ovens"
+  value: "Appliances,Ranges, Ovens & Cooktops,Wall Ovens,Double Wall Ovens"
+  value: "Appliances,Ranges, Ovens & Cooktops,Wall Ovens,Single Wall Ovens"
+}
+string_domain {
+  name: "main_category"
+  value: "AMAZON FASHION"
+  value: "All Beauty"
+  value: "All Electronics"
+  value: "Amazon Home"
+  value: "Appliances"
+  value: "Automotive"
+  value: "Baby"
+  value: "Camera & Photo"
+  value: "Cell Phones & Accessories"
+  value: "Grocery"
+  value: "Health & Personal Care"
+  value: "Home Audio & Theater"
+  value: "Industrial & Scientific"
+  value: "Musical Instruments"
+  value: "Office Products"
+  value: "Pet Supplies"
+  value: "Portable Audio & Accessories"
+  value: "Sports & Outdoors"
+  value: "Tools & Home Improvement"
+  value: "Toys & Games"
+  value: "Arts, Crafts & Sewing"
+}
+string_domain {
+  name: "sentiment_label"
+  value: "NEGATIVE"
+  value: "NEUTRAL"
+  value: "POSITIVE"
+}
+string_domain {
+  name: "verified_purchase"
+  value: "False"
+  value: "True"
+}

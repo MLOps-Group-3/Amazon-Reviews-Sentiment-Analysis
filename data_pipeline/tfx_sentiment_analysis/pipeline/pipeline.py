@@ -4,8 +4,6 @@ import os
 from typing import List
 from absl import logging
 from tfx import v1 as tfx
-from tfx.orchestration import pipeline
-from tfx.proto import example_gen_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model, ModelBlessing
 from ml_metadata.proto import metadata_store_pb2
@@ -22,6 +20,7 @@ from pipeline.config import (
     NUM_EPOCHS,
     WEIGHT_DECAY,
     DROPOUT_RATE,
+    MLFLOW_TRACKING_URI,
 )
 
 def create_pipeline(
@@ -45,14 +44,11 @@ def create_pipeline(
     components.append(example_gen)
 
     # StatisticsGen component
-    statistics_gen = tfx.components.StatisticsGen(
-        examples=example_gen.outputs['examples'])
+    statistics_gen = tfx.components.StatisticsGen(examples=example_gen.outputs['examples'])
     components.append(statistics_gen)
 
     # SchemaGen component
-    schema_gen = tfx.components.SchemaGen(
-        statistics=statistics_gen.outputs['statistics'],
-        infer_feature_shape=True)
+    schema_gen = tfx.components.SchemaGen(statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
     components.append(schema_gen)
 
     # ExampleValidator component
@@ -83,6 +79,7 @@ def create_pipeline(
             'batch_size': batch_size,
             'weight_decay': weight_decay,
             'dropout_rate': dropout_rate,
+            'mlflow_tracking_uri': MLFLOW_TRACKING_URI,
         })
     components.append(trainer)
 
@@ -90,7 +87,8 @@ def create_pipeline(
     model_resolver = tfx.dsl.Resolver(
         strategy_class=tfx.dsl.experimental.LatestBlessedModelStrategy,
         model=Channel(type=Model),
-        model_blessing=Channel(type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+        model_blessing=Channel(type=ModelBlessing)
+    ).with_id('latest_blessed_model_resolver')
     components.append(model_resolver)
 
     # Evaluator component
@@ -107,10 +105,13 @@ def create_pipeline(
         model_blessing=evaluator.outputs['blessing'],
         push_destination=tfx.proto.PushDestination(
             filesystem=tfx.proto.PushDestination.Filesystem(
-                base_directory=os.path.join(pipeline_root, 'pushed_models'))))
+                base_directory=os.path.join(pipeline_root, 'serving_model')
+            )
+        )
+    )
     components.append(pusher)
 
-    return pipeline.Pipeline(
+    return tfx.dsl.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=pipeline_root,
         components=components,
@@ -120,31 +121,26 @@ def create_pipeline(
     )
 
 def run_pipeline():
-    # Ensure PIPELINE_ROOT directory exists
-    os.makedirs(PIPELINE_ROOT, exist_ok=True)
+    """Runs the TFX pipeline using a local DAG runner."""
+    metadata_connection_config = tfx.orchestration.metadata.sqlite_metadata_connection_config(METADATA_PATH)
+    beam_pipeline_args = [
+        "--direct_num_workers=0",
+        "--direct_running_mode=multi_processing",
+    ]
 
-    # Use SQLite for metadata storage
-    metadata_connection_config = metadata_store_pb2.ConnectionConfig()
-    metadata_connection_config.sqlite.filename_uri = os.path.join(PIPELINE_ROOT, 'metadata.sqlite')
-    metadata_connection_config.sqlite.connection_mode = metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
-
-    tfx.orchestration.LocalDagRunner().run(
-        create_pipeline(
-            pipeline_name=PIPELINE_NAME,
-            pipeline_root=PIPELINE_ROOT,
-            data_root=DATA_ROOT,
-            model_name=MODEL_NAME,
-            learning_rate=LEARNING_RATE,
-            batch_size=BATCH_SIZE,
-            num_epochs=NUM_EPOCHS,
-            weight_decay=WEIGHT_DECAY,
-            dropout_rate=DROPOUT_RATE,
-            enable_cache=True,
-            metadata_connection_config=metadata_connection_config,
-            beam_pipeline_args=[],
-        )
+    pipeline = create_pipeline(
+        pipeline_name=PIPELINE_NAME,
+        pipeline_root=PIPELINE_ROOT,
+        data_root=DATA_ROOT,
+        model_name=MODEL_NAME,
+        learning_rate=LEARNING_RATE,
+        batch_size=BATCH_SIZE,
+        num_epochs=NUM_EPOCHS,
+        weight_decay=WEIGHT_DECAY,
+        dropout_rate=DROPOUT_RATE,
+        enable_cache=False,
+        metadata_connection_config=metadata_connection_config,
+        beam_pipeline_args=beam_pipeline_args,
     )
 
-if __name__ == '__main__':
-    logging.set_verbosity(logging.INFO)
-    run_pipeline()
+    tfx.orchestration.LocalDagRunner().run(pipeline)
