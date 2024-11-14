@@ -34,16 +34,31 @@ def preprocessing_fn(inputs):
     max_length = 128
     
     def ragged_to_dense(rt):
-        values = rt.values
-        row_splits = rt.row_splits
-        dense = tf.RaggedTensor.from_row_splits(values, row_splits).to_tensor(default_value=0, shape=[None, max_length])
-        return dense
+        # Convert RaggedTensor to dense
+        dense = rt.to_tensor(default_value=0)
+        
+        # Get the shape
+        shape = tf.shape(dense)
+        
+        # Pad or truncate to max_length
+        if shape.shape[0] == 3:  # If it's a 3D tensor
+            paddings = [[0, 0], [0, tf.maximum(0, max_length - shape[1])], [0, tf.maximum(0, max_length - shape[2])]]
+            dense_padded = tf.pad(dense, paddings, constant_values=0)
+            return tf.reshape(dense_padded[:, :max_length, :max_length], [-1, max_length, max_length])
+        else:  # If it's a 2D tensor
+            paddings = [[0, tf.maximum(0, max_length - shape[0])], [0, tf.maximum(0, max_length - shape[1])]]
+            dense_padded = tf.pad(dense, paddings, constant_values=0)
+            return tf.reshape(dense_padded[:max_length, :max_length], [max_length, max_length])
 
-    final_text = tf.map_fn(
-        ragged_to_dense,
-        encoded_text,
-        fn_output_signature=tf.TensorSpec(shape=[None, max_length], dtype=tf.int64)
-    )
+    # Use tf.function to ensure graph-mode execution
+    @tf.function
+    def process_batch(batch):
+        return tf.map_fn(ragged_to_dense, batch, fn_output_signature=tf.TensorSpec(shape=[max_length, max_length], dtype=tf.int64))
+
+    final_text = process_batch(encoded_text)
+    
+    # Reshape to 2D if necessary
+    final_text = tf.reshape(final_text, [-1, max_length * max_length])
     
     # Convert labels to integers
     label = inputs['sentiment_label']
@@ -78,8 +93,9 @@ def model_fn():
     """Define a BERT model for sequence classification."""
     model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3)
     
-    inputs = tf.keras.Input(shape=(128,), dtype=tf.float32, name='encoded_text')
-    outputs = model(inputs)[0]
+    inputs = tf.keras.Input(shape=(128*128,), dtype=tf.float32, name='encoded_text')
+    reshaped_inputs = tf.reshape(inputs, [-1, 128, 128])
+    outputs = model(reshaped_inputs)[0]
     
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 
