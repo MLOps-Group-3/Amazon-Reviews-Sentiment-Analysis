@@ -1,8 +1,8 @@
 {
     "model_name": "BERT",
-    "learning_rate": 9.095076630964591e-05,
+    "learning_rate": 0.00028630244431857374,
     "batch_size": 64,
-    "num_epochs": 1,
-    "weight_decay": 0.015276072128319272,
-    "dropout_rate": 0.26580202288785193
+    "num_epochs": 4,
+    "weight_decay": 0.00016445644670785872,
+    "dropout_rate": 0.40669162857535246
 }

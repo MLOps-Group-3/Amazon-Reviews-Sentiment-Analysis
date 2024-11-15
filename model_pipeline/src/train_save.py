@@ -138,7 +138,7 @@ def train_and_save_final_model(hyperparameters,data_path,model_save_path):
     # Upload model to GCP Cloud Storage
     gcs_bucket_name = "model_storage_arsa"  # Replace with your bucket name
     gcs_model_path = f"models/{model_save_path}"
-    upload_to_gcs(gcs_bucket_name, model_save_path, gcs_model_path)
+    # upload_to_gcs(gcs_bucket_name, model_save_path, gcs_model_path)
 
 # Upload the model to Google Cloud Storage
 def upload_to_gcs(bucket_name, source_file_name, destination_blob_name):

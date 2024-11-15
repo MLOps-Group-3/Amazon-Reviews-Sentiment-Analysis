@@ -2,6 +2,7 @@ import torch
 import logging
 import pickle
 import os
+import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 from transformers import BertTokenizer, RobertaTokenizer
 from config import DATA_SAVE_PATH, MODEL_SAVE_PATH
@@ -90,12 +91,27 @@ def evaluate_model(model, test_dataset, label_encoder):
 
     return accuracy, precision, recall, f1
 
+def load_hyperparameters(file_path):
+    """Load hyperparameters from JSON file."""
+    try:
+        with open(file_path, "r") as f:
+            hyperparams = json.load(f)
+        logger.info("Hyperparameters loaded successfully.")
+        return hyperparams
+    except Exception as e:
+        logger.error(f"Error loading hyperparameters: {e}")
+        raise
+
 def main():
-    # Model details
-    model_name = "BERT"  # Change to "RoBERTa" if needed
+    # Load hyperparameters
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    hyperparams_path = os.path.join(script_dir, "best_hyperparameters.json")
+    hyperparams = load_hyperparameters(hyperparams_path)
+    
+    # Get model name from hyperparameters
+    model_name = hyperparams.get("model_name", "BERT")  # Default to BERT if not specified
 
     # Load paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(script_dir, DATA_SAVE_PATH.lstrip("/"))
     model_path = os.path.join(script_dir, MODEL_SAVE_PATH.lstrip("/"))
 
@@ -134,6 +150,8 @@ def main():
                 f"Precision: {precision:.4f}\n"
                 f"Recall: {recall:.4f}\n"
                 f"F1 Score: {f1:.4f}")
+    logger.info(f"F1 Score: {f1:.4f}")  # Explicitly log F1 score for pipeline extraction
+
 
 if __name__ == "__main__":
     main()
