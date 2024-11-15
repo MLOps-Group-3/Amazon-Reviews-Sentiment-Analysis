@@ -7,8 +7,8 @@ from utils.bert_model import initialize_bert_model
 app = Flask(__name__)
 
 # Environment variables
-MODEL_NAME = os.getenv("MODEL_NAME", "BERT")
-MODEL_FILE = os.getenv("MODEL_FILE", f"{MODEL_NAME}_final_model.pth")  # Path to the local model file
+# MODEL_NAME = os.getenv("MODEL_NAME", "BERT")
+MODEL_FILE = os.getenv("MODEL_FILE", f"final_model.pth")  # Path to the local model file
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Initialize tokenizer
