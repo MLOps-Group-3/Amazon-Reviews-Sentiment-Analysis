@@ -40,7 +40,7 @@ def load_hyperparameters(file_path):
         raise
 
 # Evaluate performance on slices
-def evaluate_slices(data, model, tokenizer):
+def evaluate_slices(data, model, tokenizer,data_path):
     # Define slices based on `year`, `main_category`
     slice_columns = ["year", "main_category"]
     metrics_by_slice = []
@@ -101,7 +101,7 @@ def evaluate_slices(data, model, tokenizer):
 
     # Create a DataFrame for metrics
     metrics_df = pd.DataFrame(metrics_by_slice)
-    metrics_df.to_csv("slice_metrics.csv", index=False)
+    metrics_df.to_csv(f"{data_path}/slice_metrics.csv", index=False)
     logger.info("Metrics by slice saved to slice_metrics.csv.")
     return metrics_df
 
@@ -135,7 +135,7 @@ def main():
     logger.info("Trained model loaded successfully.")
 
     # Evaluate slices
-    metrics_df = evaluate_slices(test_df, model, tokenizer)
+    metrics_df = evaluate_slices(test_df, model, tokenizer,data_path)
     logger.info(f"Metrics by slice:\n{metrics_df}")
 
 if __name__ == "__main__":

@@ -11,6 +11,12 @@ from utils.data_loader import load_and_process_data, split_data_by_timestamp, Se
 from transformers import BertTokenizer, RobertaTokenizer
 from sklearn.metrics import f1_score
 from datetime import datetime
+import os
+from config import DATA_PATH
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(SCRIPT_DIR, DATA_PATH.lstrip("/"))
+# print(DATA_PATH)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +26,7 @@ logger = logging.getLogger(__name__)
 timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 experiment_name = f"Review_Sentiment_{timestamp}"
 mlflow.set_experiment(experiment_name)
-DATA_PATH = "labeled_data_1perc.csv"
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Global variables to track the best model
