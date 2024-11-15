@@ -1,0 +1,7 @@
+artifact_location: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/model_pipeline/src/mlruns/574476020776993947
+creation_time: 1731455678085
+experiment_id: '574476020776993947'
+last_update_time: 1731457302233
+lifecycle_stage: deleted
+name: Sentiment Analysis Experiment
+tags: {}

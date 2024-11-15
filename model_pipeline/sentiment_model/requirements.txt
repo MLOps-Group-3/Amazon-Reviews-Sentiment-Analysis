@@ -1,0 +1,13 @@
+# General utilities
+numpy
+pandas
+
+# PyTorch and Transformers
+torch
+transformers
+
+# MLflow for experiment tracking
+mlflow
+
+# Scikit-learn for metrics and preprocessing
+scikit-learn
