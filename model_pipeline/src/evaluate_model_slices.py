@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 def initialize_model_and_tokenizer(model_name):
     if model_name == "BERT":
         model_init = initialize_bert_model
@@ -26,7 +27,6 @@ def initialize_model_and_tokenizer(model_name):
     else:
         raise ValueError(f"Model {model_name} is not supported.")
     return model_init, tokenizer
-
 
 # Load hyperparameters
 def load_hyperparameters(file_path):
@@ -39,12 +39,13 @@ def load_hyperparameters(file_path):
         logger.error(f"Error loading hyperparameters: {e}")
         raise
 
-# Evaluate performance on slices
-def evaluate_slices(data, model, tokenizer,data_path):
+# Evaluate performance on slices and the full dataset
+def evaluate_slices(data, model, tokenizer, data_path):
     # Define slices based on `year`, `main_category`
     slice_columns = ["year", "main_category"]
     metrics_by_slice = []
 
+    # Evaluate slices
     for column in slice_columns:
         unique_values = data[column].unique()
         logger.info(f"Evaluating slices for column: {column}")
@@ -53,57 +54,66 @@ def evaluate_slices(data, model, tokenizer,data_path):
             slice_data = data[data[column] == value]
             logger.info(f"Evaluating slice: {column} = {value} ({len(slice_data)} samples)")
 
-            # Convert slice data to dataset
-            dataset = SentimentDataset(
-                slice_data["text"].tolist(),
-                slice_data["title"].tolist(),
-                slice_data["price"].tolist(),
-                slice_data["price_missing"].tolist(),
-                slice_data["helpful_vote"].tolist(),
-                slice_data["verified_purchase"].tolist(),
-                slice_data["label"].tolist(),
-                tokenizer
-            )
+            metrics = evaluate_dataset(slice_data, model, tokenizer)
+            metrics.update({"Slice Column": column, "Slice Value": value, "Samples": len(slice_data)})
+            metrics_by_slice.append(metrics)
 
-            # Perform inference
-            model.eval()
-            all_labels = []
-            all_predictions = []
-            with torch.no_grad():
-                for i in range(len(dataset)):
-                    sample = dataset[i]
-                    input_ids = sample["input_ids"].unsqueeze(0).to(DEVICE)
-                    attention_mask = sample["attention_mask"].unsqueeze(0).to(DEVICE)
-                    additional_features = sample["additional_features"].to(DEVICE)
-                    label = sample["labels"].item()
-
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, additional_features=additional_features)
-                    prediction = torch.argmax(outputs["logits"], dim=1).item()
-
-                    all_labels.append(label)
-                    all_predictions.append(prediction)
-
-            # Compute metrics
-            accuracy = accuracy_score(all_labels, all_predictions)
-            precision = precision_score(all_labels, all_predictions, average="weighted")
-            recall = recall_score(all_labels, all_predictions, average="weighted")
-            f1 = f1_score(all_labels, all_predictions, average="weighted")
-
-            metrics_by_slice.append({
-                "Slice Column": column,
-                "Slice Value": value,
-                "Samples": len(slice_data),
-                "Accuracy": accuracy,
-                "Precision": precision,
-                "Recall": recall,
-                "F1 Score": f1
-            })
+    # Evaluate full dataset
+    logger.info("Evaluating the full dataset.")
+    full_metrics = evaluate_dataset(data, model, tokenizer)
+    full_metrics.update({"Slice Column": "Full Dataset", "Slice Value": "All", "Samples": len(data)})
+    metrics_by_slice.append(full_metrics)
 
     # Create a DataFrame for metrics
     metrics_df = pd.DataFrame(metrics_by_slice)
     metrics_df.to_csv(f"{data_path}/slice_metrics.csv", index=False)
     logger.info("Metrics by slice saved to slice_metrics.csv.")
     return metrics_df
+
+# Helper function to evaluate a dataset
+def evaluate_dataset(data, model, tokenizer):
+    # Convert data to dataset
+    dataset = SentimentDataset(
+        data["text"].tolist(),
+        data["title"].tolist(),
+        data["price"].tolist(),
+        data["price_missing"].tolist(),
+        data["helpful_vote"].tolist(),
+        data["verified_purchase"].tolist(),
+        data["label"].tolist(),
+        tokenizer
+    )
+
+    # Perform inference
+    model.eval()
+    all_labels = []
+    all_predictions = []
+    with torch.no_grad():
+        for i in range(len(dataset)):
+            sample = dataset[i]
+            input_ids = sample["input_ids"].unsqueeze(0).to(DEVICE)
+            attention_mask = sample["attention_mask"].unsqueeze(0).to(DEVICE)
+            additional_features = sample["additional_features"].to(DEVICE)
+            label = sample["labels"].item()
+
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, additional_features=additional_features)
+            prediction = torch.argmax(outputs["logits"], dim=1).item()
+
+            all_labels.append(label)
+            all_predictions.append(prediction)
+
+    # Compute metrics
+    accuracy = accuracy_score(all_labels, all_predictions)
+    precision = precision_score(all_labels, all_predictions, average="weighted")
+    recall = recall_score(all_labels, all_predictions, average="weighted")
+    f1 = f1_score(all_labels, all_predictions, average="weighted")
+
+    return {
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1
+    }
 
 def main():
     # Load hyperparameters
@@ -134,9 +144,9 @@ def main():
     model.load_state_dict(torch.load(model_path, map_location=DEVICE))
     logger.info("Trained model loaded successfully.")
 
-    # Evaluate slices
-    metrics_df = evaluate_slices(test_df, model, tokenizer,data_path)
-    logger.info(f"Metrics by slice:\n{metrics_df}")
+    # Evaluate slices and the full dataset
+    metrics_df = evaluate_slices(test_df, model, tokenizer, data_path)
+    logger.info(f"Metrics:\n{metrics_df}")
 
 if __name__ == "__main__":
     main()

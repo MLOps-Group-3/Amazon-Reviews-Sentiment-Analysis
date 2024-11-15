@@ -150,7 +150,8 @@ def main():
                 f"Precision: {precision:.4f}\n"
                 f"Recall: {recall:.4f}\n"
                 f"F1 Score: {f1:.4f}")
-    logger.info(f"F1 Score: {f1:.4f}")  # Explicitly log F1 score for pipeline extraction
+    logger.info(f"F1 Score: {f1:.4f}")
+    print(f"F1 Score: {f1:.4f}")
 
 
 if __name__ == "__main__":

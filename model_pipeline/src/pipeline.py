@@ -14,6 +14,10 @@ logging.basicConfig(
 # Get the directory of the current script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Flag file paths to prevent infinite retriggering
+FLAG_PATH_F1 = os.path.join(SCRIPT_DIR, ".pipeline_f1_retriggered")
+FLAG_PATH_BIAS = os.path.join(SCRIPT_DIR, ".pipeline_bias_retriggered")
+
 # Helper function to run a script and capture its output
 def run_script(script_name):
     start_time = time.time()
@@ -56,8 +60,58 @@ def extract_f1_score(log_output):
         return float(match.group(1))
     return None
 
+# Function to restart the pipeline from a specific step
+def restart_pipeline_from_experiment_runner():
+    """
+    Retriggers the pipeline from the Experiment Runner step.
+    """
+    logging.info("Retriggering the pipeline from the Experiment Runner due to low F1 score.")
+    experiment_runner_script = os.path.join(SCRIPT_DIR, "experiment_runner_optuna.py")
+    pipeline_script = os.path.join(SCRIPT_DIR, "pipeline.py")
+    try:
+        # Run experiment runner
+        process = subprocess.Popen(
+            ["python", experiment_runner_script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = process.communicate()
+        if process.returncode == 0:
+            logging.info("Experiment Runner retriggered successfully. Continuing pipeline.")
+            print(stdout)
+            # Continue the pipeline after Experiment Runner
+            process_pipeline(pipeline_script, from_step="train_save.py")
+        else:
+            logging.error("Experiment Runner retriggering failed.")
+            print(stderr)
+    except Exception as e:
+        logging.error(f"Error while retriggering Experiment Runner: {str(e)}")
+
+# Function to continue the pipeline from a specific step
+def process_pipeline(pipeline_script, from_step):
+    """
+    Run subsequent steps of the pipeline from a specified script.
+    """
+    steps = ["train_save.py", "evaluate_model.py", "evaluate_model_slices.py", "bias_detect.py"]
+    for step in steps[steps.index(from_step):]:
+        _, success = run_script(step)
+        if not success:
+            logging.error(f"Pipeline terminated due to failure in {step}.")
+            return
+
 # Master pipeline flow
 def main():
+    # Check for retrigger flags to prevent infinite loops
+    if os.path.exists(FLAG_PATH_F1):
+        logging.info("Pipeline retrigger due to low F1 score detected. Exiting to prevent infinite loop.")
+        os.remove(FLAG_PATH_F1)  # Remove the flag to allow future retriggers
+        return
+    if os.path.exists(FLAG_PATH_BIAS):
+        logging.info("Pipeline retrigger due to bias handling detected. Exiting to prevent infinite loop.")
+        os.remove(FLAG_PATH_BIAS)  # Remove the flag to allow future retriggers
+        return
+
     logging.info("Pipeline started.")
     
     # Step 1: Prepare Data
@@ -91,13 +145,28 @@ def main():
     else:
         logging.info(f"Model test F1 score: {f1_score}")
 
+    # Retrigger pipeline if F1 score is below threshold
+    if f1_score < 0.6:
+        logging.warning(f"F1 score below threshold (0.6). Current F1 score: {f1_score}. Retriggering Experiment Runner.")
+        with open(FLAG_PATH_F1, "w") as f:
+            f.write("Pipeline retriggered due to low F1 score.")
+        restart_pipeline_from_experiment_runner()
+        return
+
     # Step 5: Evaluate Model Slices
     _, success = run_script("evaluate_model_slices.py")
     if not success:
         logging.error("Pipeline terminated due to failure in evaluate_model_slices.py.")
         return
-    
+
+    # Step 6: Detect Bias and Handle It
+    _, success = run_script("bias_detect.py")
+    if not success:
+        logging.error("Pipeline terminated due to failure in bias_detect.py.")
+        return
+
     logging.info("Pipeline completed successfully.")
+
 
 if __name__ == "__main__":
     main()

@@ -3,9 +3,36 @@ import os
 import pickle
 from utils.data_loader import split_data_by_timestamp, load_and_process_data  
 from config import DATA_PATH, DATA_SAVE_PATH
+import pandas as pd
+from sklearn.utils import resample
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def balance_data(df, column="main_category", min_samples=50):
+    """
+    Balances the data by oversampling underrepresented slices.
+    
+    Args:
+        df (pd.DataFrame): Input dataframe.
+        column (str): Column used for slicing (e.g., "main_category").
+        min_samples (int): Minimum samples required for each slice.
+    
+    Returns:
+        pd.DataFrame: Balanced dataframe.
+    """
+    unique_values = df[column].unique()
+    balanced_data = []
+    for value in unique_values:
+        slice_data = df[df[column] == value]
+        if len(slice_data) < min_samples:
+            oversampled_slice = resample(slice_data, replace=True, n_samples=min_samples, random_state=42)
+            balanced_data.append(oversampled_slice)
+        else:
+            balanced_data.append(slice_data)
+    balanced_df = pd.concat(balanced_data, ignore_index=True)
+    logger.info(f"Balanced data using column '{column}' with minimum {min_samples} samples per slice.")
+    return balanced_df
 
 def split_and_save_data(data_path, output_dir):
     """
