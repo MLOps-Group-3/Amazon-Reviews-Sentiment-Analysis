@@ -1,0 +1,643 @@
+{
+  "components": {
+    "comp-detect-bias": {
+      "executorLabel": "exec-detect-bias",
+      "inputDefinitions": {
+        "artifacts": {
+          "slice_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "bias_report": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-evaluate-model": {
+      "executorLabel": "exec-evaluate-model",
+      "inputDefinitions": {
+        "artifacts": {
+          "best_hyperparameters": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "class_labels": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "model_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "model_name": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "metrics": {
+            "artifactType": {
+              "schemaTitle": "system.ClassificationMetrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-evaluate-model-slices": {
+      "executorLabel": "exec-evaluate-model-slices",
+      "inputDefinitions": {
+        "artifacts": {
+          "best_hyperparameters": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "class_labels": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "model_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "model_name": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "slice_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-prepare-data": {
+      "executorLabel": "exec-prepare-data",
+      "inputDefinitions": {
+        "parameters": {
+          "dataset_id": {
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "class_labels": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-run-experiment": {
+      "executorLabel": "exec-run-experiment",
+      "inputDefinitions": {
+        "artifacts": {
+          "class_labels": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "best_hyperparameters": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "best_model": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-train-model": {
+      "executorLabel": "exec-train-model",
+      "inputDefinitions": {
+        "artifacts": {
+          "best_hyperparameters": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "class_labels": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "model_name": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "trained_model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-detect-bias": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "detect_bias"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef detect_bias(\n    slice_metrics: Input[Dataset],\n    bias_report: Output[Dataset],\n) -> None:\n    import pandas as pd\n    import logging\n\n    logging.basicConfig(level=logging.INFO)\n\n    metrics_df = pd.read_csv(slice_metrics.path)\n\n    full_dataset_row = metrics_df[metrics_df[\"Slice Column\"] == \"Full Dataset\"]\n    if full_dataset_row.empty:\n        logging.error(\"Full Dataset row not found in metrics. Bias detection cannot proceed.\")\n        return\n\n    full_samples = int(full_dataset_row[\"Samples\"].iloc[0])\n    full_f1 = float(full_dataset_row[\"F1 Score\"].iloc[0])\n\n    min_samples_threshold = 0.1 * full_samples\n    f1_threshold = full_f1 * 0.9\n\n    biased_rows = metrics_df[\n        (metrics_df[\"Samples\"] >= min_samples_threshold) &\n        (metrics_df[\"F1 Score\"] < f1_threshold)\n    ]\n\n    bias_report_data = []\n    if not biased_rows.empty:\n        for _, row in biased_rows.iterrows():\n            bias_report_data.append({\n                \"Slice Column\": row['Slice Column'],\n                \"Slice Value\": row['Slice Value'],\n                \"Samples\": row['Samples'],\n                \"F1 Score\": row['F1 Score'],\n                \"F1 Threshold\": f1_threshold\n            })\n        logging.warning(f\"Potential bias detected in {len(biased_rows)} slices.\")\n    else:\n        logging.info(\"No significant bias detected.\")\n\n    bias_report_df = pd.DataFrame(bias_report_data)\n    bias_report_df.to_csv(bias_report.path, index=False)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-evaluate-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'mlflow' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model(\n    model_path: Input[Model],\n    test_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    best_hyperparameters: Input[Dataset],\n    model_name: str,\n    metrics: Output[ClassificationMetrics],\n) -> None:\n    import pandas as pd\n    import torch\n    import numpy as np\n    from transformers import AutoTokenizer, AutoModelForSequenceClassification\n    from sklearn.metrics import accuracy_score, precision_recall_fscore_support\n    import mlflow\n    import json\n    from torch.utils.data import TensorDataset, DataLoader, SequentialSampler\n\n    model = mlflow.pytorch.load_model(model_path.path)\n\n    with open(best_hyperparameters.path, 'r') as f:\n        best_params = json.load(f)\n\n    if model_name == \"BERT\":\n        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')\n    elif model_name == \"RoBERTa\":\n        tokenizer = AutoTokenizer.from_pretrained('roberta-base')\n    else:\n        raise ValueError(f\"Unsupported model: {model_name}\")\n\n    test_df = pd.read_csv(test_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    encoded_data = tokenizer.batch_encode_plus(\n        test_df['text'].tolist(),\n        add_special_tokens=True,\n        return_attention_mask=True,\n        pad_to_max_length=True,\n        max_length=128,\n        return_tensors='pt'\n    )\n\n    input_ids = encoded_data['input_ids']\n    attention_masks = encoded_data['attention_mask']\n    labels = torch.tensor(test_df['label'].tolist())\n\n    dataset = TensorDataset(input_ids, attention_masks, labels)\n    dataloader = DataLoader(dataset, sampler=SequentialSampler(dataset), batch_size=32)\n\n    model.eval()\n    predictions = []\n    true_labels = []\n\n    for batch in dataloader:\n        batch_input_ids, batch_attention_masks, batch_labels = tuple(t for t in batch)\n        with torch.no_grad():\n            outputs = model(batch_input_ids, attention_mask=batch_attention_masks)\n        logits = outputs.logits\n        predictions.extend(torch.argmax(logits, dim=1).tolist())\n        true_labels.extend(batch_labels.tolist())\n\n    accuracy = accuracy_score(true_labels, predictions)\n    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predictions, average='weighted')\n\n    metrics.log_accuracy(true_labels, predictions)\n    metrics.log_confusion_matrix(class_labels, true_labels, predictions)\n    metrics.log_roc_curve(true_labels, predictions)\n    metrics.log_metric(\"test_accuracy\", accuracy)\n    metrics.log_metric(\"test_precision\", precision)\n    metrics.log_metric(\"test_recall\", recall)\n    metrics.log_metric(\"test_f1\", f1)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-evaluate-model-slices": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_model_slices"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'mlflow' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model_slices(\n    model_path: Input[Model],\n    test_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    best_hyperparameters: Input[Dataset],\n    model_name: str,\n    slice_metrics: Output[Dataset],\n) -> None:\n    import pandas as pd\n    import torch\n    from transformers import AutoTokenizer, AutoModelForSequenceClassification\n    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score\n    import mlflow\n    import json\n\n    def evaluate_slice(data, model, tokenizer):\n        encoded_data = tokenizer.batch_encode_plus(\n            data['text'].tolist(),\n            add_special_tokens=True,\n            return_attention_mask=True,\n            pad_to_max_length=True,\n            max_length=128,\n            return_tensors='pt'\n        )\n        input_ids = encoded_data['input_ids']\n        attention_masks = encoded_data['attention_mask']\n        labels = torch.tensor(data['label'].tolist())\n\n        model.eval()\n        with torch.no_grad():\n            outputs = model(input_ids, attention_mask=attention_masks)\n            predictions = torch.argmax(outputs.logits, dim=1)\n\n        accuracy = accuracy_score(labels, predictions)\n        precision = precision_score(labels, predictions, average='weighted')\n        recall = recall_score(labels, predictions, average='weighted')\n        f1 = f1_score(labels, predictions, average='weighted')\n\n        return accuracy, precision, recall, f1\n\n    model = mlflow.pytorch.load_model(model_path.path)\n    test_df = pd.read_csv(test_data.path)\n\n    if model_name == \"BERT\":\n        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')\n    elif model_name == \"RoBERTa\":\n        tokenizer = AutoTokenizer.from_pretrained('roberta-base')\n    else:\n        raise ValueError(f\"Unsupported model: {model_name}\")\n\n    slice_columns = ['year', 'main_category']\n    metrics_list = []\n\n    # Evaluate full dataset\n    full_accuracy, full_precision, full_recall, full_f1 = evaluate_slice(test_df, model, tokenizer)\n    metrics_list.append({\n        'Slice Column': 'Full Dataset',\n        'Slice Value': 'All',\n        'Samples': len(test_df),\n        'Accuracy': full_accuracy,\n        'Precision': full_precision,\n        'Recall': full_recall,\n        'F1 Score': full_f1\n    })\n\n    for column in slice_columns:\n        for value in test_df[column].unique():\n            slice_data = test_df[test_df[column] == value]\n            if len(slice_data) > 0:\n                accuracy, precision, recall, f1 = evaluate_slice(slice_data, model, tokenizer)\n                metrics_list.append({\n                    'Slice Column': column,\n                    'Slice Value': value,\n                    'Samples': len(slice_data),\n                    'Accuracy': accuracy,\n                    'Precision': precision,\n                    'Recall': recall,\n                    'F1 Score': f1\n                })\n\n    metrics_df = pd.DataFrame(metrics_list)\n    metrics_df.to_csv(slice_metrics.path, index=False)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-prepare-data": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "prepare_data"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'google-cloud-aiplatform' 'gcsfs' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    project_id: str,\n    region: str,\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    aiplatform.init(project=project_id, location=region)\n    dataset = aiplatform.TabularDataset(dataset_id)\n    gcs_uri = dataset._gca_resource.metadata[\"inputConfig\"][\"gcsSource\"][\"uri\"][0]\n    df = pd.read_csv(gcs_uri)\n\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])\n    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)\n\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-run-experiment": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "run_experiment"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'mlflow' 'optuna' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\nfrom builtins import str\n\ndef run_experiment(\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    best_hyperparameters: Output[Dataset],\n    best_model: Output[str],\n) -> None:\n    import pandas as pd\n    import torch\n    import mlflow\n    from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments\n    from sklearn.metrics import f1_score\n    import json\n    import optuna\n    import logging\n\n    logging.basicConfig(level=logging.INFO)\n\n    try:\n        train_df = pd.read_csv(train_data.path)\n        val_df = pd.read_csv(val_data.path)\n        class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n        if not class_labels:\n            raise ValueError(\"class_labels is empty\")\n        logging.info(f\"Loaded {len(train_df)} training samples, {len(val_df)} validation samples, and {len(class_labels)} class labels\")\n    except Exception as e:\n        logging.error(f\"Error loading data: {str(e)}\")\n        raise\n\n    class SentimentDataset(torch.utils.data.Dataset):\n        def __init__(self, texts, labels, tokenizer, max_length=128):\n            self.texts = texts\n            self.labels = labels\n            self.tokenizer = tokenizer\n            self.max_length = max_length\n\n        def __len__(self):\n            return len(self.texts)\n\n        def __getitem__(self, idx):\n            text = self.texts[idx]\n            label = self.labels[idx]\n            encoding = self.tokenizer.encode_plus(\n                text,\n                add_special_tokens=True,\n                max_length=self.max_length,\n                return_token_type_ids=False,\n                padding='max_length',\n                truncation=True,\n                return_attention_mask=True,\n                return_tensors='pt',\n            )\n            return {\n                'input_ids': encoding['input_ids'].flatten(),\n                'attention_mask': encoding['attention_mask'].flatten(),\n                'labels': torch.tensor(label, dtype=torch.long)\n            }\n\n    def objective(trial):\n        model_name = trial.suggest_categorical(\"model_name\", [\"BERT\", \"RoBERTa\"])\n        learning_rate = trial.suggest_loguniform(\"learning_rate\", 1e-5, 1e-3)\n        weight_decay = trial.suggest_loguniform(\"weight_decay\", 1e-5, 1e-1)\n        dropout_rate = trial.suggest_uniform(\"dropout_rate\", 0.1, 0.5)\n\n        if model_name == \"BERT\":\n            model_checkpoint = 'bert-base-uncased'\n        elif model_name == \"RoBERTa\":\n            model_checkpoint = 'roberta-base'\n\n        tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)\n        model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=len(class_labels))\n\n        train_dataset = SentimentDataset(train_df['text'].tolist(), train_df['label'].tolist(), tokenizer)\n        val_dataset = SentimentDataset(val_df['text'].tolist(), val_df['label'].tolist(), tokenizer)\n\n        training_args = TrainingArguments(\n            output_dir='./results',\n            num_train_epochs=1,\n            per_device_train_batch_size=16,\n            per_device_eval_batch_size=16,\n            warmup_steps=500,\n            weight_decay=weight_decay,\n            logging_dir='./logs',\n            logging_steps=10,\n            evaluation_strategy=\"epoch\",\n            save_strategy=\"epoch\",\n            load_best_model_at_end=True,\n        )\n\n        trainer = Trainer(\n            model=model,\n            args=training_args,\n            train_dataset=train_dataset,\n            eval_dataset=val_dataset,\n        )\n\n        trainer.train()\n        eval_results = trainer.evaluate()\n        predictions = trainer.predict(val_dataset)\n        preds = predictions.predictions.argmax(-1)\n        f1 = f1_score(val_dataset.labels, preds, average='weighted')\n\n        return f1\n\n    study = optuna.create_study(direction=\"maximize\")\n    study.optimize(objective, n_trials=10)\n\n    best_params = study.best_params\n    best_params['batch_size'] = 16\n    best_params['num_epochs'] = 1\n    logging.info(f\"Best hyperparameters: {best_params}\")\n\n    with open(best_hyperparameters.path, 'w') as f:\n        json.dump(best_params, f)\n\n    with open(best_model.path, 'w') as f:\n        f.write(best_params['model_name'])\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-train-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "train_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'mlflow' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    best_hyperparameters: Input[Dataset],\n    model_name: str,\n    trained_model: Output[Model],\n    metrics: Output[Metrics],\n) -> None:\n    import pandas as pd\n    import torch\n    import mlflow\n    import json\n    from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments\n    from sklearn.preprocessing import LabelEncoder\n    from torch.utils.data import Dataset\n\n    class SentimentDataset(Dataset):\n        def __init__(self, texts, labels, tokenizer, max_length=128):\n            self.texts = texts\n            self.labels = labels\n            self.tokenizer = tokenizer\n            self.max_length = max_length\n\n        def __len__(self):\n            return len(self.texts)\n\n        def __getitem__(self, idx):\n            text = self.texts[idx]\n            label = self.labels[idx]\n            encoding = self.tokenizer.encode_plus(\n                text,\n                add_special_tokens=True,\n                max_length=self.max_length,\n                return_token_type_ids=False,\n                padding='max_length',\n                truncation=True,\n                return_attention_mask=True,\n                return_tensors='pt',\n            )\n            return {\n                'input_ids': encoding['input_ids'].flatten(),\n                'attention_mask': encoding['attention_mask'].flatten(),\n                'labels': torch.tensor(label, dtype=torch.long)\n            }\n\n    train_df = pd.read_csv(train_data.path)\n    val_df = pd.read_csv(val_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    with open(best_hyperparameters.path, 'r') as f:\n        best_params = json.load(f)\n\n    if model_name == \"BERT\":\n        model_checkpoint = 'bert-base-uncased'\n    elif model_name == \"RoBERTa\":\n        model_checkpoint = 'roberta-base'\n    else:\n        raise ValueError(f\"Unsupported model: {model_name}\")\n\n    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)\n    model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=len(class_labels))\n\n    train_dataset = SentimentDataset(train_df['text'].tolist(), train_df['label'].tolist(), tokenizer)\n    val_dataset = SentimentDataset(val_df['text'].tolist(), val_df['label'].tolist(), tokenizer)\n\n    training_args = TrainingArguments(\n        output_dir='./results',\n        num_train_epochs=best_params['num_epochs'],\n        per_device_train_batch_size=best_params['batch_size'],\n        per_device_eval_batch_size=best_params['batch_size'],\n        warmup_steps=500,\n        weight_decay=best_params['weight_decay'],\n        logging_dir='./logs',\n        logging_steps=10,\n        evaluation_strategy=\"epoch\",\n        save_strategy=\"epoch\",\n        load_best_model_at_end=True,\n    )\n\n    trainer = Trainer(\n        model=model,\n        args=training_args,\n        train_dataset=train_dataset,\n        eval_dataset=val_dataset,\n    )\n\n    trainer.train()\n    eval_results = trainer.evaluate()\n\n    metrics.log_metric(\"val_loss\", eval_results[\"eval_loss\"])\n    metrics.log_metric(\"val_accuracy\", eval_results[\"eval_accuracy\"])\n\n    mlflow.pytorch.save_model(model, trained_model.path)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "A pipeline for sentiment analysis using the best model with hyperparameter tuning and bias detection",
+    "name": "sentiment-analysis-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "detect-bias": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-detect-bias"
+          },
+          "dependentTasks": [
+            "evaluate-model-slices"
+          ],
+          "inputs": {
+            "artifacts": {
+              "slice_metrics": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "slice_metrics",
+                  "producerTask": "evaluate-model-slices"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "detect-and-handle-bias"
+          }
+        },
+        "evaluate-model": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-evaluate-model"
+          },
+          "dependentTasks": [
+            "prepare-data",
+            "run-experiment",
+            "train-model"
+          ],
+          "inputs": {
+            "artifacts": {
+              "best_hyperparameters": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "best_hyperparameters",
+                  "producerTask": "run-experiment"
+                }
+              },
+              "class_labels": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "class_labels",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "model_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "trained_model",
+                  "producerTask": "train-model"
+                }
+              },
+              "test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "prepare-data"
+                }
+              }
+            },
+            "parameters": {
+              "model_name": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "best_model",
+                  "producerTask": "run-experiment"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "evaluate-best-model"
+          }
+        },
+        "evaluate-model-slices": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-evaluate-model-slices"
+          },
+          "dependentTasks": [
+            "prepare-data",
+            "run-experiment",
+            "train-model"
+          ],
+          "inputs": {
+            "artifacts": {
+              "best_hyperparameters": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "best_hyperparameters",
+                  "producerTask": "run-experiment"
+                }
+              },
+              "class_labels": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "class_labels",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "model_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "trained_model",
+                  "producerTask": "train-model"
+                }
+              },
+              "test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "prepare-data"
+                }
+              }
+            },
+            "parameters": {
+              "model_name": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "best_model",
+                  "producerTask": "run-experiment"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "evaluate-model-slices"
+          }
+        },
+        "prepare-data": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-prepare-data"
+          },
+          "inputs": {
+            "parameters": {
+              "dataset_id": {
+                "componentInputParameter": "dataset_id"
+              },
+              "project_id": {
+                "componentInputParameter": "project_id"
+              },
+              "region": {
+                "componentInputParameter": "region"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "prepare-data"
+          }
+        },
+        "run-experiment": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-run-experiment"
+          },
+          "dependentTasks": [
+            "prepare-data"
+          ],
+          "inputs": {
+            "artifacts": {
+              "class_labels": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "class_labels",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "train_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "train_data",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "val_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "val_data",
+                  "producerTask": "prepare-data"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "run-experiment"
+          }
+        },
+        "train-model": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-model"
+          },
+          "dependentTasks": [
+            "prepare-data",
+            "run-experiment"
+          ],
+          "inputs": {
+            "artifacts": {
+              "best_hyperparameters": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "best_hyperparameters",
+                  "producerTask": "run-experiment"
+                }
+              },
+              "class_labels": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "class_labels",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "train_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "train_data",
+                  "producerTask": "prepare-data"
+                }
+              },
+              "val_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "val_data",
+                  "producerTask": "prepare-data"
+                }
+              }
+            },
+            "parameters": {
+              "model_name": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "best_model",
+                  "producerTask": "run-experiment"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "train-best-model"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "dataset_id": {
+          "parameterType": "STRING"
+        },
+        "project_id": {
+          "parameterType": "STRING"
+        },
+        "region": {
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.10.1"
+}
