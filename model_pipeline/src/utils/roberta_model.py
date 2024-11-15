@@ -54,8 +54,8 @@ def train_roberta_model(model, train_dataset, val_dataset, output_dir, **trainin
         "per_device_eval_batch_size": 16,
         "num_train_epochs": 3,
         "evaluation_strategy": "epoch",
-        "save_strategy": "epoch",
-        "load_best_model_at_end": True,
+        "save_strategy": "no",
+        "load_best_model_at_end": False,
         "logging_dir": os.path.join(output_dir, 'logs')
     }
     default_args.update(training_args)
@@ -71,7 +71,7 @@ def train_roberta_model(model, train_dataset, val_dataset, output_dir, **trainin
     
     trainer.train()
     eval_results = trainer.evaluate()
-    trainer.save_model(os.path.join(output_dir, "best_model"))
+    # trainer.save_model(os.path.join(output_dir, "best_model"))
     return eval_results, trainer
 
 

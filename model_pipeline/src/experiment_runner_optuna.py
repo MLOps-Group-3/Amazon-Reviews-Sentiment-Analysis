@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import logging
 import copy
+import json
 from utils.bert_model import initialize_bert_model, train_bert_model, evaluate_bert_model
 from utils.roberta_model import initialize_roberta_model, train_roberta_model, evaluate_roberta_model
 from utils.data_loader import load_and_process_data, split_data_by_timestamp, SentimentDataset
@@ -56,7 +57,7 @@ def objective(trial):
     model_name = trial.suggest_categorical("model_name", ["BERT", "RoBERTa"])
     learning_rate = trial.suggest_loguniform("learning_rate", 1e-5, 1e-3)
     batch_size = trial.suggest_categorical("batch_size", [32, 64])
-    num_epochs = trial.suggest_int("num_epochs", 1, 3)
+    num_epochs = trial.suggest_int("num_epochs", 3, 5)
     weight_decay = trial.suggest_loguniform("weight_decay", 1e-4, 0.1)
     dropout_rate = trial.suggest_uniform("dropout_rate", 0.1, 0.5)
 
@@ -144,6 +145,12 @@ def evaluate_and_log_test_metrics(trainer, test_dataset, class_labels):
     overall_f1_score = f1_score(labels, predictions, average='weighted')
     return {"f1": f1_score(labels, predictions, average=None)}, overall_f1_score
 
+# Function to save the best hyperparameters to a JSON file
+def save_hyperparameters(hyperparameters, path="best_hyperparameters.json"):
+    with open(path, "w") as f:
+        json.dump(hyperparameters, f, indent=4)
+    logger.info(f"Best hyperparameters saved to {path}")
+
 # Function to retrieve the best hyperparameters after optimization
 def find_best_hyperparameters():
     study = optuna.create_study(direction="maximize")
@@ -154,6 +161,8 @@ def find_best_hyperparameters():
     logger.info(f"Best trial F1 score: {best_trial.value}")
     logger.info(f"Best hyperparameters: {best_trial.params}")
     
+    # Save best parameters to JSON
+    save_hyperparameters(best_model_params)
     return best_model_params
 
 if __name__ == "__main__":
