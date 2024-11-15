@@ -2,6 +2,50 @@
 
 This repository contains Airflow DAGs designed to handle multiple stages of data preprocessing, validation, and analytics for datasets. Below are the details of each DAG and their respective tasks.
 
+# Directory Structure
+```bash
+data_pipeline
+├── archive                  # Archived files and older versions of scripts
+│   ├── docker-compose-collection.yaml.txt
+│   ├── docker-compose-python.txt
+│   └── sampling_old.py
+├── config                 
+├── dags                    # DAG scripts for data pipeline stages
+│   ├── data_acquisition_dag.py
+│   ├── data_preprocessing_dag.py
+│   ├── data_validation_dag.py
+│   ├── sampling_dag.py
+│   └── utils                # Utility functions and submodules for DAGs
+│       ├── config.py
+│       ├── data_collection  # Data collection utilities
+│       │   ├── data_acquisition.py
+│       │   ├── data_concat.py
+│       │   └── sampling.py
+│       ├── data_preprocessing  # Data preprocessing utilities
+│       │   ├── aspect_data_labeling.py
+│       │   ├── aspect_extraction.py
+│       │   ├── data_cleaning_pandas.py
+│       │   └── data_labeling.py
+│       └── data_validation  # Data validation utilities
+│           ├── anomaly_detector.py
+│           ├── emoji_detection.py
+│           ├── language_detection.py
+│           └── schema_validation.py
+├── data                     # Data storage directories
+│   ├── cleaned
+│   ├── labeled
+│   ├── raw
+│   ├── sampled
+│   └── validation
+├── logs                     # Log files for DAG executions
+│   └── dag_id=*             # Log folders by DAG ID and task
+├── plugins                  # Plugins for Airflow or other services (if needed)
+├── requirements.txt         # Python dependencies for the project
+└── tests                    # Tests for data pipeline components
+    ├── data_collection
+    ├── data_preprocessing
+    └── data_validation
+```
 
 # Data Pipeline Docker Setup
 
@@ -83,6 +127,8 @@ This DAG performs data acquisition for Amazon review data. The DAG consists of t
   - This function handles the logic of retrieving data from the source and saving it locally.
 - **Output**: Data is saved in a designated directory, ready for further processing.
 
+![alt text](<01 DAG Gantt Chart.jpeg>)
+
 <!-- ### Task Dependencies
 
 - **Flow**:
@@ -129,6 +175,8 @@ This DAG is designed to sample and process Amazon review data by category using 
 
 - **Logging**: Logging is set up to capture both console and file logs. Detailed logs are saved in `/opt/airflow/logs`, as specified by the `LOG_DIRECTORY` variable, and each task's operations are recorded, including any errors.
 - **Error Handling**: In case of task failure, an email alert is sent to `vallimeenaavellaiyan@gmail.com`.
+
+![alt text](<02 DAG Gantt Chart.jpeg>)
 
 ---
 ### DAG: Data Validation
@@ -202,7 +250,7 @@ This DAG performs validation checks on the dataset to ensure data quality, integ
   - All validation tasks are executed in parallel.
   - The final task, `save_results`, runs after all validation tasks complete successfully to aggregate results and save them to a CSV file.
 
-
+![alt text](<03 DAG Gantt Chart.jpeg>)
 
 ### DAG: Data Preprocessing
 
@@ -255,8 +303,7 @@ This DAG performs data cleaning, labeling, and aspect-based sentiment analysis o
   - `data_cleaning` is followed by parallel tasks `aspect_extraction` and `data_labeling`.
   - Finally, both `aspect_extraction` and `data_labeling` tasks must complete before starting the `data_labeling_aspect` task.
 
-
-
+![alt text](<04 DAG Gantt Chart.jpeg>)
 
 ## DVC Setup
 

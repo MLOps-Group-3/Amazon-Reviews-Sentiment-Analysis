@@ -139,6 +139,6 @@ Each DAG stage runs independently, enabling focused transformations while mainta
 
 ### DVC Integration
 
-This project uses DVC for version control of data files, with storage configured via Google Cloud. Ensure you have the required credentials and configuration in place to pull the latest data files.
+This project uses DVC for version control of data files, with storage configured via Google Cloud. Make sure you have the required credentials and configuration in place to pull the latest data files.
 
 For a detailed breakdown of each DAG and setup instructions, refer to the [data_pipeline/README.md](data_pipeline/README.md#dvc-setup).

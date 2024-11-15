@@ -1,0 +1,15 @@
+artifact_uri: file:///media/hrs/Storage/ubuntu_repo/Amazon-Reviews-Sentiment-Analysis/mlruns/662279867201224971/e47e6344ee4f4d2487a64141d45fa302/artifacts
+end_time: 1731704322843
+entry_point_name: ''
+experiment_id: '662279867201224971'
+lifecycle_stage: active
+run_id: e47e6344ee4f4d2487a64141d45fa302
+run_name: RoBERTa_lr_3e-04_wd_5e-02_do_0.1
+run_uuid: e47e6344ee4f4d2487a64141d45fa302
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1731704278976
+status: 4
+tags: []
+user_id: hrs
