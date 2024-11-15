@@ -64,6 +64,7 @@ roberta_ouput/
 *.tmp
 
 # Ignore model files
+*.pkl
 *.pth
 *.pt
 *.safetensors
