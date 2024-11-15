@@ -74,14 +74,24 @@ def train_and_save_final_model(hyperparameters):
 
     # Convert dataframes to datasets
     train_dataset = SentimentDataset(
-        train_df['text'].tolist(), train_df['title'].tolist(), train_df['price'].tolist(),
-        train_df['price_missing'].tolist(), train_df['helpful_vote'].tolist(),
-        train_df['verified_purchase'].tolist(), train_df['label'].tolist(), tokenizer
+        train_df['text'].tolist(),
+        train_df['title'].tolist(),
+        train_df['price'].tolist(),
+        train_df['price_missing'].tolist(),
+        train_df['helpful_vote'].tolist(),
+        train_df['verified_purchase'].tolist(),
+        train_df['label'].tolist(),
+        tokenizer
     )
     val_dataset = SentimentDataset(
-        val_df['text'].tolist(), val_df['title'].tolist(), val_df['price'].tolist(),
-        val_df['price_missing'].tolist(), val_df['helpful_vote'].tolist(),
-        val_df['verified_purchase'].tolist(), val_df['label'].tolist(), tokenizer
+        val_df['text'].tolist(),
+        val_df['title'].tolist(),
+        val_df['price'].tolist(),
+        val_df['price_missing'].tolist(),
+        val_df['helpful_vote'].tolist(),
+        val_df['verified_purchase'].tolist(),
+        val_df['label'].tolist(),
+        tokenizer
     )
 
     # Set up training arguments
@@ -95,31 +105,31 @@ def train_and_save_final_model(hyperparameters):
     # Train the model
     logger.info(f"Training {model_name} model with final hyperparameters")
     if model_name == "BERT":
-        _, trainer = train_bert_model(model, train_dataset, val_dataset,
-                                      output_dir=f"./{model_name.lower()}_output", **training_args)
+        _, trainer = train_bert_model(
+            model,
+            train_dataset,
+            val_dataset,
+            output_dir=f"./{model_name.lower()}_output",
+            **training_args
+        )
     elif model_name == "RoBERTa":
-        _, trainer = train_roberta_model(model, train_dataset, val_dataset,
-                                         output_dir=f"./{model_name.lower()}_output", **training_args)
+        _, trainer = train_roberta_model(
+            model,
+            train_dataset,
+            val_dataset,
+            output_dir=f"./{model_name.lower()}_output",
+            **training_args
+        )
 
-    # Prepare dummy inputs for scripting
-    sample_input_ids = torch.ones((1, 512), dtype=torch.long).to(DEVICE)
-    sample_attention_mask = torch.ones((1, 512), dtype=torch.long).to(DEVICE)
-    num_additional_features = 4  # Replace with the actual number of additional features
-    sample_additional_features = torch.zeros((1, num_additional_features)).to(DEVICE)
-
-    # Script the model
-    model.eval()
-    scripted_model = torch.jit.script(
-        model
-    )
-    torchscript_path = f"{model_name}_final_model.pt"
-    scripted_model.save(torchscript_path)
-    logger.info(f"Saved final model as TorchScript at {torchscript_path}")
+    # Save the model's state dictionary
+    model_save_path = f"{model_name}_final_model.pth"
+    torch.save(model.state_dict(), model_save_path)
+    logger.info(f"Model state dictionary saved at {model_save_path}")
 
     # Upload model to GCP Cloud Storage
-    gcs_bucket_name = "model_storage_arsa"  # Replace with your bucket name
-    gcs_model_path = f"models/{model_name}_final_model.pt"
-    upload_to_gcs(gcs_bucket_name, torchscript_path, gcs_model_path)
+    gcs_bucket_name = "model_storage_arsa"  # bucket name
+    gcs_model_path = f"models/{model_save_path}"
+    upload_to_gcs(gcs_bucket_name, model_save_path, gcs_model_path)
 
 def upload_to_gcs(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to Google Cloud Storage."""
