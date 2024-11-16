@@ -80,12 +80,12 @@ This guide provides step-by-step instructions to set up and execute the `vertex_
    ```bash
    python vertex_ai_setup.py
 
-   This script will:
+This script will:
    - Initialize the Vertex AI environment with your project and region.
    - Create a Tabular Dataset from the CSV file stored in GCS.
    - Output the dataset ID and resource name, which can be used in the pipeline script.
 
-   Example output:
+Example output:
    ```bash
    Dataset created. Resource name: projects/your-project-id/locations/us-east1/datasets/1234567890
    Dataset ID: your-dataset-id
