@@ -11,3 +11,4 @@ mlflow
 
 # Scikit-learn for metrics and preprocessing
 scikit-learn
+optuna
