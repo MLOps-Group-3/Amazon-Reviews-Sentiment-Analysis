@@ -1,0 +1,13 @@
+accelerate==1.1.1
+gcsfs==2024.10.0
+google-cloud-aiplatform==1.72.0
+kfp==2.10.1
+kfp-pipeline-spec==0.5.0
+kfp-server-api==2.3.0
+mlflow==2.17.2
+mlflow-skinny==2.17.2
+optuna==4.1.0
+pandas==2.2.3
+scikit-learn==1.5.2
+torch==2.5.1
+transformers==4.46.2

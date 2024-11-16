@@ -1,0 +1,5 @@
+torch
+transformers
+flask
+google-cloud-storage
+gunicorn

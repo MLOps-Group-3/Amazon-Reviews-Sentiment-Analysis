@@ -37,12 +37,21 @@ default_args = {
 
 
 # File paths
-data_file = SAMPLED_DATA_PATH #"/opt/airflow/data/sampled_data_2018_2019.csv"
-cleaned_data_file = CLEANED_DATA_PATH #"/opt/airflow/data/airflow/cleaned_data.csv"
-validation_data_file = VALIDATION_RESULT_DATA_PATH #"/opt/airflow/data/validation_data/validation_results.csv"
-aspect_data_file = CLEANED_ASPECT_DATA_PATH#"/opt/airflow/data/cleaned_data/aspect_extracted_data.csv"
-labeled_data_file = LABELED_DATA_PATH#"/opt/airflow/data/airflow/labeled_data.csv"
-labeled_aspect_data_file = LABELED_ASPECT_DATA_PATH#"/opt/airflow/data/airflow/labeled_aspect_data.csv"
+data_file = SAMPLED_DATA_PATH 
+cleaned_data_file = CLEANED_DATA_PATH 
+validation_data_file = VALIDATION_RESULT_DATA_PATH 
+aspect_data_file = CLEANED_ASPECT_DATA_PATH
+labeled_data_file = LABELED_DATA_PATH
+labeled_aspect_data_file = LABELED_ASPECT_DATA_PATH
+
+def log_data_card(df, task_name):
+    """Logs basic data statistics for a DataFrame."""
+    logger.info(f"{task_name} Data Card:")
+    logger.info(f"Shape: {df.shape}")
+    logger.info(f"Columns: {df.columns.tolist()}")
+    logger.info(f"Sample Data:\n{df.head()}")
+    logger.info(f"Data Types:\n{df.dtypes}")
+    logger.info(f"Missing Values:\n{df.isnull().sum()}")
 
 # Define tasks
 def data_cleaning_task():
@@ -53,6 +62,7 @@ def data_cleaning_task():
         # Load raw data and validation data
         df = pd.read_csv(data_file)
         logger.info(f"Loaded raw data with shape: {df.shape} from {data_file}")
+        log_data_card(df, "Raw Data")
         
         validation_df = pd.read_csv(validation_data_file)
         logger.info(f"Loaded validation data with shape: {validation_df.shape} from {validation_data_file}")
@@ -91,7 +101,7 @@ def data_labeling_task():
         os.makedirs(os.path.dirname(labeled_data_file), exist_ok=True)
         df_labeled.to_csv(labeled_data_file, index=False)
         logger.info(f"Labeled data saved to {labeled_data_file}")
-        
+        log_data_card(df_labeled, "Labeled Data")
     except Exception as e:
         logger.error("Error during data labeling task.", exc_info=True)
         raise e
@@ -146,6 +156,7 @@ def data_labeling_aspect_task():
         os.makedirs(os.path.dirname(labeled_aspect_data_file), exist_ok=True)
         df_labeled.to_csv(labeled_aspect_data_file, index=False)
         logger.info(f"Labeled data saved to {labeled_aspect_data_file}")
+        log_data_card(df_labeled, "Aspect Labeled Data")  
         
     except Exception as e:
         logger.error("Error during aspect data labeling task.", exc_info=True)

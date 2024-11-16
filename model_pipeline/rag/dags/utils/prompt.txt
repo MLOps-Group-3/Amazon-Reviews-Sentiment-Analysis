@@ -1,0 +1,70 @@
+Analyze the following customer review text and provide a sentiment summary categorized by specific product types. For each product category, evaluate the sentiments based on the following aspects: Quality, Durability, Customer Service, Price, and Performance. For each aspect, indicate the overall sentiment as "Positive", "Negative", or "Mixed", and provide a brief summary of the key points related to that aspect.
+
+Please format the output in the following JSON structure:
+
+{
+  "product_summaries": {
+    "Product_Category_1": {
+      "Quality": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of quality-related points"
+      },
+      "Durability": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of durability-related points"
+      },
+      "Customer Service": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of customer service-related points"
+      },
+      "Price": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of price-related points"
+      },
+      "Performance": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of performance-related points"
+      }
+    },
+    "Product_Category_2": {
+      "Quality": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of quality-related points"
+      },
+      "Durability": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of durability-related points"
+      },
+      "Customer Service": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of customer service-related points"
+      },
+      "Price": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of price-related points"
+      },
+      "Performance": {
+        "sentiment": "Positive/Negative/Mixed",
+        "summary": "Brief summary of performance-related points"
+      }
+    }
+    // Add more product categories as needed
+  },
+  "overall_sentiment": "Positive/Negative/Mixed",
+  "total_reviews_analyzed": 0,
+  "dominant_sentiment": "Positive/Negative/Mixed",
+  "key_insights": {
+    "Positive": [
+      "List of positive highlights across all products"
+    ],
+    "Negative": [
+      "List of negative highlights across all products"
+    ],
+    "Suggestions": [
+      "Recommendations based on the analysis"
+    ]
+  }
+}
+
+Here is the text:
+"Your customer review text here."

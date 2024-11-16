@@ -1,0 +1,21 @@
+channels:
+- conda-forge
+dependencies:
+- python=3.12.7
+- pip<=24.2
+- pip:
+  - mlflow==2.17.2
+  - accelerate==1.1.1
+  - cloudpickle==3.1.0
+  - datasets==3.0.2
+  - google-cloud-storage==2.18.2
+  - jinja2==3.1.4
+  - numpy==1.26.4
+  - pandas==2.2.2
+  - pyarrow==17.0.0
+  - pydot==3.0.2
+  - scikit-learn==1.5.2
+  - scipy==1.14.1
+  - torch==2.5.0
+  - transformers==4.46.1
+name: mlflow-env

@@ -142,3 +142,26 @@ Each DAG stage runs independently, enabling focused transformations while mainta
 This project uses DVC for version control of data files, with storage configured via Google Cloud. Make sure you have the required credentials and configuration in place to pull the latest data files.
 
 For a detailed breakdown of each DAG and setup instructions, refer to the [data_pipeline/README.md](data_pipeline/README.md#dvc-setup).
+
+## Model Pipelines (`model_pipeline` Folder)
+
+The `model_pipeline` folder contains workflows for training, evaluating, and deploying machine learning models at scale. It focuses on sentiment analysis and document summarization, with cloud-based deployment capabilities and advanced tracking features.
+
+### Key Features
+1. **Sentiment Analysis Pipeline**:
+   - Trains models like BERT and RoBERTa for sentiment classification.
+   - Integrates with MLflow for experiment tracking and hyperparameter optimization.
+   - Includes bias detection and slice-based evaluation to identify underperforming segments.
+
+2. **Vertex AI Pipeline**:
+   - Automates model training and deployment using Google Cloud's Vertex AI.
+   - Supports scalable inference and dataset registration for seamless cloud integration.
+
+3. **Retrieval-Augmented Generation (RAG) Pipeline**:
+   - Uses OpenAI's GPT for document summarization tasks.
+   - Orchestrates workflows with Apache Airflow for modular execution and error handling.
+
+### Tools and Integrations
+- **MLflow**: Tracks model metrics, artifacts, and experiments.
+- **Vertex AI**: Deploys trained models and monitors their performance in the cloud.
+- **Apache Airflow**: Manages the orchestration of modular pipelines.

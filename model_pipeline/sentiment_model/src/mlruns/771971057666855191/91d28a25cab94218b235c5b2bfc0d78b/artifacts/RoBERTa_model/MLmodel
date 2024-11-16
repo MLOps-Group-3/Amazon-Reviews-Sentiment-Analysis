@@ -1,0 +1,21 @@
+artifact_path: RoBERTa_model
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.12.7
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.5.0+cu124
+mlflow_version: 2.17.2
+model_size_bytes: 498714122
+model_uuid: 55e37b183fad4542a6cd3d11f63bf0ae
+run_id: 91d28a25cab94218b235c5b2bfc0d78b
+utc_time_created: '2024-11-13 01:16:34.444230'
