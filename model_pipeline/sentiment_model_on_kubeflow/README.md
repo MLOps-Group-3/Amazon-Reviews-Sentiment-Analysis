@@ -75,12 +75,27 @@ This guide provides step-by-step instructions to set up and execute the `vertex_
    ```bash
    cd ~/Amazon-Reviews-Sentiment-Analysis/data_pipeline/vertex-ai-updated
 
-2. **Run the Pipeline Script**  
+2. **Run the Dataset Registration Script**  
+   Run the `vertex_ai_setup.py` script to register your dataset in Vertex AI:
+   ```bash
+   python vertex_ai_setup.py
+
+   This script will:
+   - Initialize the Vertex AI environment with your project and region.
+   - Create a Tabular Dataset from the CSV file stored in GCS.
+   - Output the dataset ID and resource name, which can be used in the pipeline script.
+
+   Example output:
+   ```bash
+   Dataset created. Resource name: projects/your-project-id/locations/us-east1/datasets/1234567890
+   Dataset ID: your-dataset-id
+
+3. **Run the Pipeline Script**  
    Execute the script:
    ```bash
    python vertex_ai_pipeline.py
 
-3. **Monitor the Pipeline Execution**  
+4. **Monitor the Pipeline Execution**  
    Use the Vertex AI console to monitor the pipeline:
    - Go to the [Vertex AI Pipelines](https://console.cloud.google.com/vertex-ai/pipelines) page in the GCP Console.
 
