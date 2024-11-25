@@ -18,8 +18,8 @@ RUN mkdir -p /opt/airflow/data/cleaned \
 # Copy DAGs, plugins, config, and tests
 COPY dags /opt/airflow/dags
 #COPY plugins /opt/airflow/plugins
-#COPY config /opt/airflow/config
-COPY tests /opt/airflow/tests
+COPY config /opt/airflow/config
+#COPY tests /opt/airflow/tests
 
 
 # Copy .env file into the container
