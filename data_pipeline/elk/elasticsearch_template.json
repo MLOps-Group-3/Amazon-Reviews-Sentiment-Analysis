@@ -1,0 +1,21 @@
+{
+  "index_patterns": ["airflow_logs-*"],
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": { "type": "date" },
+      "timestamp": { "type": "date" },
+      "component": { "type": "keyword" },
+      "log_level": { "type": "keyword" },
+      "log_message": { "type": "text" },
+      "inner_timestamp": { "type": "date" },
+      "inner_component": { "type": "keyword" },
+      "inner_log_level": { "type": "keyword" },
+      "dag_name": { "type": "keyword" },
+      "dag_file_path": { "type": "keyword" },
+      "pid": { "type": "integer" }
+    }
+  },
