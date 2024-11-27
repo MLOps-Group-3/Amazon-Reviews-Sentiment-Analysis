@@ -8,8 +8,8 @@ CATEGORIES = [
     #"Clothing_Shoes_and_Jewelry",
     #"Health_and_Household",
     #"Beauty_and_Personal_Care",
-    "Baby_Products",
-    # "All_Beauty",
+    #"Baby_Products",
+    #"All_Beauty",
     "Appliances",
     "Amazon_Fashion",
     "Health_and_Personal_Care"
@@ -25,7 +25,7 @@ TARGET_DIRECTORY_SAMPLED = "/opt/airflow/data/sampled"
 MAX_WORKERS = 6
 
 # Sampling fraction
-SAMPLING_FRACTION = 0.1
+SAMPLING_FRACTION = 0.01
 
 # Logging directory
 LOG_DIRECTORY = "/opt/airflow/logs"
