@@ -3,10 +3,10 @@ import logging
 import json
 import tempfile
 from google.cloud import storage
+from pinecone import Pinecone
 from openai.embeddings_utils import get_embedding
 from dotenv import load_dotenv
 import hashlib
-import pinecone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,13 +20,19 @@ def generate_unique_id(category, year, month, dominant_sentiment):
     return hashlib.sha256(id_string.encode()).hexdigest()
 
 # Fetch data from GCS bucket
+# Helper function to generate unique IDs
+def generate_unique_id(category, year, month, dominant_sentiment):
+    id_string = f"{category}-{year}-{month}-{dominant_sentiment}"
+    return hashlib.sha256(id_string.encode()).hexdigest()
+
+# Fetch data from GCS bucket
 def fetch_data_from_gcs(bucket_name, prefix):
     """
     Fetch JSON data from GCS and return a list of records suitable for embedding.
     """
     try:
         logging.info("Starting to fetch data from GCS...")
-        service_account_path = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+        service_account_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
         
         # Initialize GCS client
         logging.info("Initializing Google Cloud Storage client.")
@@ -63,8 +69,10 @@ def fetch_data_from_gcs(bucket_name, prefix):
         return records
     except Exception as e:
         logging.error(f"Error fetching data from GCS: {e}", exc_info=True)
+        logging.error(f"Error fetching data from GCS: {e}", exc_info=True)
         return []
 
+# Upsert data into Pinecone
 # Upsert data into Pinecone
 def upsert_to_pinecone(records, index_name):
     """
@@ -79,24 +87,24 @@ def upsert_to_pinecone(records, index_name):
         
         # Initialize Pinecone client with environment
         logging.info("Initializing Pinecone client.")
-        pinecone.configure(api_key=pinecone_api_key, environment=pinecone_env)
+        pinecone_client = Pinecone(api_key=pinecone_api_key, environment=pinecone_env)
         
-        # List existing indexes
-        existing_indexes = pinecone.list_indexes()
-        logging.info(f"Existing indexes: {existing_indexes}")
-        
+        # Check if the index exists
+        existing_indexes_response = pinecone_client.list_indexes()
+        existing_indexes = [idx['name'] for idx in existing_indexes_response.get('indexes', [])]
         if index_name not in existing_indexes:
-            logging.info(f"Index '{index_name}' does not exist. Creating it now...")
-            # Create index if it doesn't exist
-            pinecone.create_index(index_name, dimension=1536, metric="cosine")  # Ensure the dimension matches your embeddings
-            logging.info(f"Index '{index_name}' created.")
+            logging.error(f"Pinecone index '{index_name}' does not exist. Please create the index first.")
+            return  # Exit if the index does not exist
         
-        index = pinecone.Index(index_name)
+        index = pinecone_client.Index(index_name)
         
         # Generate embeddings and upsert
         vectors = []
         for record in records:
-            embedding_input = f"Category: {record.get('category', 'N/A')} | Aspect: {record.get('aspect', 'N/A')} | Reviews: {record.get('reviews', '')}"
+            text = record.get("text", "")
+            if not text:
+                logging.warning(f"Record missing 'text' field. Skipping.")
+                continue
             
             metadata = {
                 "year": record.get("year"),
@@ -110,11 +118,18 @@ def upsert_to_pinecone(records, index_name):
             )
             
             try:
+                # Check if the ID exists to avoid duplicate upserts
+                existing_vector = index.fetch(ids=[unique_id])
+                if existing_vector and existing_vector.get("vectors"):
+                    logging.info(f"ID '{unique_id}' already exists in Pinecone. Skipping.")
+                    continue
+
                 # Generate embedding
-                embedding = get_embedding(embedding_input, model="text-embedding-ada-002")
+                embedding = get_embedding(text, model="text-embedding-ada-002")
                 vectors.append({"id": unique_id, "values": embedding, "metadata": metadata})
                 logging.info(f"Generated embedding for record ID: {unique_id}")
             except Exception as e:
+                logging.error(f"Error generating embedding for record ID {unique_id}: {e}")
                 logging.error(f"Error generating embedding for record ID {unique_id}: {e}")
                 continue
         
@@ -127,6 +142,8 @@ def upsert_to_pinecone(records, index_name):
                 logging.error(f"Error during upsertion to Pinecone: {e}")
     except Exception as e:
         logging.error(f"Error initializing or upserting to Pinecone: {e}")
+
+
 
 if __name__ == "__main__":
     logging.info("Starting the embedding and upsertion pipeline...")
