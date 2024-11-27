@@ -74,6 +74,82 @@ def fetch_data_from_gcs(bucket_name, prefix):
 
 # Upsert data into Pinecone
 # Upsert data into Pinecone
+import os
+import logging
+import json
+import tempfile
+from google.cloud import storage
+from pinecone import Pinecone
+from openai.embeddings_utils import get_embedding
+from dotenv import load_dotenv
+import hashlib
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Helper function to generate unique IDs
+def generate_unique_id(category, year, month, dominant_sentiment):
+    id_string = f"{category}-{year}-{month}-{dominant_sentiment}"
+    return hashlib.sha256(id_string.encode()).hexdigest()
+
+# Fetch data from GCS bucket
+# Helper function to generate unique IDs
+def generate_unique_id(category, year, month, dominant_sentiment):
+    id_string = f"{category}-{year}-{month}-{dominant_sentiment}"
+    return hashlib.sha256(id_string.encode()).hexdigest()
+
+# Fetch data from GCS bucket
+def fetch_data_from_gcs(bucket_name, prefix):
+    """
+    Fetch JSON data from GCS and return a list of records suitable for embedding.
+    """
+    try:
+        logging.info("Starting to fetch data from GCS...")
+        service_account_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+        
+        # Initialize GCS client
+        logging.info("Initializing Google Cloud Storage client.")
+        storage_client = storage.Client.from_service_account_json(service_account_path)
+        bucket = storage_client.bucket(bucket_name)
+        blobs = bucket.list_blobs(prefix=prefix)
+        
+        records = []
+        for blob in blobs:
+            if blob.name.endswith(".json"):
+                logging.info(f"Fetching file: {blob.name}")
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    blob.download_to_filename(temp_file.name)
+                    temp_file_path = temp_file.name
+                
+                try:
+                    with open(temp_file_path, 'r') as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            filtered_data = [item for item in data if isinstance(item, dict)]
+                            records.extend(filtered_data)
+                            logging.info(f"Processed {len(filtered_data)} dictionary items from {blob.name}.")
+                        elif isinstance(data, dict):
+                            records.append(data)
+                            logging.info(f"Processed a single dictionary item from {blob.name}.")
+                        else:
+                            logging.warning(f"Skipping non-dictionary data in file {blob.name}: {type(data)}")
+                except json.JSONDecodeError as e:
+                    logging.error(f"Error decoding JSON in file {blob.name}: {e}")
+                finally:
+                    os.remove(temp_file_path)
+
+        logging.info(f"Finished fetching data from GCS. Total records fetched: {len(records)}")
+        return records
+    except Exception as e:
+        logging.error(f"Error fetching data from GCS: {e}", exc_info=True)
+        logging.error(f"Error fetching data from GCS: {e}", exc_info=True)
+        return []
+
+# Upsert data into Pinecone
+# Upsert data into Pinecone
 def upsert_to_pinecone(records, index_name):
     """
     Generate embeddings and upsert records to Pinecone.
@@ -142,7 +218,6 @@ def upsert_to_pinecone(records, index_name):
                 logging.error(f"Error during upsertion to Pinecone: {e}")
     except Exception as e:
         logging.error(f"Error initializing or upserting to Pinecone: {e}")
-
 
 
 if __name__ == "__main__":

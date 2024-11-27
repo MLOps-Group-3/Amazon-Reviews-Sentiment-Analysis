@@ -16,9 +16,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # GCS and Local Paths
 BUCKET_NAME = "amazon-reviews-sentiment-analysis"  # Replace with your GCS bucket name
 PREFIX = "RAG/"  # Replace with your GCS folder prefix
-OUTPUT_FOLDER = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/embedding_meta"  # Local folder to save embeddings
+OUTPUT_FOLDER = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data"  # Local folder to save embeddings
 
-SERVICE_ACCOUNT_PATH = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+SERVICE_ACCOUNT_PATH = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
 
 
 # Fetch data from GCS bucket
