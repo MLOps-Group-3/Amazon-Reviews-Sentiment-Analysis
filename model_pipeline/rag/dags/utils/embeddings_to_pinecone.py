@@ -2,21 +2,30 @@ import os
 import json
 import hashlib
 from pinecone import Pinecone, ServerlessSpec
+import hashlib
+from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 
+# Load environment variables
 # Load environment variables
 load_dotenv()
 api_key = os.getenv("PINECONE_API_KEY")
 environment = os.getenv("PINECONE_ENVIRONMENT")
+api_key = os.getenv("PINECONE_API_KEY")
+environment = os.getenv("PINECONE_ENVIRONMENT")
 
+# Initialize Pinecone client
+pc = Pinecone(api_key=api_key, pool_threads=30)
 # Initialize Pinecone client
 pc = Pinecone(api_key=api_key, pool_threads=30)
 
 # Define the Pinecone index name
 index_name = "amazonsentimentanalysis"
 dimension = 1536  # Ensure this matches your embedding size
+dimension = 1536  # Ensure this matches your embedding size
 
 # Check if the index exists or create a new one
+if index_name not in [idx["name"] for idx in pc.list_indexes().get("indexes", [])]:
 if index_name not in [idx["name"] for idx in pc.list_indexes().get("indexes", [])]:
     print(f"Index '{index_name}' does not exist. Creating a new index...")
     pc.create_index(
@@ -24,9 +33,24 @@ if index_name not in [idx["name"] for idx in pc.list_indexes().get("indexes", []
         dimension=dimension,
         metric="cosine",
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        dimension=dimension,
+        metric="cosine",
+        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
     print(f"Index '{index_name}' created successfully.")
 
+# Get the host for the index
+index_host = None
+for idx in pc.list_indexes().get("indexes", []):
+    if idx["name"] == index_name:
+        index_host = idx["host"]
+        break
+
+if not index_host:
+    raise ValueError(f"Host not found for index '{index_name}'.")
+
+# Use the Index class to interact with the index
+index = pc.Index(host=index_host)
 # Get the host for the index
 index_host = None
 for idx in pc.list_indexes().get("indexes", []):
@@ -70,7 +94,7 @@ def prepare_data_from_file(file_path):
         return None
 
 # Folder containing your JSON files
-json_folder_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/embedding_meta"
+json_folder_path = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/embedding_meta"
 
 # Process files in batches and upsert
 def upsert_in_batches(folder_path, batch_size=100):
@@ -78,6 +102,8 @@ def upsert_in_batches(folder_path, batch_size=100):
     batch = []
     for file_name in os.listdir(folder_path):
         if file_name.endswith(".json"):
+            file_path = os.path.join(folder_path, file_name)
+            print(f"Processing file: {file_name}")
             file_path = os.path.join(folder_path, file_name)
             print(f"Processing file: {file_name}")
             
@@ -106,6 +132,7 @@ def upsert_in_batches(folder_path, batch_size=100):
 
 # Run the upsert process in batches
 upsert_in_batches(json_folder_path, batch_size=100)
+# Run the upsert process in batches
+upsert_in_batches(json_folder_path, batch_size=100)
 
 print("Finished processing all files.")
-
