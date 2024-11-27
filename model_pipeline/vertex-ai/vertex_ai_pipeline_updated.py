@@ -285,7 +285,7 @@ def evaluate_model(
 
 @dsl.pipeline(name="sentiment-analysis-pipeline")
 def sentiment_analysis_pipeline():
-    prepare_step = prepare_data(project_id=PROJECT_ID, region=REGION, dataset_id=DATASET_ID)
+    prepare_step = prepare_data(project_id=PROJECT_ID, region=REGION, dataset_id=DATASET_ID).set_caching_options(enable_caching=False)
     train_step = train_model(
         train_data=prepare_step.outputs["train_data"],
         val_data=prepare_step.outputs["val_data"],
@@ -296,12 +296,12 @@ def sentiment_analysis_pipeline():
         num_epochs=1,
         weight_decay=0.01,
         dropout_rate=0.1,
-    )
+    ).set_caching_options(enable_caching=False)
     evaluate_model(
         model_path=train_step.outputs["trained_model"],
         test_data=prepare_step.outputs["test_data"],
         class_labels=prepare_step.outputs["class_labels"],
-    )
+    ).set_caching_options(enable_caching=False)
 
 
 # Compile and submit pipeline

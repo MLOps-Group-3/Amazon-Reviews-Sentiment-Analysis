@@ -224,9 +224,7 @@
       },
       "tasks": {
         "evaluate-model": {
-          "cachingOptions": {
-            "enableCache": true
-          },
+          "cachingOptions": {},
           "componentRef": {
             "name": "comp-evaluate-model"
           },
@@ -261,9 +259,7 @@
           }
         },
         "prepare-data": {
-          "cachingOptions": {
-            "enableCache": true
-          },
+          "cachingOptions": {},
           "componentRef": {
             "name": "comp-prepare-data"
           },
@@ -291,9 +287,7 @@
           }
         },
         "train-model": {
-          "cachingOptions": {
-            "enableCache": true
-          },
+          "cachingOptions": {},
           "componentRef": {
             "name": "comp-train-model"
           },
