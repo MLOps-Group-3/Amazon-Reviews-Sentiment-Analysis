@@ -14,15 +14,15 @@ DATASET_ID = "2110090906806779904"  # Your dataset ID
 # Initialize Vertex AI
 aiplatform.init(project=PROJECT_ID, location=REGION)
 
+
 @component(
     packages_to_install=[
         "pandas",
         "scikit-learn",
         "google-cloud-aiplatform",
         "gcsfs",
-        "accelerate>=0.26.0"
     ],
-    base_image="tensorflow/tensorflow:2.13.0-gpu",
+    base_image="python:3.9",
 )
 def prepare_data(
     project_id: str,
@@ -37,11 +37,17 @@ def prepare_data(
     import pandas as pd
     from sklearn.preprocessing import LabelEncoder
 
+    # Initialize Vertex AI
     aiplatform.init(project=project_id, location=region)
+
+    # Load the dataset and retrieve the GCS URI
     dataset = aiplatform.TabularDataset(dataset_id)
     gcs_uri = dataset._gca_resource.metadata["inputConfig"]["gcsSource"]["uri"][0]
+
+    # Load the data from GCS URI as a pandas DataFrame
     df = pd.read_csv(gcs_uri)
 
+    # Data processing code
     df['text'] = df['text'].fillna('')
     df['title'] = df['title'].fillna('')
     df['price'] = pd.to_numeric(df['price'].replace("unknown", None), errors='coerce')
@@ -53,30 +59,29 @@ def prepare_data(
     label_encoder = LabelEncoder()
     df['label'] = label_encoder.fit_transform(df['sentiment_label'])
 
-    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])
-    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)
-    
+    # Split the data
     train_end = int(len(df) * 0.8)
     val_end = int(len(df) * 0.9)
-    
+
     train_df = df.iloc[:train_end]
     val_df = df.iloc[train_end:val_end]
     test_df = df.iloc[val_end:]
-    
+
     train_df.to_csv(train_data.path, index=False)
     val_df.to_csv(val_data.path, index=False)
     test_df.to_csv(test_data.path, index=False)
     pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)
 
+
 @component(
     packages_to_install=[
         "pandas",
-        "scikit-learn",
         "torch",
         "transformers",
-        "accelerate>=0.26.0"
+        "scikit-learn",
+        "accelerate>=0.26.0",
     ],
-    base_image="tensorflow/tensorflow:2.13.0-gpu",
+    base_image="python:3.9",
 )
 def train_model(
     train_data: Input[Dataset],
@@ -94,9 +99,9 @@ def train_model(
     import pandas as pd
     import torch
     from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-    from torch.utils.data import Dataset
+    from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-    class SentimentDataset(Dataset):
+    class SentimentDataset(torch.utils.data.Dataset):
         def __init__(self, texts, labels, tokenizer, max_length=128):
             self.texts = texts
             self.labels = labels
@@ -109,59 +114,62 @@ def train_model(
         def __getitem__(self, idx):
             text = self.texts[idx]
             label = self.labels[idx]
-            encoding = self.tokenizer.encode_plus(
+
+            encoding = self.tokenizer(
                 text,
-                add_special_tokens=True,
-                max_length=self.max_length,
-                return_token_type_ids=False,
-                padding='max_length',
+                padding="max_length",
                 truncation=True,
-                return_attention_mask=True,
-                return_tensors='pt',
+                max_length=self.max_length,
+                return_tensors="pt",
             )
             return {
-                'input_ids': encoding['input_ids'].flatten(),
-                'attention_mask': encoding['attention_mask'].flatten(),
-                'labels': torch.tensor(label, dtype=torch.long)
+                "input_ids": encoding["input_ids"].flatten(),
+                "attention_mask": encoding["attention_mask"].flatten(),
+                "labels": torch.tensor(label, dtype=torch.long),
             }
 
+    # Load datasets
     train_df = pd.read_csv(train_data.path)
     val_df = pd.read_csv(val_data.path)
-    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()
+    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=len(class_labels))
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model = BertForSequenceClassification.from_pretrained(
+        "bert-base-uncased", num_labels=len(class_labels)
+    )
 
-    train_dataset = SentimentDataset(train_df['text'].tolist(), train_df['label'].tolist(), tokenizer)
-    val_dataset = SentimentDataset(val_df['text'].tolist(), val_df['label'].tolist(), tokenizer)
+    train_dataset = SentimentDataset(train_df["text"], train_df["label"], tokenizer)
+    val_dataset = SentimentDataset(val_df["text"], val_df["label"], tokenizer)
 
     training_args = TrainingArguments(
-        output_dir='./results',
+        output_dir="./results",
         num_train_epochs=num_epochs,
         per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        warmup_steps=500,
-        weight_decay=weight_decay,
-        logging_dir='./logs',
-        logging_steps=10,
         evaluation_strategy="epoch",
         save_strategy="epoch",
+        logging_dir="./logs",
+        weight_decay=weight_decay,
         load_best_model_at_end=True,
     )
+
+    def compute_metrics(pred):
+        labels = pred.label_ids
+        preds = pred.predictions.argmax(-1)
+        precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
+        accuracy = accuracy_score(labels, preds)
+        return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
+        compute_metrics=compute_metrics,
     )
 
     trainer.train()
-    eval_results = trainer.evaluate()
+    trainer.save_model(trained_model.path)
 
-    metrics.log_metric("val_loss", eval_results["eval_loss"])
-    
-    torch.save(model.state_dict(), trained_model.path)
 
 @component(
     packages_to_install=[
@@ -169,144 +177,143 @@ def train_model(
         "scikit-learn",
         "torch",
         "transformers",
-        "accelerate>=0.26.0",
+        "google-cloud-storage",
     ],
-    base_image="tensorflow/tensorflow:2.13.0-gpu",
+    base_image="python:3.9",
 )
 def evaluate_model(
     model_path: Input[Model],
     test_data: Input[Dataset],
     class_labels: Input[Dataset],
-    metrics: Output[ClassificationMetrics],
+    metrics: Output[Dataset],
 ) -> None:
     import pandas as pd
     import torch
-    import numpy as np
+    import os
+    from sklearn.metrics import (
+        accuracy_score,
+        precision_score,
+        recall_score,
+        f1_score,
+        confusion_matrix,
+        classification_report,
+    )
     from transformers import BertTokenizer, BertForSequenceClassification
-    from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-    from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
+    from torch.utils.data import DataLoader, TensorDataset
+    from google.cloud import storage
+    import json
 
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased')
-    model.load_state_dict(torch.load(model_path.path))
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    # Load the model
+    model = BertForSequenceClassification.from_pretrained(model_path.path)
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
+    # Load test data and class labels
     test_df = pd.read_csv(test_data.path)
     class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()
 
+    # Tokenize and create tensors
     encoded_data = tokenizer.batch_encode_plus(
-        test_df['text'].tolist(),
+        test_df["text"].tolist(),
         add_special_tokens=True,
         return_attention_mask=True,
         pad_to_max_length=True,
         max_length=128,
-        return_tensors='pt'
+        return_tensors="pt",
     )
 
-    input_ids = encoded_data['input_ids']
-    attention_masks = encoded_data['attention_mask']
-    labels = torch.tensor(test_df['label'].tolist())
+    input_ids = encoded_data["input_ids"]
+    attention_masks = encoded_data["attention_mask"]
+    true_labels = torch.tensor(test_df["label"].tolist())
 
-    dataset = TensorDataset(input_ids, attention_masks, labels)
-    dataloader = DataLoader(dataset, sampler=SequentialSampler(dataset), batch_size=32)
+    # Create DataLoader for test data
+    dataset = TensorDataset(input_ids, attention_masks, true_labels)
+    dataloader = DataLoader(dataset, batch_size=32)
 
+    # Evaluate
     model.eval()
     predictions = []
-    true_labels = []
+    true_labels_list = []
+
     for batch in dataloader:
         batch_input_ids, batch_attention_masks, batch_labels = tuple(t for t in batch)
+
         with torch.no_grad():
             outputs = model(batch_input_ids, attention_mask=batch_attention_masks)
+
         logits = outputs.logits
-        predictions.extend(torch.argmax(logits, dim=1).tolist())
-        true_labels.extend(batch_labels.tolist())
+        preds = torch.argmax(logits, dim=1).cpu().numpy()
+        predictions.extend(preds)
+        true_labels_list.extend(batch_labels.cpu().numpy())
 
-    accuracy = accuracy_score(true_labels, predictions)
-    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predictions, average='weighted')
+    # Calculate metrics
+    accuracy = accuracy_score(true_labels_list, predictions)
+    precision = precision_score(true_labels_list, predictions, average="weighted")
+    recall = recall_score(true_labels_list, predictions, average="weighted")
+    f1 = f1_score(true_labels_list, predictions, average="weighted")
+    cm = confusion_matrix(true_labels_list, predictions)
 
-    metrics.log_accuracy(true_labels, predictions)
-    metrics.log_confusion_matrix(class_labels, true_labels, predictions)
-    metrics.log_roc_curve(true_labels, predictions)
-    metrics.log_metric("test_accuracy", accuracy)
-    metrics.log_metric("test_precision", precision)
-    metrics.log_metric("test_recall", recall)
-    metrics.log_metric("test_f1", f1)
+    # Create metrics dictionary
+    metrics_data = {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "confusion_matrix": cm.tolist(),
+        "classification_report": classification_report(
+            true_labels_list, predictions, target_names=class_labels, output_dict=True
+        ),
+    }
 
-@dsl.pipeline(
-    name="sentiment-analysis-pipeline",
-    description="A pipeline for sentiment analysis using BERT",
+    # Ensure the output directory exists
+    os.makedirs(metrics.path, exist_ok=True)
+
+    # Save metrics to a JSON file
+    metrics_path = os.path.join(metrics.path, "evaluation_metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics_data, f, indent=4)
+
+    print(f"Evaluation metrics saved to: {metrics_path}")
+
+    # Upload metrics JSON file to the specified bucket
+    storage_client = storage.Client()
+    bucket_name = metrics.path.split("/")[2]  # Extract bucket name from path
+    bucket = storage_client.bucket(bucket_name)
+    destination_blob_name = "/".join(metrics.path.split("/")[3:]) + "/evaluation_metrics.json"
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(metrics_path)
+    print(f"Evaluation metrics uploaded to: gs://{bucket_name}/{destination_blob_name}")
+
+@dsl.pipeline(name="sentiment-analysis-pipeline")
+def sentiment_analysis_pipeline():
+    prepare_step = prepare_data(project_id=PROJECT_ID, region=REGION, dataset_id=DATASET_ID)
+    train_step = train_model(
+        train_data=prepare_step.outputs["train_data"],
+        val_data=prepare_step.outputs["val_data"],
+        class_labels=prepare_step.outputs["class_labels"],
+        model_name="bert-base-uncased",
+        learning_rate=5e-5,
+        batch_size=16,
+        num_epochs=1,
+        weight_decay=0.01,
+        dropout_rate=0.1,
+    )
+    evaluate_model(
+        model_path=train_step.outputs["trained_model"],
+        test_data=prepare_step.outputs["test_data"],
+        class_labels=prepare_step.outputs["class_labels"],
+    )
+
+
+# Compile and submit pipeline
+from kfp.compiler import Compiler
+
+Compiler().compile(
+    pipeline_func=sentiment_analysis_pipeline, package_path="sentiment_analysis_pipeline.json"
 )
-def sentiment_analysis_pipeline(
-    project_id: str,
-    region: str,
-    dataset_id: str,
-    model_name: str,
-    learning_rate: float,
-    batch_size: int,
-    num_epochs: int,
-    weight_decay: float,
-    dropout_rate: float,
-):
-    prepare_data_task = prepare_data(
-        project_id=project_id,
-        region=region,
-        dataset_id=dataset_id
-    )
 
-    train_model_task = train_model(
-        train_data=prepare_data_task.outputs["train_data"],
-        val_data=prepare_data_task.outputs["val_data"],
-        class_labels=prepare_data_task.outputs["class_labels"],
-        model_name=model_name,
-        learning_rate=learning_rate,
-        batch_size=batch_size,
-        num_epochs=num_epochs,
-        weight_decay=weight_decay,
-        dropout_rate=dropout_rate,
-    )
-
-    evaluate_model_task = evaluate_model(
-        model_path=train_model_task.outputs["trained_model"],
-        test_data=prepare_data_task.outputs["test_data"],
-        class_labels=prepare_data_task.outputs["class_labels"],
-    )
-
-# Compile the pipeline
-from kfp import compiler
-
-compiler.Compiler().compile(
-    pipeline_func=sentiment_analysis_pipeline,
-    package_path='sentiment_analysis_pipeline.json'
-)
-
-# Create and submit the pipeline job
 pipeline_job = pipeline_jobs.PipelineJob(
-    display_name="sentiment-analysis-job",
+    display_name="sentiment-analysis-pipeline",
     template_path="sentiment_analysis_pipeline.json",
     pipeline_root=PIPELINE_ROOT,
-    parameter_values={
-        "project_id": PROJECT_ID,
-        "region": REGION,
-        "dataset_id": DATASET_ID,
-        "model_name": "BERT",
-        "learning_rate": 2e-5,
-        "batch_size": 32,
-        "num_epochs": 3,
-        "weight_decay": 0.01,
-        "dropout_rate": 0.1,
-    },
 )
-
-# Define the resources at the job level (use worker_pool_specs for resource allocation)
-pipeline_job.gcp_resources = [
-    {
-        "machine_spec": {
-            "machine_type": "n1-standard-4",  # Machine type
-            "accelerator_type": "NVIDIA_TESLA_T4",  # GPU type
-            "accelerator_count": 1,  # Number of GPUs
-        },
-        "replica_count": 1,  # Number of task replicas
-    }
-]
-
-# Submit the pipeline job
 pipeline_job.submit()

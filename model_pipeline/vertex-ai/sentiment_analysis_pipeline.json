@@ -28,7 +28,7 @@
         "artifacts": {
           "metrics": {
             "artifactType": {
-              "schemaTitle": "system.ClassificationMetrics",
+              "schemaTitle": "system.Dataset",
               "schemaVersion": "0.0.1"
             }
           }
@@ -154,13 +154,13 @@
           "command": [
             "sh",
             "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'google-cloud-storage' && \"$0\" \"$@\"\n",
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model(\n    model_path: Input[Model],\n    test_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    metrics: Output[ClassificationMetrics],\n) -> None:\n    import pandas as pd\n    import torch\n    import numpy as np\n    from transformers import BertTokenizer, BertForSequenceClassification\n    from sklearn.metrics import accuracy_score, precision_recall_fscore_support\n    from torch.utils.data import TensorDataset, DataLoader, SequentialSampler\n\n    model = BertForSequenceClassification.from_pretrained('bert-base-uncased')\n    model.load_state_dict(torch.load(model_path.path))\n    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')\n\n    test_df = pd.read_csv(test_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    encoded_data = tokenizer.batch_encode_plus(\n        test_df['text'].tolist(),\n        add_special_tokens=True,\n        return_attention_mask=True,\n        pad_to_max_length=True,\n        max_length=128,\n        return_tensors='pt'\n    )\n\n    input_ids = encoded_data['input_ids']\n    attention_masks = encoded_data['attention_mask']\n    labels = torch.tensor(test_df['label'].tolist())\n\n    dataset = TensorDataset(input_ids, attention_masks, labels)\n    dataloader = DataLoader(dataset, sampler=SequentialSampler(dataset), batch_size=32)\n\n    model.eval()\n    predictions = []\n    true_labels = []\n    for batch in dataloader:\n        batch_input_ids, batch_attention_masks, batch_labels = tuple(t for t in batch)\n        with torch.no_grad():\n            outputs = model(batch_input_ids, attention_mask=batch_attention_masks)\n        logits = outputs.logits\n        predictions.extend(torch.argmax(logits, dim=1).tolist())\n        true_labels.extend(batch_labels.tolist())\n\n    accuracy = accuracy_score(true_labels, predictions)\n    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predictions, average='weighted')\n\n    metrics.log_accuracy(true_labels, predictions)\n    metrics.log_confusion_matrix(class_labels, true_labels, predictions)\n    metrics.log_roc_curve(true_labels, predictions)\n    metrics.log_metric(\"test_accuracy\", accuracy)\n    metrics.log_metric(\"test_precision\", precision)\n    metrics.log_metric(\"test_recall\", recall)\n    metrics.log_metric(\"test_f1\", f1)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model(\n    model_path: Input[Model],\n    test_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    metrics: Output[Dataset],\n) -> None:\n    import pandas as pd\n    import torch\n    import os\n    from sklearn.metrics import (\n        accuracy_score,\n        precision_score,\n        recall_score,\n        f1_score,\n        confusion_matrix,\n        classification_report,\n    )\n    from transformers import BertTokenizer, BertForSequenceClassification\n    from torch.utils.data import DataLoader, TensorDataset\n    from google.cloud import storage\n    import json\n\n    # Load the model\n    model = BertForSequenceClassification.from_pretrained(model_path.path)\n    tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n\n    # Load test data and class labels\n    test_df = pd.read_csv(test_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    # Tokenize and create tensors\n    encoded_data = tokenizer.batch_encode_plus(\n        test_df[\"text\"].tolist(),\n        add_special_tokens=True,\n        return_attention_mask=True,\n        pad_to_max_length=True,\n        max_length=128,\n        return_tensors=\"pt\",\n    )\n\n    input_ids = encoded_data[\"input_ids\"]\n    attention_masks = encoded_data[\"attention_mask\"]\n    true_labels = torch.tensor(test_df[\"label\"].tolist())\n\n    # Create DataLoader for test data\n    dataset = TensorDataset(input_ids, attention_masks, true_labels)\n    dataloader = DataLoader(dataset, batch_size=32)\n\n    # Evaluate\n    model.eval()\n    predictions = []\n    true_labels_list = []\n\n    for batch in dataloader:\n        batch_input_ids, batch_attention_masks, batch_labels = tuple(t for t in batch)\n\n        with torch.no_grad():\n            outputs = model(batch_input_ids, attention_mask=batch_attention_masks)\n\n        logits = outputs.logits\n        preds = torch.argmax(logits, dim=1).cpu().numpy()\n        predictions.extend(preds)\n        true_labels_list.extend(batch_labels.cpu().numpy())\n\n    # Calculate metrics\n    accuracy = accuracy_score(true_labels_list, predictions)\n    precision = precision_score(true_labels_list, predictions, average=\"weighted\")\n    recall = recall_score(true_labels_list, predictions, average=\"weighted\")\n    f1 = f1_score(true_labels_list, predictions, average=\"weighted\")\n    cm = confusion_matrix(true_labels_list, predictions)\n\n    # Create metrics dictionary\n    metrics_data = {\n        \"accuracy\": accuracy,\n        \"precision\": precision,\n        \"recall\": recall,\n        \"f1_score\": f1,\n        \"confusion_matrix\": cm.tolist(),\n        \"classification_report\": classification_report(\n            true_labels_list, predictions, target_names=class_labels, output_dict=True\n        ),\n    }\n\n    # Ensure the output directory exists\n    os.makedirs(metrics.path, exist_ok=True)\n\n    # Save metrics to a JSON file\n    metrics_path = os.path.join(metrics.path, \"evaluation_metrics.json\")\n    with open(metrics_path, \"w\") as f:\n        json.dump(metrics_data, f, indent=4)\n\n    print(f\"Evaluation metrics saved to: {metrics_path}\")\n\n    # Upload metrics JSON file to the specified bucket\n    storage_client = storage.Client()\n    bucket_name = metrics.path.split(\"/\")[2]  # Extract bucket name from path\n    bucket = storage_client.bucket(bucket_name)\n    destination_blob_name = \"/\".join(metrics.path.split(\"/\")[3:]) + \"/evaluation_metrics.json\"\n    blob = bucket.blob(destination_blob_name)\n    blob.upload_from_filename(metrics_path)\n    print(f\"Evaluation metrics uploaded to: gs://{bucket_name}/{destination_blob_name}\")\n\n"
           ],
-          "image": "tensorflow/tensorflow:2.13.0-gpu"
+          "image": "python:3.9"
         }
       },
       "exec-prepare-data": {
@@ -174,13 +174,13 @@
           "command": [
             "sh",
             "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'google-cloud-aiplatform' 'gcsfs' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'google-cloud-aiplatform' 'gcsfs' && \"$0\" \"$@\"\n",
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    project_id: str,\n    region: str,\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    aiplatform.init(project=project_id, location=region)\n    dataset = aiplatform.TabularDataset(dataset_id)\n    gcs_uri = dataset._gca_resource.metadata[\"inputConfig\"][\"gcsSource\"][\"uri\"][0]\n    df = pd.read_csv(gcs_uri)\n\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    df['review_date_timestamp'] = pd.to_datetime(df['review_date_timestamp'])\n    df = df.sort_values(by='review_date_timestamp').reset_index(drop=True)\n\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data(\n    project_id: str,\n    region: str,\n    dataset_id: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n    class_labels: Output[Dataset],\n) -> None:\n    from google.cloud import aiplatform\n    import pandas as pd\n    from sklearn.preprocessing import LabelEncoder\n\n    # Initialize Vertex AI\n    aiplatform.init(project=project_id, location=region)\n\n    # Load the dataset and retrieve the GCS URI\n    dataset = aiplatform.TabularDataset(dataset_id)\n    gcs_uri = dataset._gca_resource.metadata[\"inputConfig\"][\"gcsSource\"][\"uri\"][0]\n\n    # Load the data from GCS URI as a pandas DataFrame\n    df = pd.read_csv(gcs_uri)\n\n    # Data processing code\n    df['text'] = df['text'].fillna('')\n    df['title'] = df['title'].fillna('')\n    df['price'] = pd.to_numeric(df['price'].replace(\"unknown\", None), errors='coerce')\n    df['price_missing'] = df['price'].isna().astype(int)\n    df['price'] = df['price'].fillna(0).astype(float)\n    df['helpful_vote'] = df['helpful_vote'].fillna(0).astype(int)\n    df['verified_purchase'] = df['verified_purchase'].apply(lambda x: 1 if x else 0)\n\n    label_encoder = LabelEncoder()\n    df['label'] = label_encoder.fit_transform(df['sentiment_label'])\n\n    # Split the data\n    train_end = int(len(df) * 0.8)\n    val_end = int(len(df) * 0.9)\n\n    train_df = df.iloc[:train_end]\n    val_df = df.iloc[train_end:val_end]\n    test_df = df.iloc[val_end:]\n\n    train_df.to_csv(train_data.path, index=False)\n    val_df.to_csv(val_data.path, index=False)\n    test_df.to_csv(test_data.path, index=False)\n    pd.Series(label_encoder.classes_).to_csv(class_labels.path, index=False, header=False)\n\n"
           ],
-          "image": "tensorflow/tensorflow:2.13.0-gpu"
+          "image": "python:3.9"
         }
       },
       "exec-train-model": {
@@ -194,33 +194,24 @@
           "command": [
             "sh",
             "-c",
-            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'torch' 'transformers' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'torch' 'transformers' 'scikit-learn' 'accelerate>=0.26.0' && \"$0\" \"$@\"\n",
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    model_name: str,\n    learning_rate: float,\n    batch_size: int,\n    num_epochs: int,\n    weight_decay: float,\n    dropout_rate: float,\n    trained_model: Output[Model],\n    metrics: Output[Metrics],\n) -> None:\n    import pandas as pd\n    import torch\n    from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments\n    from torch.utils.data import Dataset\n\n    class SentimentDataset(Dataset):\n        def __init__(self, texts, labels, tokenizer, max_length=128):\n            self.texts = texts\n            self.labels = labels\n            self.tokenizer = tokenizer\n            self.max_length = max_length\n\n        def __len__(self):\n            return len(self.texts)\n\n        def __getitem__(self, idx):\n            text = self.texts[idx]\n            label = self.labels[idx]\n            encoding = self.tokenizer.encode_plus(\n                text,\n                add_special_tokens=True,\n                max_length=self.max_length,\n                return_token_type_ids=False,\n                padding='max_length',\n                truncation=True,\n                return_attention_mask=True,\n                return_tensors='pt',\n            )\n            return {\n                'input_ids': encoding['input_ids'].flatten(),\n                'attention_mask': encoding['attention_mask'].flatten(),\n                'labels': torch.tensor(label, dtype=torch.long)\n            }\n\n    train_df = pd.read_csv(train_data.path)\n    val_df = pd.read_csv(val_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()\n\n    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')\n    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=len(class_labels))\n\n    train_dataset = SentimentDataset(train_df['text'].tolist(), train_df['label'].tolist(), tokenizer)\n    val_dataset = SentimentDataset(val_df['text'].tolist(), val_df['label'].tolist(), tokenizer)\n\n    training_args = TrainingArguments(\n        output_dir='./results',\n        num_train_epochs=num_epochs,\n        per_device_train_batch_size=batch_size,\n        per_device_eval_batch_size=batch_size,\n        warmup_steps=500,\n        weight_decay=weight_decay,\n        logging_dir='./logs',\n        logging_steps=10,\n        evaluation_strategy=\"epoch\",\n        save_strategy=\"epoch\",\n        load_best_model_at_end=True,\n    )\n\n    trainer = Trainer(\n        model=model,\n        args=training_args,\n        train_dataset=train_dataset,\n        eval_dataset=val_dataset,\n    )\n\n    trainer.train()\n    eval_results = trainer.evaluate()\n\n    metrics.log_metric(\"val_loss\", eval_results[\"eval_loss\"])\n\n    torch.save(model.state_dict(), trained_model.path)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    class_labels: Input[Dataset],\n    model_name: str,\n    learning_rate: float,\n    batch_size: int,\n    num_epochs: int,\n    weight_decay: float,\n    dropout_rate: float,\n    trained_model: Output[Model],\n    metrics: Output[Metrics],\n) -> None:\n    import pandas as pd\n    import torch\n    from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments\n    from sklearn.metrics import accuracy_score, precision_recall_fscore_support\n\n    class SentimentDataset(torch.utils.data.Dataset):\n        def __init__(self, texts, labels, tokenizer, max_length=128):\n            self.texts = texts\n            self.labels = labels\n            self.tokenizer = tokenizer\n            self.max_length = max_length\n\n        def __len__(self):\n            return len(self.texts)\n\n        def __getitem__(self, idx):\n            text = self.texts[idx]\n            label = self.labels[idx]\n\n            encoding = self.tokenizer(\n                text,\n                padding=\"max_length\",\n                truncation=True,\n                max_length=self.max_length,\n                return_tensors=\"pt\",\n            )\n            return {\n                \"input_ids\": encoding[\"input_ids\"].flatten(),\n                \"attention_mask\": encoding[\"attention_mask\"].flatten(),\n                \"labels\": torch.tensor(label, dtype=torch.long),\n            }\n\n    # Load datasets\n    train_df = pd.read_csv(train_data.path)\n    val_df = pd.read_csv(val_data.path)\n    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()\n\n    tokenizer = BertTokenizer.from_pretrained(\"bert-base-uncased\")\n    model = BertForSequenceClassification.from_pretrained(\n        \"bert-base-uncased\", num_labels=len(class_labels)\n    )\n\n    train_dataset = SentimentDataset(train_df[\"text\"], train_df[\"label\"], tokenizer)\n    val_dataset = SentimentDataset(val_df[\"text\"], val_df[\"label\"], tokenizer)\n\n    training_args = TrainingArguments(\n        output_dir=\"./results\",\n        num_train_epochs=num_epochs,\n        per_device_train_batch_size=batch_size,\n        evaluation_strategy=\"epoch\",\n        save_strategy=\"epoch\",\n        logging_dir=\"./logs\",\n        weight_decay=weight_decay,\n        load_best_model_at_end=True,\n    )\n\n    def compute_metrics(pred):\n        labels = pred.label_ids\n        preds = pred.predictions.argmax(-1)\n        precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average=\"weighted\")\n        accuracy = accuracy_score(labels, preds)\n        return {\"accuracy\": accuracy, \"precision\": precision, \"recall\": recall, \"f1\": f1}\n\n    trainer = Trainer(\n        model=model,\n        args=training_args,\n        train_dataset=train_dataset,\n        eval_dataset=val_dataset,\n        compute_metrics=compute_metrics,\n    )\n\n    trainer.train()\n    trainer.save_model(trained_model.path)\n\n"
           ],
-          "image": "tensorflow/tensorflow:2.13.0-gpu"
+          "image": "python:3.9"
         }
       }
     }
   },
   "pipelineInfo": {
-    "description": "A pipeline for sentiment analysis using BERT",
     "name": "sentiment-analysis-pipeline"
   },
   "root": {
     "dag": {
       "outputs": {
         "artifacts": {
-          "evaluate-model-metrics": {
-            "artifactSelectors": [
-              {
-                "outputArtifactKey": "metrics",
-                "producerSubtask": "evaluate-model"
-              }
-            ]
-          },
           "train-model-metrics": {
             "artifactSelectors": [
               {
@@ -279,13 +270,19 @@
           "inputs": {
             "parameters": {
               "dataset_id": {
-                "componentInputParameter": "dataset_id"
+                "runtimeValue": {
+                  "constant": "2110090906806779904"
+                }
               },
               "project_id": {
-                "componentInputParameter": "project_id"
+                "runtimeValue": {
+                  "constant": "amazonreviewssentimentanalysis"
+                }
               },
               "region": {
-                "componentInputParameter": "region"
+                "runtimeValue": {
+                  "constant": "us-central1"
+                }
               }
             }
           },
@@ -326,22 +323,34 @@
             },
             "parameters": {
               "batch_size": {
-                "componentInputParameter": "batch_size"
+                "runtimeValue": {
+                  "constant": 16.0
+                }
               },
               "dropout_rate": {
-                "componentInputParameter": "dropout_rate"
+                "runtimeValue": {
+                  "constant": 0.1
+                }
               },
               "learning_rate": {
-                "componentInputParameter": "learning_rate"
+                "runtimeValue": {
+                  "constant": 5e-05
+                }
               },
               "model_name": {
-                "componentInputParameter": "model_name"
+                "runtimeValue": {
+                  "constant": "bert-base-uncased"
+                }
               },
               "num_epochs": {
-                "componentInputParameter": "num_epochs"
+                "runtimeValue": {
+                  "constant": 1.0
+                }
               },
               "weight_decay": {
-                "componentInputParameter": "weight_decay"
+                "runtimeValue": {
+                  "constant": 0.01
+                }
               }
             }
           },
@@ -351,45 +360,8 @@
         }
       }
     },
-    "inputDefinitions": {
-      "parameters": {
-        "batch_size": {
-          "parameterType": "NUMBER_INTEGER"
-        },
-        "dataset_id": {
-          "parameterType": "STRING"
-        },
-        "dropout_rate": {
-          "parameterType": "NUMBER_DOUBLE"
-        },
-        "learning_rate": {
-          "parameterType": "NUMBER_DOUBLE"
-        },
-        "model_name": {
-          "parameterType": "STRING"
-        },
-        "num_epochs": {
-          "parameterType": "NUMBER_INTEGER"
-        },
-        "project_id": {
-          "parameterType": "STRING"
-        },
-        "region": {
-          "parameterType": "STRING"
-        },
-        "weight_decay": {
-          "parameterType": "NUMBER_DOUBLE"
-        }
-      }
-    },
     "outputDefinitions": {
       "artifacts": {
-        "evaluate-model-metrics": {
-          "artifactType": {
-            "schemaTitle": "system.ClassificationMetrics",
-            "schemaVersion": "0.0.1"
-          }
-        },
         "train-model-metrics": {
           "artifactType": {
             "schemaTitle": "system.Metrics",
