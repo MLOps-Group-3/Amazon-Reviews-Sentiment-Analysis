@@ -10,8 +10,8 @@ PROJECT_ID = "amazonreviewssentimentanalysis"
 REGION = "us-central1"
 BUCKET_NAME = "amazon-reviews-sentiment-analysis-vertex-ai"
 PIPELINE_ROOT = f"gs://{BUCKET_NAME}/pipeline/vertex-ai"
-DATASET_ID = "2110090906806779904"  # 1% Dataset
-# DATASET_ID = "7683013970701058048" # Actual Sampled and Labeled Data
+# DATASET_ID = "2110090906806779904"  # 1% Dataset
+DATASET_ID = "7683013970701058048" # Actual Sampled and Labeled Data
 
 # Initialize Vertex AI
 aiplatform.init(project=PROJECT_ID, location=REGION)
@@ -78,14 +78,18 @@ def prepare_data(
 @component(
     packages_to_install=[
         "pandas",
-        "torch",
-        "transformers",
+        "torch==1.12.1",  # PyTorch version 1.12.1, verified to work with transformers and accelerate
+        "transformers==4.21.0",  # Compatible with PyTorch 1.12
         "scikit-learn",
-        "accelerate>=0.26.0",
+        "accelerate==0.12.0",  # Compatible with PyTorch 1.12 and transformers
         "google-cloud-storage",
+        "kfp==2.0.0",  # Compatible version of kfp
+        "PyYAML>=6.0",  # A stable version compatible with the other libraries
+        "tensorboard",
     ],
-    base_image="python:3.9",
+    base_image="us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-12.py310:latest",  # Python 3.10 with GPU support
 )
+
 def train_model(
     train_data: Input[Dataset],
     val_data: Input[Dataset],
@@ -103,9 +107,26 @@ def train_model(
     import torch
     from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
     from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-    from google.cloud import storage
-    import json
     import os
+
+    # Determine device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Is CUDA available: {torch.cuda.is_available()}")
+    print(f"CUDA device count: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"Using CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+    else:
+        print("No GPU found. Using CPU.")
+
+    # Load datasets
+    train_df = pd.read_csv(train_data.path)
+    val_df = pd.read_csv(val_data.path)
+    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
+
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+    model = BertForSequenceClassification.from_pretrained(
+        model_name, num_labels=len(class_labels)
+    ).to(device)  # Move model to GPU
 
     class SentimentDataset(torch.utils.data.Dataset):
         def __init__(self, texts, labels, tokenizer, max_length=128):
@@ -133,16 +154,6 @@ def train_model(
                 "attention_mask": encoding["attention_mask"].flatten(),
                 "labels": torch.tensor(label, dtype=torch.long),
             }
-
-    # Load datasets
-    train_df = pd.read_csv(train_data.path)
-    val_df = pd.read_csv(val_data.path)
-    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
-
-    tokenizer = BertTokenizer.from_pretrained(model_name)
-    model = BertForSequenceClassification.from_pretrained(
-        model_name, num_labels=len(class_labels)
-    )
 
     train_dataset = SentimentDataset(train_df["text"], train_df["label"], tokenizer)
     val_dataset = SentimentDataset(val_df["text"], val_df["label"], tokenizer)
@@ -174,7 +185,8 @@ def train_model(
     )
 
     trainer.train()
-    tokenizer.save_pretrained(trained_model.path) 
+
+    tokenizer.save_pretrained(trained_model.path)
     trainer.save_model(trained_model.path)
 
     # Ensure the output directory exists
@@ -183,8 +195,13 @@ def train_model(
     # Compute final metrics
     eval_metrics = trainer.evaluate()
     metrics_path = os.path.join(metrics.path, "train_metrics.json")
+
+    import json 
+
     with open(metrics_path, "w") as f:
         json.dump(eval_metrics, f)
+
+    from google.cloud import storage
 
     # Upload metrics to GCS
     storage_client = storage.Client()
@@ -197,13 +214,18 @@ def train_model(
 @component(
     packages_to_install=[
         "pandas",
-        "torch",
-        "transformers",
+        "torch==1.12.1",  # PyTorch version 1.12.1, verified to work with transformers and accelerate
+        "transformers==4.21.0",  # Compatible with PyTorch 1.12
         "scikit-learn",
+        "accelerate==0.12.0",  # Compatible with PyTorch 1.12 and transformers
         "google-cloud-storage",
+        "kfp==2.0.0",  # Compatible version of kfp
+        "PyYAML>=6.0",  # A stable version compatible with the other libraries
+        "tensorboard",
     ],
-    base_image="python:3.9",
+    base_image="us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-12.py310:latest",  # Python 3.10 with GPU support
 )
+
 def evaluate_model(
     model_path: Input[Model],
     test_data: Input[Dataset],
@@ -214,9 +236,25 @@ def evaluate_model(
     import torch
     from transformers import BertTokenizer, BertForSequenceClassification
     from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-    from google.cloud import storage
-    import json
     import os
+
+    # Determine device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Is CUDA available: {torch.cuda.is_available()}")
+    print(f"CUDA device count: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"Using CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+    else:
+        print("No GPU found. Using CPU.")
+
+
+    # Load test data and class labels
+    test_df = pd.read_csv(test_data.path)
+    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
+
+    # Load the model
+    tokenizer = BertTokenizer.from_pretrained(model_path.path)
+    model = BertForSequenceClassification.from_pretrained(model_path.path).to(device)  # Move model to GPU
 
     class SentimentDataset(torch.utils.data.Dataset):
         def __init__(self, texts, labels, tokenizer, max_length=128):
@@ -245,14 +283,6 @@ def evaluate_model(
                 "labels": torch.tensor(label, dtype=torch.long),
             }
 
-    # Load test data and class labels
-    test_df = pd.read_csv(test_data.path)
-    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
-
-    # Load the model
-    tokenizer = BertTokenizer.from_pretrained(model_path.path)
-    model = BertForSequenceClassification.from_pretrained(model_path.path)
-
     test_dataset = SentimentDataset(test_df["text"], test_df["label"], tokenizer)
     model.eval()
 
@@ -260,8 +290,8 @@ def evaluate_model(
     with torch.no_grad():
         for batch in torch.utils.data.DataLoader(test_dataset, batch_size=16):
             inputs = {
-                "input_ids": batch["input_ids"],
-                "attention_mask": batch["attention_mask"],
+                "input_ids": batch["input_ids"].to(device),
+                "attention_mask": batch["attention_mask"].to(device),
             }
             outputs = model(**inputs)
             preds = outputs.logits.argmax(dim=1).cpu().numpy()
@@ -278,13 +308,16 @@ def evaluate_model(
         "f1": f1,
     }
 
-    # Ensure the output directory exists
-    os.makedirs(metrics.path, exist_ok=True)
-
     # Save evaluation metrics
+    os.makedirs(metrics.path, exist_ok=True)
     metrics_path = os.path.join(metrics.path, "eval_metrics.json")
+
+    import json
+
     with open(metrics_path, "w") as f:
         json.dump(eval_results, f)
+
+    from google.cloud import storage
 
     # Upload metrics to GCS
     storage_client = storage.Client()
@@ -365,5 +398,6 @@ pipeline_job = aiplatform.PipelineJob(
 )
 
 # Run the pipeline job
-pipeline_job.run(sync=True)
+# pipeline_job.run(sync=True)
+pipeline_job.submit()
 

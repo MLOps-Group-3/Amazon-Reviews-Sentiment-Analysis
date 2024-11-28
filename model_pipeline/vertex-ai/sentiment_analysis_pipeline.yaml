@@ -11,6 +11,9 @@
 #    project_id: str
 #    region: str
 #    weight_decay: float [Default: 0.01]
+# Outputs:
+#    evaluate-model-metrics: system.Metrics
+#    train-model-metrics: system.Metrics
 components:
   comp-evaluate-model:
     executorLabel: exec-evaluate-model
@@ -115,18 +118,17 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
-          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'torch'\
-          \ 'transformers' 'scikit-learn' 'google-cloud-storage' && \"$0\" \"$@\"\n"
+          \ python3 -m pip install --quiet     --no-warn-script-location 'pandas'\
+          \ 'torch==1.12.1' 'transformers==4.21.0' 'scikit-learn' 'accelerate==0.12.0'\
+          \ 'google-cloud-storage' 'kfp==2.0.0' 'PyYAML>=6.0' 'tensorboard' 'kfp==2.0.0'\
+          \ && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
 
-
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          python3 -m kfp.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -134,8 +136,17 @@ deploymentSpec:
           \ Input[Dataset],\n    class_labels: Input[Dataset],\n    metrics: Output[Metrics],\n\
           ) -> None:\n    import pandas as pd\n    import torch\n    from transformers\
           \ import BertTokenizer, BertForSequenceClassification\n    from sklearn.metrics\
-          \ import accuracy_score, precision_recall_fscore_support\n    from google.cloud\
-          \ import storage\n    import json\n    import os\n\n    class SentimentDataset(torch.utils.data.Dataset):\n\
+          \ import accuracy_score, precision_recall_fscore_support\n    import os\n\
+          \n    # Determine device\n    device = torch.device(\"cuda\" if torch.cuda.is_available()\
+          \ else \"cpu\")\n    print(f\"Is CUDA available: {torch.cuda.is_available()}\"\
+          )\n    print(f\"CUDA device count: {torch.cuda.device_count()}\")\n    if\
+          \ torch.cuda.is_available():\n        print(f\"Using CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}\"\
+          )\n    else:\n        print(\"No GPU found. Using CPU.\")\n\n\n    # Load\
+          \ test data and class labels\n    test_df = pd.read_csv(test_data.path)\n\
+          \    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()\n\
+          \n    # Load the model\n    tokenizer = BertTokenizer.from_pretrained(model_path.path)\n\
+          \    model = BertForSequenceClassification.from_pretrained(model_path.path).to(device)\
+          \  # Move model to GPU\n\n    class SentimentDataset(torch.utils.data.Dataset):\n\
           \        def __init__(self, texts, labels, tokenizer, max_length=128):\n\
           \            self.texts = texts\n            self.labels = labels\n    \
           \        self.tokenizer = tokenizer\n            self.max_length = max_length\n\
@@ -148,39 +159,34 @@ deploymentSpec:
           \ {\n                \"input_ids\": encoding[\"input_ids\"].flatten(),\n\
           \                \"attention_mask\": encoding[\"attention_mask\"].flatten(),\n\
           \                \"labels\": torch.tensor(label, dtype=torch.long),\n  \
-          \          }\n\n    # Load test data and class labels\n    test_df = pd.read_csv(test_data.path)\n\
-          \    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()\n\
-          \n    tokenizer = BertTokenizer.from_pretrained(model_path.path)\n    model\
-          \ = BertForSequenceClassification.from_pretrained(model_path.path)\n\n \
-          \   test_dataset = SentimentDataset(test_df[\"text\"], test_df[\"label\"\
-          ], tokenizer)\n    model.eval()\n\n    predictions, true_labels = [], []\n\
-          \    with torch.no_grad():\n        for batch in torch.utils.data.DataLoader(test_dataset,\
+          \          }\n\n    test_dataset = SentimentDataset(test_df[\"text\"], test_df[\"\
+          label\"], tokenizer)\n    model.eval()\n\n    predictions, true_labels =\
+          \ [], []\n    with torch.no_grad():\n        for batch in torch.utils.data.DataLoader(test_dataset,\
           \ batch_size=16):\n            inputs = {\n                \"input_ids\"\
-          : batch[\"input_ids\"],\n                \"attention_mask\": batch[\"attention_mask\"\
-          ],\n            }\n            outputs = model(**inputs)\n            preds\
-          \ = outputs.logits.argmax(dim=1).cpu().numpy()\n            predictions.extend(preds)\n\
-          \            true_labels.extend(batch[\"labels\"].cpu().numpy())\n\n   \
-          \ precision, recall, f1, _ = precision_recall_fscore_support(true_labels,\
+          : batch[\"input_ids\"].to(device),\n                \"attention_mask\":\
+          \ batch[\"attention_mask\"].to(device),\n            }\n            outputs\
+          \ = model(**inputs)\n            preds = outputs.logits.argmax(dim=1).cpu().numpy()\n\
+          \            predictions.extend(preds)\n            true_labels.extend(batch[\"\
+          labels\"].cpu().numpy())\n\n    precision, recall, f1, _ = precision_recall_fscore_support(true_labels,\
           \ predictions, average=\"weighted\")\n    accuracy = accuracy_score(true_labels,\
           \ predictions)\n\n    eval_results = {\n        \"accuracy\": accuracy,\n\
           \        \"precision\": precision,\n        \"recall\": recall,\n      \
-          \  \"f1\": f1,\n    }\n\n    # Ensure the output directory exists\n    os.makedirs(metrics.path,\
-          \ exist_ok=True)\n\n    # Save evaluation metrics\n    metrics_path = os.path.join(metrics.path,\
-          \ \"eval_metrics.json\")\n    with open(metrics_path, \"w\") as f:\n   \
-          \     json.dump(eval_results, f)\n\n    # Upload metrics to GCS\n    storage_client\
-          \ = storage.Client()\n    bucket_name = metrics.path.split(\"/\")[2]\n \
-          \   destination_blob_name = \"/\".join(metrics.path.split(\"/\")[3:]) +\
-          \ \"/eval_metrics.json\"\n    blob = storage_client.bucket(bucket_name).blob(destination_blob_name)\n\
+          \  \"f1\": f1,\n    }\n\n    # Save evaluation metrics\n    os.makedirs(metrics.path,\
+          \ exist_ok=True)\n    metrics_path = os.path.join(metrics.path, \"eval_metrics.json\"\
+          )\n\n    import json\n\n    with open(metrics_path, \"w\") as f:\n     \
+          \   json.dump(eval_results, f)\n\n    from google.cloud import storage\n\
+          \n    # Upload metrics to GCS\n    storage_client = storage.Client()\n \
+          \   bucket_name = metrics.path.split(\"/\")[2]\n    destination_blob_name\
+          \ = \"/\".join(metrics.path.split(\"/\")[3:]) + \"/eval_metrics.json\"\n\
+          \    blob = storage_client.bucket(bucket_name).blob(destination_blob_name)\n\
           \    blob.upload_from_filename(metrics_path)\n\n"
-        image: python:3.9
+        image: us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-12.py310:latest
         resources:
           accelerator:
             count: '1'
-            resourceCount: '1'
-            resourceType: NVIDIA_TESLA_T4
             type: NVIDIA_TESLA_T4
-          resourceCpuLimit: '4'
-          resourceMemoryLimit: 16G
+          cpuLimit: 4.0
+          memoryLimit: 16.0
     exec-prepare-data:
       container:
         args:
@@ -193,18 +199,16 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
-          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn'\
-          \ 'google-cloud-aiplatform' 'gcsfs' && \"$0\" \"$@\"\n"
+          \ python3 -m pip install --quiet     --no-warn-script-location 'pandas'\
+          \ 'scikit-learn' 'google-cloud-aiplatform' 'gcsfs' 'kfp==2.0.0' && \"$0\"\
+          \ \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
 
-
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          python3 -m kfp.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -244,19 +248,17 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
-          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'torch'\
-          \ 'transformers' 'scikit-learn' 'accelerate>=0.26.0' 'google-cloud-storage'\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'pandas'\
+          \ 'torch==1.12.1' 'transformers==4.21.0' 'scikit-learn' 'accelerate==0.12.0'\
+          \ 'google-cloud-storage' 'kfp==2.0.0' 'PyYAML>=6.0' 'tensorboard' 'kfp==2.0.0'\
           \ && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
 
-
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
 
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+          python3 -m kfp.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
@@ -267,8 +269,17 @@ deploymentSpec:
           \ Output[Model],\n    metrics: Output[Metrics],\n) -> None:\n    import\
           \ pandas as pd\n    import torch\n    from transformers import BertTokenizer,\
           \ BertForSequenceClassification, Trainer, TrainingArguments\n    from sklearn.metrics\
-          \ import precision_recall_fscore_support, accuracy_score\n    from google.cloud\
-          \ import storage\n    import json\n    import os\n\n    class SentimentDataset(torch.utils.data.Dataset):\n\
+          \ import precision_recall_fscore_support, accuracy_score\n    import os\n\
+          \n    # Determine device\n    device = torch.device(\"cuda\" if torch.cuda.is_available()\
+          \ else \"cpu\")\n    print(f\"Is CUDA available: {torch.cuda.is_available()}\"\
+          )\n    print(f\"CUDA device count: {torch.cuda.device_count()}\")\n    if\
+          \ torch.cuda.is_available():\n        print(f\"Using CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}\"\
+          )\n    else:\n        print(\"No GPU found. Using CPU.\")\n\n    # Load\
+          \ datasets\n    train_df = pd.read_csv(train_data.path)\n    val_df = pd.read_csv(val_data.path)\n\
+          \    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()\n\
+          \n    tokenizer = BertTokenizer.from_pretrained(model_name)\n    model =\
+          \ BertForSequenceClassification.from_pretrained(\n        model_name, num_labels=len(class_labels)\n\
+          \    ).to(device)  # Move model to GPU\n\n    class SentimentDataset(torch.utils.data.Dataset):\n\
           \        def __init__(self, texts, labels, tokenizer, max_length=128):\n\
           \            self.texts = texts\n            self.labels = labels\n    \
           \        self.tokenizer = tokenizer\n            self.max_length = max_length\n\
@@ -281,12 +292,8 @@ deploymentSpec:
           \ {\n                \"input_ids\": encoding[\"input_ids\"].flatten(),\n\
           \                \"attention_mask\": encoding[\"attention_mask\"].flatten(),\n\
           \                \"labels\": torch.tensor(label, dtype=torch.long),\n  \
-          \          }\n\n    # Load datasets\n    train_df = pd.read_csv(train_data.path)\n\
-          \    val_df = pd.read_csv(val_data.path)\n    class_labels = pd.read_csv(class_labels.path,\
-          \ header=None).squeeze().tolist()\n\n    tokenizer = BertTokenizer.from_pretrained(model_name)\n\
-          \    model = BertForSequenceClassification.from_pretrained(\n        model_name,\
-          \ num_labels=len(class_labels)\n    )\n\n    train_dataset = SentimentDataset(train_df[\"\
-          text\"], train_df[\"label\"], tokenizer)\n    val_dataset = SentimentDataset(val_df[\"\
+          \          }\n\n    train_dataset = SentimentDataset(train_df[\"text\"],\
+          \ train_df[\"label\"], tokenizer)\n    val_dataset = SentimentDataset(val_df[\"\
           text\"], val_df[\"label\"], tokenizer)\n\n    training_args = TrainingArguments(\n\
           \        output_dir=\"./results\",\n        num_train_epochs=num_epochs,\n\
           \        per_device_train_batch_size=batch_size,\n        evaluation_strategy=\"\
@@ -300,30 +307,39 @@ deploymentSpec:
           : f1}\n\n    trainer = Trainer(\n        model=model,\n        args=training_args,\n\
           \        train_dataset=train_dataset,\n        eval_dataset=val_dataset,\n\
           \        compute_metrics=compute_metrics,\n    )\n\n    trainer.train()\n\
-          \    tokenizer.save_pretrained(trained_model.path) \n    trainer.save_model(trained_model.path)\n\
+          \n    tokenizer.save_pretrained(trained_model.path)\n    trainer.save_model(trained_model.path)\n\
           \n    # Ensure the output directory exists\n    os.makedirs(metrics.path,\
           \ exist_ok=True)\n\n    # Compute final metrics\n    eval_metrics = trainer.evaluate()\n\
           \    metrics_path = os.path.join(metrics.path, \"train_metrics.json\")\n\
-          \    with open(metrics_path, \"w\") as f:\n        json.dump(eval_metrics,\
-          \ f)\n\n    # Upload metrics to GCS\n    storage_client = storage.Client()\n\
-          \    bucket_name = metrics.path.split(\"/\")[2]\n    destination_blob_name\
+          \n    import json \n\n    with open(metrics_path, \"w\") as f:\n       \
+          \ json.dump(eval_metrics, f)\n\n    from google.cloud import storage\n\n\
+          \    # Upload metrics to GCS\n    storage_client = storage.Client()\n  \
+          \  bucket_name = metrics.path.split(\"/\")[2]\n    destination_blob_name\
           \ = \"/\".join(metrics.path.split(\"/\")[3:]) + \"/train_metrics.json\"\n\
           \    blob = storage_client.bucket(bucket_name).blob(destination_blob_name)\n\
           \    blob.upload_from_filename(metrics_path)\n\n"
-        image: python:3.9
+        image: us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-12.py310:latest
         resources:
           accelerator:
             count: '1'
-            resourceCount: '1'
-            resourceType: NVIDIA_TESLA_T4
             type: NVIDIA_TESLA_T4
-          resourceCpuLimit: '8'
-          resourceMemoryLimit: 32G
+          cpuLimit: 8.0
+          memoryLimit: 32.0
 pipelineInfo:
   description: A pipeline for sentiment analysis using a transformer model
   name: sentiment-analysis-pipeline
 root:
   dag:
+    outputs:
+      artifacts:
+        evaluate-model-metrics:
+          artifactSelectors:
+          - outputArtifactKey: metrics
+            producerSubtask: evaluate-model
+        train-model-metrics:
+          artifactSelectors:
+          - outputArtifactKey: metrics
+            producerSubtask: train-model
     tasks:
       evaluate-model:
         cachingOptions:
@@ -432,5 +448,15 @@ root:
         defaultValue: 0.01
         isOptional: true
         parameterType: NUMBER_DOUBLE
+  outputDefinitions:
+    artifacts:
+      evaluate-model-metrics:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      train-model-metrics:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.10.1
+sdkVersion: kfp-2.0.0
