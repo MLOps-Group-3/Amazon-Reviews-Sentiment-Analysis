@@ -18,11 +18,13 @@ def main():
     initialize_vertex_ai(project_id, region)
     
     # GCS path to your 1% sample data
-    gcs_source = "gs://amazon-reviews-sentiment-analysis-vertex-ai/data/labeled_data_1perc.csv"
+    # gcs_source = "gs://amazon-reviews-sentiment-analysis-vertex-ai/data/labeled_data_1perc.csv"
+    gcs_source = "gs://amazon-reviews-sentiment-analysis-vertex-ai/data/labeled_data.csv"
     
     # Create a dataset
     dataset = create_dataset(
-        display_name="amazon_reviews_sentiment_labeled_data_1perc",
+        # display_name="amazon_reviews_sentiment_labeled_data_1perc",
+        display_name="amazon_reviews_sentiment_labeled_data",
         gcs_source=gcs_source
     )
     

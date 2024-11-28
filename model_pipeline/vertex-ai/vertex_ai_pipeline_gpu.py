@@ -1,15 +1,17 @@
 import os
+import kfp.compiler as compiler
 from google.cloud import aiplatform
 from google.cloud.aiplatform import pipeline_jobs
 from kfp import dsl
-from kfp.dsl import component, Input, Output, Dataset, Model, Metrics, ClassificationMetrics
+from kfp.dsl import component, Input, Output, Dataset, Model, Metrics
 
 # Set up Google Cloud project details
 PROJECT_ID = "amazonreviewssentimentanalysis"
 REGION = "us-central1"
 BUCKET_NAME = "amazon-reviews-sentiment-analysis-vertex-ai"
 PIPELINE_ROOT = f"gs://{BUCKET_NAME}/pipeline/vertex-ai"
-DATASET_ID = "2110090906806779904"  # Your dataset ID
+DATASET_ID = "2110090906806779904"  # 1% Dataset
+# DATASET_ID = "7683013970701058048" # Actual Sampled and Labeled Data
 
 # Initialize Vertex AI
 aiplatform.init(project=PROJECT_ID, location=REGION)
@@ -80,6 +82,7 @@ def prepare_data(
         "transformers",
         "scikit-learn",
         "accelerate>=0.26.0",
+        "google-cloud-storage",
     ],
     base_image="python:3.9",
 )
@@ -99,7 +102,10 @@ def train_model(
     import pandas as pd
     import torch
     from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-    from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+    from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+    from google.cloud import storage
+    import json
+    import os
 
     class SentimentDataset(torch.utils.data.Dataset):
         def __init__(self, texts, labels, tokenizer, max_length=128):
@@ -133,9 +139,9 @@ def train_model(
     val_df = pd.read_csv(val_data.path)
     class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
 
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = BertTokenizer.from_pretrained(model_name)
     model = BertForSequenceClassification.from_pretrained(
-        "bert-base-uncased", num_labels=len(class_labels)
+        model_name, num_labels=len(class_labels)
     )
 
     train_dataset = SentimentDataset(train_df["text"], train_df["label"], tokenizer)
@@ -168,15 +174,32 @@ def train_model(
     )
 
     trainer.train()
+    tokenizer.save_pretrained(trained_model.path) 
     trainer.save_model(trained_model.path)
+
+    # Ensure the output directory exists
+    os.makedirs(metrics.path, exist_ok=True)
+
+    # Compute final metrics
+    eval_metrics = trainer.evaluate()
+    metrics_path = os.path.join(metrics.path, "train_metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(eval_metrics, f)
+
+    # Upload metrics to GCS
+    storage_client = storage.Client()
+    bucket_name = metrics.path.split("/")[2]
+    destination_blob_name = "/".join(metrics.path.split("/")[3:]) + "/train_metrics.json"
+    blob = storage_client.bucket(bucket_name).blob(destination_blob_name)
+    blob.upload_from_filename(metrics_path)
 
 
 @component(
     packages_to_install=[
         "pandas",
-        "scikit-learn",
         "torch",
         "transformers",
+        "scikit-learn",
         "google-cloud-storage",
     ],
     base_image="python:3.9",
@@ -185,135 +208,162 @@ def evaluate_model(
     model_path: Input[Model],
     test_data: Input[Dataset],
     class_labels: Input[Dataset],
-    metrics: Output[Dataset],
+    metrics: Output[Metrics],
 ) -> None:
     import pandas as pd
     import torch
-    import os
-    from sklearn.metrics import (
-        accuracy_score,
-        precision_score,
-        recall_score,
-        f1_score,
-        confusion_matrix,
-        classification_report,
-    )
     from transformers import BertTokenizer, BertForSequenceClassification
-    from torch.utils.data import DataLoader, TensorDataset
+    from sklearn.metrics import accuracy_score, precision_recall_fscore_support
     from google.cloud import storage
     import json
+    import os
 
-    # Load the model
-    model = BertForSequenceClassification.from_pretrained(model_path.path)
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    class SentimentDataset(torch.utils.data.Dataset):
+        def __init__(self, texts, labels, tokenizer, max_length=128):
+            self.texts = texts
+            self.labels = labels
+            self.tokenizer = tokenizer
+            self.max_length = max_length
+
+        def __len__(self):
+            return len(self.texts)
+
+        def __getitem__(self, idx):
+            text = self.texts[idx]
+            label = self.labels[idx]
+
+            encoding = self.tokenizer(
+                text,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt",
+            )
+            return {
+                "input_ids": encoding["input_ids"].flatten(),
+                "attention_mask": encoding["attention_mask"].flatten(),
+                "labels": torch.tensor(label, dtype=torch.long),
+            }
 
     # Load test data and class labels
     test_df = pd.read_csv(test_data.path)
-    class_labels = pd.read_csv(class_labels.path, header=None)[0].tolist()
+    class_labels = pd.read_csv(class_labels.path, header=None).squeeze().tolist()
 
-    # Tokenize and create tensors
-    encoded_data = tokenizer.batch_encode_plus(
-        test_df["text"].tolist(),
-        add_special_tokens=True,
-        return_attention_mask=True,
-        pad_to_max_length=True,
-        max_length=128,
-        return_tensors="pt",
-    )
+    # Load the model
+    tokenizer = BertTokenizer.from_pretrained(model_path.path)
+    model = BertForSequenceClassification.from_pretrained(model_path.path)
 
-    input_ids = encoded_data["input_ids"]
-    attention_masks = encoded_data["attention_mask"]
-    true_labels = torch.tensor(test_df["label"].tolist())
-
-    # Create DataLoader for test data
-    dataset = TensorDataset(input_ids, attention_masks, true_labels)
-    dataloader = DataLoader(dataset, batch_size=32)
-
-    # Evaluate
+    test_dataset = SentimentDataset(test_df["text"], test_df["label"], tokenizer)
     model.eval()
-    predictions = []
-    true_labels_list = []
 
-    for batch in dataloader:
-        batch_input_ids, batch_attention_masks, batch_labels = tuple(t for t in batch)
+    predictions, true_labels = [], []
+    with torch.no_grad():
+        for batch in torch.utils.data.DataLoader(test_dataset, batch_size=16):
+            inputs = {
+                "input_ids": batch["input_ids"],
+                "attention_mask": batch["attention_mask"],
+            }
+            outputs = model(**inputs)
+            preds = outputs.logits.argmax(dim=1).cpu().numpy()
+            predictions.extend(preds)
+            true_labels.extend(batch["labels"].cpu().numpy())
 
-        with torch.no_grad():
-            outputs = model(batch_input_ids, attention_mask=batch_attention_masks)
+    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predictions, average="weighted")
+    accuracy = accuracy_score(true_labels, predictions)
 
-        logits = outputs.logits
-        preds = torch.argmax(logits, dim=1).cpu().numpy()
-        predictions.extend(preds)
-        true_labels_list.extend(batch_labels.cpu().numpy())
-
-    # Calculate metrics
-    accuracy = accuracy_score(true_labels_list, predictions)
-    precision = precision_score(true_labels_list, predictions, average="weighted")
-    recall = recall_score(true_labels_list, predictions, average="weighted")
-    f1 = f1_score(true_labels_list, predictions, average="weighted")
-    cm = confusion_matrix(true_labels_list, predictions)
-
-    # Create metrics dictionary
-    metrics_data = {
+    eval_results = {
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
-        "f1_score": f1,
-        "confusion_matrix": cm.tolist(),
-        "classification_report": classification_report(
-            true_labels_list, predictions, target_names=class_labels, output_dict=True
-        ),
+        "f1": f1,
     }
 
     # Ensure the output directory exists
     os.makedirs(metrics.path, exist_ok=True)
 
-    # Save metrics to a JSON file
-    metrics_path = os.path.join(metrics.path, "evaluation_metrics.json")
+    # Save evaluation metrics
+    metrics_path = os.path.join(metrics.path, "eval_metrics.json")
     with open(metrics_path, "w") as f:
-        json.dump(metrics_data, f, indent=4)
+        json.dump(eval_results, f)
 
-    print(f"Evaluation metrics saved to: {metrics_path}")
-
-    # Upload metrics JSON file to the specified bucket
+    # Upload metrics to GCS
     storage_client = storage.Client()
-    bucket_name = metrics.path.split("/")[2]  # Extract bucket name from path
-    bucket = storage_client.bucket(bucket_name)
-    destination_blob_name = "/".join(metrics.path.split("/")[3:]) + "/evaluation_metrics.json"
-    blob = bucket.blob(destination_blob_name)
+    bucket_name = metrics.path.split("/")[2]
+    destination_blob_name = "/".join(metrics.path.split("/")[3:]) + "/eval_metrics.json"
+    blob = storage_client.bucket(bucket_name).blob(destination_blob_name)
     blob.upload_from_filename(metrics_path)
-    print(f"Evaluation metrics uploaded to: gs://{bucket_name}/{destination_blob_name}")
-
-@dsl.pipeline(name="sentiment-analysis-pipeline")
-def sentiment_analysis_pipeline():
-    prepare_step = prepare_data(project_id=PROJECT_ID, region=REGION, dataset_id=DATASET_ID).set_caching_options(enable_caching=False)
-    train_step = train_model(
-        train_data=prepare_step.outputs["train_data"],
-        val_data=prepare_step.outputs["val_data"],
-        class_labels=prepare_step.outputs["class_labels"],
-        model_name="bert-base-uncased",
-        learning_rate=5e-5,
-        batch_size=16,
-        num_epochs=1,
-        weight_decay=0.01,
-        dropout_rate=0.1,
-    ).set_caching_options(enable_caching=False)
-    evaluate_model(
-        model_path=train_step.outputs["trained_model"],
-        test_data=prepare_step.outputs["test_data"],
-        class_labels=prepare_step.outputs["class_labels"],
-    ).set_caching_options(enable_caching=False)
 
 
-# Compile and submit pipeline
-from kfp.compiler import Compiler
-
-Compiler().compile(
-    pipeline_func=sentiment_analysis_pipeline, package_path="sentiment_analysis_pipeline.json"
+# Define the pipeline
+@dsl.pipeline(
+    name="Sentiment Analysis Pipeline",
+    description="A pipeline for sentiment analysis using a transformer model"
 )
+def sentiment_analysis_pipeline(
+    project_id: str,
+    region: str,
+    dataset_id: str,
+    model_name: str = "bert-base-uncased",
+    learning_rate: float = 2e-5,
+    batch_size: int = 32,
+    num_epochs: int = 3,
+    weight_decay: float = 0.01,
+    dropout_rate: float = 0.1,
+):
+    # Prepare data
+    prepare_data_task = prepare_data(
+        project_id=project_id,
+        region=region,
+        dataset_id=dataset_id,
+    )
 
-pipeline_job = pipeline_jobs.PipelineJob(
+    # Train model with specific resources
+    train_model_task = train_model(
+        train_data=prepare_data_task.outputs["train_data"],
+        val_data=prepare_data_task.outputs["val_data"],
+        class_labels=prepare_data_task.outputs["class_labels"],
+        model_name=model_name,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        num_epochs=num_epochs,
+        weight_decay=weight_decay,
+        dropout_rate=dropout_rate,
+    ).set_cpu_limit("8") \
+     .set_memory_limit("32G") \
+     .set_gpu_limit(1) \
+     .set_accelerator_type("NVIDIA_TESLA_T4")
+
+
+    # Evaluate model
+    evaluate_model_task = evaluate_model(
+        model_path=train_model_task.outputs["trained_model"],
+        test_data=prepare_data_task.outputs["test_data"],
+        class_labels=prepare_data_task.outputs["class_labels"],
+    ).set_cpu_limit("4") \
+     .set_memory_limit("16G") \
+     .set_gpu_limit(1) \
+     .set_accelerator_type("NVIDIA_TESLA_T4")
+
+# Compile the pipeline into a YAML file
+compiled_pipeline_path = "sentiment_analysis_pipeline.yaml"
+compiler.Compiler().compile(sentiment_analysis_pipeline, compiled_pipeline_path)
+
+# Define parameter values for the pipeline
+parameter_values = {
+    "project_id": PROJECT_ID,
+    "region": REGION,
+    "dataset_id": DATASET_ID,
+}
+
+# Create the pipeline job
+pipeline_job = aiplatform.PipelineJob(
     display_name="sentiment-analysis-pipeline",
-    template_path="sentiment_analysis_pipeline.json",
+    template_path=compiled_pipeline_path,
     pipeline_root=PIPELINE_ROOT,
+    location=REGION,
+    parameter_values=parameter_values,  # Pass pipeline parameters here
 )
-pipeline_job.submit()
+
+# Run the pipeline job
+pipeline_job.run(sync=True)
+
