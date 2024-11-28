@@ -1,0 +1,96 @@
+{
+  "components": {
+    "comp-prepare-data-component": {
+      "executorLabel": "exec-prepare-data-component",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "description": "Name of the GCS bucket.",
+            "parameterType": "STRING"
+          },
+          "data_path": {
+            "description": "Path to the dataset in GCS.",
+            "parameterType": "STRING"
+          },
+          "output_dir": {
+            "description": "Output directory in GCS for saving split files.",
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "defaultPipelineRoot": "gs://model_deployment_bucket_arsa/pipeline",
+  "deploymentSpec": {
+    "executors": {
+      "exec-prepare-data-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "prepare_data_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'google-cloud-storage' 'scikit-learn' 'torch' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef prepare_data_component(\n    bucket_name: str,\n    data_path: str,\n    output_dir: str,\n) -> str:\n    \"\"\"\n    Splits the dataset into train, validation, and test sets and saves them in GCS.\n\n    Args:\n        bucket_name (str): Name of the GCS bucket.\n        data_path (str): Path to the dataset in GCS.\n        output_dir (str): Output directory in GCS for saving split files.\n\n    Returns:\n        str: Output directory path in GCS where files are saved.\n    \"\"\"\n    import os\n    import pickle\n    import logging\n    from google.cloud import storage\n    # from utils.data_loader import load_and_process_data, split_data_by_timestamp\n\n    # Initialize logger\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(\"prepare_data_component\")\n\n    try:\n        # Initialize GCS client\n        logger.info(f\"Initializing GCS client for bucket: {bucket_name}\")\n        storage_client = storage.Client()\n        bucket = storage_client.bucket(bucket_name)\n\n        # Check if the file exists in GCS\n        blob = bucket.blob(data_path)\n        if not blob.exists():\n            logger.error(f\"The file gs://{bucket_name}/{data_path} does not exist.\")\n            raise ValueError(f\"The file gs://{bucket_name}/{data_path} does not exist.\")\n\n        # Download the dataset to a temporary local file\n        local_data_path = \"/tmp/input.csv\"\n        logger.info(f\"Downloading dataset from gs://{bucket_name}/{data_path} to {local_data_path}\")\n        blob.download_to_filename(local_data_path)\n\n        # Process the dataset using `load_and_process_data`\n        logger.info(\"Processing dataset...\")\n        df, label_encoder = load_and_process_data(local_data_path)\n\n        # Split the dataset using `split_data_by_timestamp`\n        logger.info(\"Splitting dataset into train, validation, and test sets...\")\n        train_df, val_df, test_df = split_data_by_timestamp(df)\n\n        # Save splits locally\n        local_output_dir = \"/tmp/split_data\"\n        os.makedirs(local_output_dir, exist_ok=True)\n        splits = {\"train\": train_df, \"val\": val_df, \"test\": test_df}\n        for split_name, split_df in splits.items():\n            file_path = os.path.join(local_output_dir, f\"{split_name}.pkl\")\n            with open(file_path, \"wb\") as f:\n                pickle.dump(split_df, f)\n            logger.info(f\"Saved {split_name} data locally at {file_path}\")\n\n        # Save the label encoder\n        label_encoder_path = os.path.join(local_output_dir, \"label_encoder.pkl\")\n        with open(label_encoder_path, \"wb\") as f:\n            pickle.dump(label_encoder, f)\n        logger.info(f\"Saved label encoder locally at {label_encoder_path}\")\n\n        # Upload splits to GCS\n        logger.info(f\"Uploading processed data to gs://{bucket_name}/{output_dir}/\")\n        for file_name in os.listdir(local_output_dir):\n            local_file_path = os.path.join(local_output_dir, file_name)\n            blob = bucket.blob(f\"{output_dir}/{file_name}\")\n            blob.upload_from_filename(local_file_path)\n            logger.info(f\"Uploaded {file_name} to gs://{bucket_name}/{output_dir}/\")\n\n        return f\"Data successfully saved to gs://{bucket_name}/{output_dir}/\"\n\n    except Exception as e:\n        logger.error(f\"Error in prepare_data_component: {str(e)}\")\n        raise RuntimeError(f\"Error in prepare_data_component: {str(e)}\")\n\n"
+          ],
+          "image": "python:3.9-slim"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "prepare-data-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "prepare-data-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-prepare-data-component"
+          },
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "runtimeValue": {
+                  "constant": "model_deployment_bucket_arsa"
+                }
+              },
+              "data_path": {
+                "runtimeValue": {
+                  "constant": "data/labeled_data_1perc.csv"
+                }
+              },
+              "output_dir": {
+                "runtimeValue": {
+                  "constant": "prepared_data"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "prepare-data-component"
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.10.0"
+}
