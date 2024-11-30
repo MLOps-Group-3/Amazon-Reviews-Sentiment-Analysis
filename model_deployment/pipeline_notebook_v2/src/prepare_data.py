@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 from utils.data_loader import split_data_by_timestamp, load_and_process_data  
-# from config import DATA_PATH, DATA_SAVE_PATH
+from config import DATA_PATH, DATA_SAVE_PATH
 import pandas as pd
 from sklearn.utils import resample
 
