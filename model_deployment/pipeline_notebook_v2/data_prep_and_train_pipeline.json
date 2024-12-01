@@ -21,12 +21,9 @@
         }
       },
       "outputDefinitions": {
-        "artifacts": {
-          "bias_metrics": {
-            "artifactType": {
-              "schemaTitle": "system.Metrics",
-              "schemaVersion": "0.0.1"
-            }
+        "parameters": {
+          "bias_detect": {
+            "parameterType": "STRING"
           }
         }
       }
@@ -65,14 +62,6 @@
       "dag": {
         "outputs": {
           "artifacts": {
-            "bias-detect-component-bias_metrics": {
-              "artifactSelectors": [
-                {
-                  "outputArtifactKey": "bias_metrics",
-                  "producerSubtask": "bias-detect-component"
-                }
-              ]
-            },
             "evaluate-slices-component-eval_slices_metrics": {
               "artifactSelectors": [
                 {
@@ -120,52 +109,36 @@
               "name": "bias-detect-component"
             }
           },
-          "build-and-push-torchserve-image": {
-            "cachingOptions": {
-              "enableCache": true
-            },
+          "condition-2": {
             "componentRef": {
-              "name": "comp-build-and-push-torchserve-image"
+              "name": "comp-condition-2"
             },
             "dependentTasks": [
               "bias-detect-component"
             ],
             "inputs": {
               "artifacts": {
-                "model_gcs_path": {
+                "pipelinechannel--train-save-stage-model": {
                   "componentInputArtifact": "pipelinechannel--train-save-stage-model"
                 }
               },
               "parameters": {
-                "bucket_name": {
-                  "runtimeValue": {
-                    "constant": "arsa_model_deployment_uscentral_v2"
+                "pipelinechannel--bias-detect-component-bias_detect": {
+                  "taskOutputParameter": {
+                    "outputParameterKey": "bias_detect",
+                    "producerTask": "bias-detect-component"
                   }
                 },
-                "code_bucket_path": {
-                  "runtimeValue": {
-                    "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
-                  }
-                },
-                "docker_image_name": {
-                  "runtimeValue": {
-                    "constant": "pytorch_predict_review_sentiment_bert_model"
-                  }
-                },
-                "gcp_project": {
-                  "runtimeValue": {
-                    "constant": "amazonreviewssentimentanalysis"
-                  }
-                },
-                "gcp_region": {
-                  "runtimeValue": {
-                    "constant": "us-central1"
-                  }
+                "pipelinechannel--evaluate-model-component-eval_pass": {
+                  "componentInputParameter": "pipelinechannel--evaluate-model-component-eval_pass"
                 }
               }
             },
             "taskInfo": {
-              "name": "build-and-push-torchserve-image"
+              "name": "bias-check-condtional-deploy"
+            },
+            "triggerPolicy": {
+              "condition": "inputs.parameter_values['pipelinechannel--bias-detect-component-bias_detect'] == 'false'"
             }
           },
           "evaluate-slices-component": {
@@ -224,24 +197,140 @@
           }
         },
         "parameters": {
-          "pipelinechannel--evaluate-model-component-f1_score": {
-            "parameterType": "NUMBER_DOUBLE"
+          "pipelinechannel--evaluate-model-component-eval_pass": {
+            "parameterType": "STRING"
           }
         }
       },
       "outputDefinitions": {
         "artifacts": {
-          "bias-detect-component-bias_metrics": {
-            "artifactType": {
-              "schemaTitle": "system.Metrics",
-              "schemaVersion": "0.0.1"
-            }
-          },
           "evaluate-slices-component-eval_slices_metrics": {
             "artifactType": {
               "schemaTitle": "system.Metrics",
               "schemaVersion": "0.0.1"
             }
+          }
+        }
+      }
+    },
+    "comp-condition-2": {
+      "dag": {
+        "tasks": {
+          "build-and-push-torchserve-image": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-build-and-push-torchserve-image"
+            },
+            "inputs": {
+              "artifacts": {
+                "model_gcs_path": {
+                  "componentInputArtifact": "pipelinechannel--train-save-stage-model"
+                }
+              },
+              "parameters": {
+                "bucket_name": {
+                  "runtimeValue": {
+                    "constant": "arsa_model_deployment_uscentral_v2"
+                  }
+                },
+                "code_bucket_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                  }
+                },
+                "docker_image_name": {
+                  "runtimeValue": {
+                    "constant": "pytorch_predict_review_sentiment_bert_model"
+                  }
+                },
+                "gcp_project": {
+                  "runtimeValue": {
+                    "constant": "amazonreviewssentimentanalysis"
+                  }
+                },
+                "gcp_region": {
+                  "runtimeValue": {
+                    "constant": "us-central1"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "build-and-push-torchserve-image"
+            }
+          },
+          "upload-model-to-registry": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-upload-model-to-registry"
+            },
+            "dependentTasks": [
+              "build-and-push-torchserve-image"
+            ],
+            "inputs": {
+              "parameters": {
+                "app_name": {
+                  "runtimeValue": {
+                    "constant": "review_sentiment_bert_model"
+                  }
+                },
+                "bucket_name": {
+                  "runtimeValue": {
+                    "constant": "arsa_model_deployment_uscentral_v2"
+                  }
+                },
+                "docker_image_uri": {
+                  "runtimeValue": {
+                    "constant": "gcr.io/amazonreviewssentimentanalysis/pytorch_predict_review_sentiment_bert_model"
+                  }
+                },
+                "model_description": {
+                  "runtimeValue": {
+                    "constant": "PyTorch serve deploymend model for amazon reviews classification"
+                  }
+                },
+                "model_display_name": {
+                  "runtimeValue": {
+                    "constant": "review_sentiment_bert_model-v1"
+                  }
+                },
+                "project_id": {
+                  "runtimeValue": {
+                    "constant": "amazonreviewssentimentanalysis"
+                  }
+                },
+                "region": {
+                  "runtimeValue": {
+                    "constant": "us-central1"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "upload-model-to-registry"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "artifacts": {
+          "pipelinechannel--train-save-stage-model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "pipelinechannel--bias-detect-component-bias_detect": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-model-component-eval_pass": {
+            "parameterType": "STRING"
           }
         }
       }
@@ -322,8 +411,8 @@
           }
         },
         "parameters": {
-          "f1_score": {
-            "parameterType": "NUMBER_DOUBLE"
+          "eval_pass": {
+            "parameterType": "STRING"
           }
         }
       }
@@ -415,6 +504,64 @@
           }
         }
       }
+    },
+    "comp-upload-model-to-registry": {
+      "executorLabel": "exec-upload-model-to-registry",
+      "inputDefinitions": {
+        "parameters": {
+          "app_name": {
+            "parameterType": "STRING"
+          },
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "docker_image_uri": {
+            "parameterType": "STRING"
+          },
+          "health_route": {
+            "defaultValue": "/ping",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "model_description": {
+            "parameterType": "STRING"
+          },
+          "model_display_name": {
+            "parameterType": "STRING"
+          },
+          "predict_route": {
+            "defaultValue": "/predictions/",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
+          },
+          "serving_container_ports": {
+            "defaultValue": [
+              7080.0
+            ],
+            "isOptional": true,
+            "parameterType": "LIST"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "model_display_name": {
+            "parameterType": "STRING"
+          },
+          "model_resource_name": {
+            "parameterType": "STRING"
+          },
+          "model_version": {
+            "parameterType": "STRING"
+          }
+        }
+      }
     }
   },
   "defaultPipelineRoot": "gs://arsa_model_deployment_uscentral_v2/pipeline_root/",
@@ -435,7 +582,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef bias_detect_component(\n    code_bucket_path: str,\n    metrics: Input[Metrics],\n    gcs_artifact_path: str,\n    bias_metrics: Output[Metrics],\n):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n    client = storage.Client()\n    bucket = client.bucket(code_bucket_path.split('/')[2])\n    prefix = '/'.join(code_bucket_path.split('/')[3:])\n    blobs = client.list_blobs(bucket, prefix=prefix)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    for blob in blobs:\n        if any(blob.name.endswith(ext) for ext in ALLOWED_EXTENSIONS):\n            relative_path = blob.name[len(prefix):].lstrip(\"/\")\n            file_path = os.path.join(code_dir, relative_path)\n            os.makedirs(os.path.dirname(file_path), exist_ok=True)\n            blob.download_to_filename(file_path)\n            logger.info(f\"Downloaded {blob.name} to {file_path}\")\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    def load_module_from_file(file_path):\n        module_name = os.path.splitext(os.path.basename(file_path))[0]\n        spec = importlib.util.spec_from_file_location(module_name, file_path)\n        module = importlib.util.module_from_spec(spec)\n        spec.loader.exec_module(module)\n        return module\n\n    # Ensure `evaluate_module_slices.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"bias_detect.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_module_slices.py` not found in {code_dir}\")\n\n    # Load `evaluate_module_slices.py` dynamically\n    bias_detect = load_module_from_file(evaluate_script_path)\n\n\n    # Call `gcp_eval` method from the module\n    biased_rows, f1_threshold = bias_detect.detect_bias(\n        slice_metrics_path=metrics.metadata[\"slice_metrics_csv\"],\n    )\n    bias_report = {}\n\n    # Log results\n    if not biased_rows.empty:\n        bias_report[\"bias_detected\"] = True\n        bias_report[\"details\"] = biased_rows.to_dict(orient=\"records\")\n\n        logger.warning(\"Potential bias detected in the following slices:\")\n        for _, row in biased_rows.iterrows():\n            logger.error(\n                f\"Slice Column: {row['Slice Column']}, Slice Value: {row['Slice Value']}, \"\n                f\"Samples: {row['Samples']}, F1 Score: {row['F1 Score']:.4f} (Threshold: {f1_threshold:.4f})\"\n            )\n        logger.error(\"Potential bias detected. Check bias_detection.log for details.\")\n    else:\n        bias_report[\"bias_detected\"] = False\n        bias_report[\"details\"] = []\n        logger.info(\"No significant bias detected.\")\n        # print(\"No significant bias detected.\")\n\n    # Save bias report as JSON to GCS\n    gcs_bucket_name = gcs_artifact_path.split('/')[2]\n    gcs_blob_path = '/'.join(gcs_artifact_path.split('/')[3:])\n    bias_json_path = f\"{gcs_blob_path}/bias.json\"\n\n    try:\n        client = storage.Client()\n        bucket = client.bucket(gcs_bucket_name)\n        blob = bucket.blob(bias_json_path)\n        blob.upload_from_string(json.dumps(bias_report, indent=4), content_type=\"application/json\")\n        logging.info(f\"Bias report saved to GCS at gs://{gcs_bucket_name}/{bias_json_path}\")\n    except Exception as e:\n        logging.error(f\"Failed to save bias report to GCS: {e}\")\n        raise\n\n    bias_metrics.log_metric(\"bias_detected\",)\n\n    # Raise an error if bias is detected to stop the pipeline\n    if bias_report[\"bias_detected\"]:\n        bias_metrics.log_metric(\"bias_detected\",True)\n        # raise RuntimeError(\"Bias detected in slice metrics. Stopping the pipeline.\")\n    else:\n        bias_metrics.log_metric(\"bias_detected\",False)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef bias_detect_component(\n    code_bucket_path: str,\n    metrics: Input[Metrics],\n    gcs_artifact_path: str,\n)-> NamedTuple(\"output\", [(\"bias_detect\", str)]):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n    client = storage.Client()\n    bucket = client.bucket(code_bucket_path.split('/')[2])\n    prefix = '/'.join(code_bucket_path.split('/')[3:])\n    blobs = client.list_blobs(bucket, prefix=prefix)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    for blob in blobs:\n        if any(blob.name.endswith(ext) for ext in ALLOWED_EXTENSIONS):\n            relative_path = blob.name[len(prefix):].lstrip(\"/\")\n            file_path = os.path.join(code_dir, relative_path)\n            os.makedirs(os.path.dirname(file_path), exist_ok=True)\n            blob.download_to_filename(file_path)\n            logger.info(f\"Downloaded {blob.name} to {file_path}\")\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    def load_module_from_file(file_path):\n        module_name = os.path.splitext(os.path.basename(file_path))[0]\n        spec = importlib.util.spec_from_file_location(module_name, file_path)\n        module = importlib.util.module_from_spec(spec)\n        spec.loader.exec_module(module)\n        return module\n\n    # Ensure `evaluate_module_slices.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"bias_detect.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_module_slices.py` not found in {code_dir}\")\n\n    # Load `evaluate_module_slices.py` dynamically\n    bias_detect = load_module_from_file(evaluate_script_path)\n\n\n    # Call `gcp_eval` method from the module\n    biased_rows, f1_threshold = bias_detect.detect_bias(\n        slice_metrics_path=metrics.metadata[\"slice_metrics_csv\"],\n    )\n    bias_report = {}\n\n    # Log results\n    if not biased_rows.empty:\n        bias_report[\"bias_detected\"] = True\n        bias_report[\"details\"] = biased_rows.to_dict(orient=\"records\")\n\n        logger.warning(\"Potential bias detected in the following slices:\")\n        for _, row in biased_rows.iterrows():\n            logger.error(\n                f\"Slice Column: {row['Slice Column']}, Slice Value: {row['Slice Value']}, \"\n                f\"Samples: {row['Samples']}, F1 Score: {row['F1 Score']:.4f} (Threshold: {f1_threshold:.4f})\"\n            )\n        logger.error(\"Potential bias detected. Check bias_detection.log for details.\")\n    else:\n        bias_report[\"bias_detected\"] = False\n        bias_report[\"details\"] = []\n        logger.info(\"No significant bias detected.\")\n        # print(\"No significant bias detected.\")\n\n    # Save bias report as JSON to GCS\n    gcs_bucket_name = gcs_artifact_path.split('/')[2]\n    gcs_blob_path = '/'.join(gcs_artifact_path.split('/')[3:])\n    bias_json_path = f\"{gcs_blob_path}/bias.json\"\n\n    try:\n        client = storage.Client()\n        bucket = client.bucket(gcs_bucket_name)\n        blob = bucket.blob(bias_json_path)\n        blob.upload_from_string(json.dumps(bias_report, indent=4), content_type=\"application/json\")\n        logging.info(f\"Bias report saved to GCS at gs://{gcs_bucket_name}/{bias_json_path}\")\n    except Exception as e:\n        logging.error(f\"Failed to save bias report to GCS: {e}\")\n        raise\n\n    # bias_metrics.log_metric(\"bias_detected\",)\n\n    # Raise an error if bias is detected to stop the pipeline\n    if bias_report[\"bias_detected\"]:\n        # bias_metrics.log_metric(\"bias_detected\",True)\n        bias_detect = \"true\"\n        return (bias_detect,)\n        # raise RuntimeError(\"Bias detected in slice metrics. Stopping the pipeline.\")\n    else:\n        bias_detect = \"false\"\n        return (bias_detect,)\n        # bias_metrics.log_metric(\"bias_detected\",False)\n\n"
           ],
           "image": "python:3.9"
         }
@@ -455,7 +602,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef build_and_push_torchserve_image(\n    code_bucket_path: str,  # This is the missing input parameter\n    gcp_project: str, \n    gcp_region: str, \n    bucket_name: str, \n    docker_image_name: str,\n    model_gcs_path: Input[Model]\n):\n    # Import inside the component\n    from google.cloud.devtools import cloudbuild_v1 as cloudbuild\n    from google.cloud import storage\n    import logging\n    import os\n    # Set up logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Define environment variables\n    TORCH_SERVE_PATH = f\"gs://{bucket_name}/code/predictor/\"\n    CUSTOM_PREDICTOR_IMAGE_URI = f\"gcr.io/{gcp_project}/{docker_image_name}\"\n\n    # Set up the CloudBuild client\n    client = cloudbuild.CloudBuildClient()\n\n    # Log the environment variables for debugging\n    logger.info(f\"GCP Project: {gcp_project}\")\n    logger.info(f\"GCP Region: {gcp_region}\")\n    logger.info(f\"Bucket Name: {bucket_name}\")\n    logger.info(f\"TorchServe Path: {TORCH_SERVE_PATH}\")\n    logger.info(f\"Docker Image Name: {docker_image_name}\")\n    logger.info(f\"Custom Docker Image URI: {CUSTOM_PREDICTOR_IMAGE_URI}\")\n\n    model_gcs_path = model_gcs_path.metadata[\"gcs_path\"]\n    model_gcs_path = f\"gs://arsa_model_deployment_uscentral_v2/output/models/\"\n    # Create Cloud Build configuration (cloudbuild.yaml)\n    cloudbuild_config = {\n        'steps': [\n            # Step 1: Download code files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{code_bucket_path}/*',  # Copy all contents from the code folder\n                    '.'  # Copy to the current working directory\n                ],\n            },\n            # Step 2: Create the destination directory for model files\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"mkdir\",\n                    \"-p\",  # Create parent directories as needed\n                    \"./bert-sent-model\"\n                ],\n            },\n            # Step 3: Download model files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{model_gcs_path}*',  # Add wildcard to include all files in the folder\n                    './bert-sent-model/'  # Ensure the trailing slash\n                ],\n            },\n            # Step 3: List files in the current working directory\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"ls\",\n                    \"-R\",  # Recursive listing\n                    \".\"    # Current working directory\n                ],\n            },\n            # Step 4: Build the Docker image\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'build',\n                    '-t',\n                    CUSTOM_PREDICTOR_IMAGE_URI,\n                    '.'\n                ],\n            },\n            # Step 5: Push the Docker image to the container registry\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'push',\n                    CUSTOM_PREDICTOR_IMAGE_URI\n                ],\n            },\n        ],\n        'images': [CUSTOM_PREDICTOR_IMAGE_URI],\n    }\n\n    # Create a Cloud Build build request\n    build = cloudbuild.Build(\n        steps=cloudbuild_config['steps'],\n        images=cloudbuild_config['images'],\n    )\n\n    # Trigger Cloud Build job\n    build_response = client.create_build(project_id=gcp_project, build=build)\n\n    logging.info(\"IN PROGRESS:\")\n    logging.info(build_response.metadata)\n\n    # get build status\n    result = build_response.result()\n    logging.info(\"RESULT:\", result.status)\n\n\n# @dsl.pipeline(\n#     name=\"data-prep-and-train\",\n#     pipeline_root=f\"gs://{BUCKET_NAME}/pipeline_root/\",\n# )\n# def data_prep_and_train_pipeline():\n#     # Step 1: Data Preparation\n#     data_prep_task = data_prep_stage(\n#         code_bucket_path=SOURCE_CODE,\n#         input_path=DATA_PATH,\n#         output_dir=OUTPUT_DIR,\n#     )\n\n#     # Step 2: Training and Saving Model\n#     train_save_task = train_save_stage(\n#         code_bucket_path=SOURCE_CODE,\n#         data_path=OUTPUT_DIR,\n#         model_save_path=MODEL_SAVE_PATH,\n#         train_data=data_prep_task.outputs[\"train_data\"],\n#         val_data=data_prep_task.outputs[\"val_data\"],\n\n#     ).set_cpu_limit(\"8\") \\\n#      .set_memory_limit(\"32G\") \\\n#      .set_gpu_limit(1) \\\n#      .set_accelerator_type(\"NVIDIA_TESLA_T4\")\n\n#     evaluate_task = evaluate_model_component(\n#         code_bucket_path=SOURCE_CODE,\n#         model_gcs_path=train_save_task.outputs[\"model\"],  # Pass Model artifact\n#         test_data=data_prep_task.outputs[\"test_data\"],  # Pass Test Data artifact\n#         f1_threshold=0.6,\n#     )\n\n    # evaluate_slices_task = evaluate_slices_component(\n    #     code_bucket_path=SOURCE_CODE,\n    #     model_gcs_path=train_save_task.outputs[\"model\"], \n    #     test_data=data_prep_task.outputs[\"test_data\"],  \n    #     gcs_artifact_path = SLICE_METRIC_PATH,\n    #     f1_threshold=0.6,\n    # )\n    # bias_detect_task = bias_detect_component(\n    #     code_bucket_path=SOURCE_CODE,\n    #     metrics=evaluate_slices_task.outputs[\"eval_slices_metrics\"],\n    #     gcs_artifact_path = SLICE_METRIC_PATH,\n    # )\n\n    # build_and_push_torchserve_image_op = build_and_push_torchserve_image(\n    #         code_bucket_path=SOURCE_CODE, \n    #         gcp_project=GCP_PROJECT,\n    #         gcp_region=GCP_REGION,\n    #         bucket_name=BUCKET_NAME,\n    #         docker_image_name=\"pytorch_predict_review_sentiment_bert_model\",\n    #         model_gcs_path=train_save_task.outputs[\"model\"],\n    #     )\n\n    # train_save_task.after(data_prep_task)\n    # evaluate_task.after(train_save_task)\n\n    # evaluate_slices_task.after(evaluate_task)  \n    # bias_detect_task.after(evaluate_slices_task)\n    # build_and_push_torchserve_image_op.after(bias_detect_task)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef build_and_push_torchserve_image(\n    code_bucket_path: str,  # This is the missing input parameter\n    gcp_project: str, \n    gcp_region: str, \n    bucket_name: str, \n    docker_image_name: str,\n    model_gcs_path: Input[Model]\n):\n    # Import inside the component\n    from google.cloud.devtools import cloudbuild_v1 as cloudbuild\n    from google.cloud import storage\n    import logging\n    import os\n    # Set up logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Define environment variables\n    TORCH_SERVE_PATH = f\"gs://{bucket_name}/code/predictor/\"\n    CUSTOM_PREDICTOR_IMAGE_URI = f\"gcr.io/{gcp_project}/{docker_image_name}\"\n\n    # Set up the CloudBuild client\n    client = cloudbuild.CloudBuildClient()\n\n    # Log the environment variables for debugging\n    logger.info(f\"GCP Project: {gcp_project}\")\n    logger.info(f\"GCP Region: {gcp_region}\")\n    logger.info(f\"Bucket Name: {bucket_name}\")\n    logger.info(f\"TorchServe Path: {TORCH_SERVE_PATH}\")\n    logger.info(f\"Docker Image Name: {docker_image_name}\")\n    logger.info(f\"Custom Docker Image URI: {CUSTOM_PREDICTOR_IMAGE_URI}\")\n\n    model_gcs_path = model_gcs_path.metadata[\"gcs_path\"]\n    model_gcs_path = f\"gs://arsa_model_deployment_uscentral_v2/output/models/\"\n    # Create Cloud Build configuration (cloudbuild.yaml)\n    cloudbuild_config = {\n        'steps': [\n            # Step 1: Download code files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{code_bucket_path}/*',  # Copy all contents from the code folder\n                    '.'  # Copy to the current working directory\n                ],\n            },\n            # Step 2: Create the destination directory for model files\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"mkdir\",\n                    \"-p\",  # Create parent directories as needed\n                    \"./bert-sent-model\"\n                ],\n            },\n            # Step 3: Download model files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{model_gcs_path}*',  # Add wildcard to include all files in the folder\n                    './bert-sent-model/'  # Ensure the trailing slash\n                ],\n            },\n            # Step 3: List files in the current working directory\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"ls\",\n                    \"-R\",  # Recursive listing\n                    \".\"    # Current working directory\n                ],\n            },\n            # Step 4: Build the Docker image\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'build',\n                    '-t',\n                    CUSTOM_PREDICTOR_IMAGE_URI,\n                    '.'\n                ],\n            },\n            # Step 5: Push the Docker image to the container registry\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'push',\n                    CUSTOM_PREDICTOR_IMAGE_URI\n                ],\n            },\n        ],\n        'images': [CUSTOM_PREDICTOR_IMAGE_URI],\n    }\n\n    # Create a Cloud Build build request\n    build = cloudbuild.Build(\n        steps=cloudbuild_config['steps'],\n        images=cloudbuild_config['images'],\n    )\n\n    # Trigger Cloud Build job\n    build_response = client.create_build(project_id=gcp_project, build=build)\n\n    logging.info(\"IN PROGRESS:\")\n    logging.info(build_response.metadata)\n\n    # get build status\n    result = build_response.result()\n    logging.info(\"RESULT:\", result.status)\n\n"
           ],
           "image": "python:3.9"
         }
@@ -495,7 +642,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\nfrom builtins import float\n\ndef evaluate_model_component(\n    code_bucket_path: str,\n    model_gcs_path: Input[Model],\n    test_data: Input[Dataset],\n    eval_metrics: Output[Metrics],\n    f1_score: Output[float],\n    f1_threshold: float = 0.6,\n):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n    client = storage.Client()\n    bucket = client.bucket(code_bucket_path.split('/')[2])\n    prefix = '/'.join(code_bucket_path.split('/')[3:])\n    blobs = client.list_blobs(bucket, prefix=prefix)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    for blob in blobs:\n        if any(blob.name.endswith(ext) for ext in ALLOWED_EXTENSIONS):\n            relative_path = blob.name[len(prefix):].lstrip(\"/\")\n            file_path = os.path.join(code_dir, relative_path)\n            os.makedirs(os.path.dirname(file_path), exist_ok=True)\n            blob.download_to_filename(file_path)\n            logger.info(f\"Downloaded {blob.name} to {file_path}\")\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    def load_module_from_file(file_path):\n        module_name = os.path.splitext(os.path.basename(file_path))[0]\n        spec = importlib.util.spec_from_file_location(module_name, file_path)\n        module = importlib.util.module_from_spec(spec)\n        spec.loader.exec_module(module)\n        return module\n\n    # Ensure `evaluate_model.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"evaluate_model.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_model.py` not found in {code_dir}\")\n\n    # Load `evaluate_model.py` dynamically\n    evaluate_module = load_module_from_file(evaluate_script_path)\n\n    logger.info(f\"model_gcs_path : {model_gcs_path},\\t model_gcs_path.uri {model_gcs_path.uri}, metadata {model_gcs_path.metadata['gcs_path']}\")\n    # Call `gcp_eval` method from the module\n    accuracy, precision, recall, f1 = evaluate_module.gcp_eval(\n        test_df=test_data,\n        model_path=model_gcs_path.metadata[\"gcs_path\"],\n    )\n\n    # Log metrics to Vertex AI\n    eval_metrics.log_metric(\"accuracy\", accuracy)\n    eval_metrics.log_metric(\"precision\", precision)\n    eval_metrics.log_metric(\"recall\", recall)\n    eval_metrics.log_metric(\"f1\", f1)\n    f1_score.output = f1\n    # Conditional check\n    if f1 >= f1_threshold:\n        logger.info(f\"Model passed the F1 threshold: {f1:.4f} >= {f1_threshold}\")\n    else:\n        logger.error(f\"Model failed to meet the F1 threshold: {f1:.4f} < {f1_threshold}\")\n        # raise ValueError(f\"F1 score {f1:.4f} is below the threshold {f1_threshold}\")\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model_component(\n    code_bucket_path: str,\n    model_gcs_path: Input[Model],\n    test_data: Input[Dataset],\n    eval_metrics: Output[Metrics],\n    # f1_score: Output[float],\n    f1_threshold: float = 0.6,\n)-> NamedTuple(\"output\", [(\"eval_pass\", str)]):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n    client = storage.Client()\n    bucket = client.bucket(code_bucket_path.split('/')[2])\n    prefix = '/'.join(code_bucket_path.split('/')[3:])\n    blobs = client.list_blobs(bucket, prefix=prefix)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    for blob in blobs:\n        if any(blob.name.endswith(ext) for ext in ALLOWED_EXTENSIONS):\n            relative_path = blob.name[len(prefix):].lstrip(\"/\")\n            file_path = os.path.join(code_dir, relative_path)\n            os.makedirs(os.path.dirname(file_path), exist_ok=True)\n            blob.download_to_filename(file_path)\n            logger.info(f\"Downloaded {blob.name} to {file_path}\")\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    def load_module_from_file(file_path):\n        module_name = os.path.splitext(os.path.basename(file_path))[0]\n        spec = importlib.util.spec_from_file_location(module_name, file_path)\n        module = importlib.util.module_from_spec(spec)\n        spec.loader.exec_module(module)\n        return module\n\n    # Ensure `evaluate_model.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"evaluate_model.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_model.py` not found in {code_dir}\")\n\n    # Load `evaluate_model.py` dynamically\n    evaluate_module = load_module_from_file(evaluate_script_path)\n\n    logger.info(f\"model_gcs_path : {model_gcs_path},\\t model_gcs_path.uri {model_gcs_path.uri}, metadata {model_gcs_path.metadata['gcs_path']}\")\n    # Call `gcp_eval` method from the module\n    accuracy, precision, recall, f1 = evaluate_module.gcp_eval(\n        test_df=test_data,\n        model_path=model_gcs_path.metadata[\"gcs_path\"],\n    )\n\n    # Log metrics to Vertex AI\n    eval_metrics.log_metric(\"accuracy\", accuracy)\n    eval_metrics.log_metric(\"precision\", precision)\n    eval_metrics.log_metric(\"recall\", recall)\n    eval_metrics.log_metric(\"f1\", f1)\n    # Conditional check\n    if f1 >= f1_threshold:\n        logger.info(f\"Model passed the F1 threshold: {f1:.4f} >= {f1_threshold}\")\n        eval_pass = \"true\"\n        return (eval_pass,)\n    else:\n        logger.error(f\"Model failed to meet the F1 threshold: {f1:.4f} < {f1_threshold}\")\n        eval_pass = \"false\"\n        return (eval_pass,)\n\n        # raise ValueError(f\"F1 score {f1:.4f} is below the threshold {f1_threshold}\")\n\n"
           ],
           "image": "python:3.9"
         }
@@ -547,6 +694,26 @@
             "memoryLimit": 32.0
           }
         }
+      },
+      "exec-upload-model-to-registry": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "upload_model_to_registry"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-aiplatform' 'google-auth' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef upload_model_to_registry(\n    project_id: str,\n    region: str,\n    bucket_name: str,\n    model_display_name: str,\n    docker_image_uri: str,\n    model_description: str,\n    app_name: str,\n    health_route: str = \"/ping\",\n    predict_route: str = \"/predictions/\",\n    serving_container_ports: list = [7080],\n) -> NamedTuple(\"Outputs\", [(\"model_display_name\", str), (\"model_resource_name\", str), (\"model_version\", str)]):\n    \"\"\"Uploads the model to the AI platform and ensures versioning.\"\"\"\n    from google.cloud import aiplatform\n\n    # Initialize the AI Platform\n    aiplatform.init(project=project_id, location=region, staging_bucket=bucket_name)\n\n    # Check if the model with the same display name exists\n    existing_models = aiplatform.Model.list(filter=f\"display_name={model_display_name}\")\n\n    if existing_models:\n        # Model exists, register as a new version\n        model_resource_name = existing_models[0].resource_name\n        print(f\"Model with display name '{model_display_name}' exists. Registering as a new version.\")\n        model_version = f\"v{len(existing_models) + 1}\"  # Increment version number\n    else:\n        # Model does not exist, create a new one\n        model_resource_name = None\n        print(f\"Model with display name '{model_display_name}' does not exist. Creating a new model.\")\n        model_version = \"v1\"\n\n    # Upload the model\n    model = aiplatform.Model.upload(\n        display_name=model_display_name,\n        description=model_description,\n        serving_container_image_uri=docker_image_uri,\n        serving_container_predict_route=predict_route + app_name,\n        serving_container_health_route=health_route,\n        serving_container_ports=serving_container_ports,\n        parent_model=model_resource_name,  # Register under an existing model if applicable\n    )\n\n    model.wait()\n\n    # Return output information\n    return (model.display_name, model.resource_name, model_version)\n\n\n# @dsl.pipeline(\n#     name=\"data-prep-and-train\",\n#     pipeline_root=f\"gs://{BUCKET_NAME}/pipeline_root/\",\n# )\n# def data_prep_and_train_pipeline():\n#     # Step 1: Data Preparation\n#     data_prep_task = data_prep_stage(\n#         code_bucket_path=SOURCE_CODE,\n#         input_path=DATA_PATH,\n#         output_dir=OUTPUT_DIR,\n#     )\n\n#     # Step 2: Training and Saving Model\n#     train_save_task = train_save_stage(\n#         code_bucket_path=SOURCE_CODE,\n#         data_path=OUTPUT_DIR,\n#         model_save_path=MODEL_SAVE_PATH,\n#         train_data=data_prep_task.outputs[\"train_data\"],\n#         val_data=data_prep_task.outputs[\"val_data\"],\n\n#     ).set_cpu_limit(\"8\") \\\n#      .set_memory_limit(\"32G\") \\\n#      .set_gpu_limit(1) \\\n#      .set_accelerator_type(\"NVIDIA_TESLA_T4\")\n\n#     evaluate_task = evaluate_model_component(\n#         code_bucket_path=SOURCE_CODE,\n#         model_gcs_path=train_save_task.outputs[\"model\"],  # Pass Model artifact\n#         test_data=data_prep_task.outputs[\"test_data\"],  # Pass Test Data artifact\n#         f1_threshold=0.6,\n#     )\n\n    # evaluate_slices_task = evaluate_slices_component(\n    #     code_bucket_path=SOURCE_CODE,\n    #     model_gcs_path=train_save_task.outputs[\"model\"], \n    #     test_data=data_prep_task.outputs[\"test_data\"],  \n    #     gcs_artifact_path = SLICE_METRIC_PATH,\n    #     f1_threshold=0.6,\n    # )\n    # bias_detect_task = bias_detect_component(\n    #     code_bucket_path=SOURCE_CODE,\n    #     metrics=evaluate_slices_task.outputs[\"eval_slices_metrics\"],\n    #     gcs_artifact_path = SLICE_METRIC_PATH,\n    # )\n\n    # build_and_push_torchserve_image_op = build_and_push_torchserve_image(\n    #         code_bucket_path=SOURCE_CODE, \n    #         gcp_project=GCP_PROJECT,\n    #         gcp_region=GCP_REGION,\n    #         bucket_name=BUCKET_NAME,\n    #         docker_image_name=\"pytorch_predict_review_sentiment_bert_model\",\n    #         model_gcs_path=train_save_task.outputs[\"model\"],\n    #     )\n\n    # train_save_task.after(data_prep_task)\n    # evaluate_task.after(train_save_task)\n\n    # evaluate_slices_task.after(evaluate_task)  \n    # bias_detect_task.after(evaluate_slices_task)\n    # build_and_push_torchserve_image_op.after(bias_detect_task)\n\n"
+          ],
+          "image": "python:3.9"
+        }
       }
     }
   },
@@ -557,14 +724,6 @@
     "dag": {
       "outputs": {
         "artifacts": {
-          "bias-detect-component-bias_metrics": {
-            "artifactSelectors": [
-              {
-                "outputArtifactKey": "bias-detect-component-bias_metrics",
-                "producerSubtask": "condition-1"
-              }
-            ]
-          },
           "evaluate-model-component-eval_metrics": {
             "artifactSelectors": [
               {
@@ -617,19 +776,19 @@
               }
             },
             "parameters": {
-              "pipelinechannel--evaluate-model-component-f1_score": {
+              "pipelinechannel--evaluate-model-component-eval_pass": {
                 "taskOutputParameter": {
-                  "outputParameterKey": "f1_score",
+                  "outputParameterKey": "eval_pass",
                   "producerTask": "evaluate-model-component"
                 }
               }
             }
           },
           "taskInfo": {
-            "name": "condition-1"
+            "name": "conditional-validation-check"
           },
           "triggerPolicy": {
-            "condition": "inputs.parameter_values['pipelinechannel--evaluate-model-component-f1_score'] > 0.6"
+            "condition": "inputs.parameter_values['pipelinechannel--evaluate-model-component-eval_pass'] == 'true'"
           }
         },
         "data-prep-stage": {
@@ -756,12 +915,6 @@
     },
     "outputDefinitions": {
       "artifacts": {
-        "bias-detect-component-bias_metrics": {
-          "artifactType": {
-            "schemaTitle": "system.Metrics",
-            "schemaVersion": "0.0.1"
-          }
-        },
         "evaluate-model-component-eval_metrics": {
           "artifactType": {
             "schemaTitle": "system.Metrics",
