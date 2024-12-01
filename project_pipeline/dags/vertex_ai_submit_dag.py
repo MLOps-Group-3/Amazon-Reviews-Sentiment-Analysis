@@ -5,6 +5,7 @@ from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
 from google.cloud import aiplatform
 import time
+from model_utils.pipeline import run_and_monitor_pipeline
 
 # Fetch environment variables
 SMTP_USER = os.getenv("SMTP_USER", "mlopsgrp3@gmail.com")
