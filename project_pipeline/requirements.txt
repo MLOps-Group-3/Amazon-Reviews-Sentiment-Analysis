@@ -5,7 +5,7 @@ requests==2.32.2
 python-dotenv==0.21.0
 nltk==3.9.1
 emoji==2.14.0
-snorkel==0.10.0
+snorkel
 vaderSentiment==3.3.2
 
 # For vertex AI

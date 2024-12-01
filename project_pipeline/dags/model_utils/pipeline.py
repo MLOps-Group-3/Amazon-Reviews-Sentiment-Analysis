@@ -1,31 +1,36 @@
-def run_and_monitor_pipeline(): 
+def run_and_monitor_pipeline(SERVICE_ACCOUNT_KEY_PATH,GCP_PROJECT="amazonreviewssentimentanalysis",BUCKET_NAME="model-deployment-from-airflow",GCP_REGION="us-central1"): 
     import kfp
     from kfp.v2 import dsl
     from kfp.v2.dsl import component, Input, Output, Dataset, Artifact
     from google.cloud import storage
     import os
     from google.cloud import aiplatform
+    from google.oauth2 import service_account
+
+    # # Set Service Account Key Path
+    # SERVICE_ACCOUNT_KEY_PATH = "path/to/your-service-account-key.json"  # Replace with your key file path
+    
+    # Authenticate using service account key
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = SERVICE_ACCOUNT_KEY_PATH
+    # Initialize credentials
+    credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_KEY_PATH)
 
     # Environment Variables
-    GCP_PROJECT = "amazonreviewssentimentanalysis"
-    GCP_REGION = "us-central1"
-    BUCKET_NAME = "arsa_model_deployment_uscentral_v2"
+    # GCP_PROJECT = "amazonreviewssentimentanalysis"
+    # GCP_REGION = "us-central1"
+    # BUCKET_NAME = "arsa_model_deployment_uscentral_v2"
     DATA_PATH = f"gs://{BUCKET_NAME}/input/labeled_data_1perc.csv"
     OUTPUT_DIR = f"gs://{BUCKET_NAME}/output/data/"
     CODE_BUCKET_PATH = f"gs://{BUCKET_NAME}/code"
-    # DATA_PREP_CODE = f"gs://{BUCKET_NAME}/code/data_prep"
     SOURCE_CODE = f"gs://{BUCKET_NAME}/code/src"
     SLICE_METRIC_PATH = f"gs://{BUCKET_NAME}/output/metrics"
-    # TRAINER_CODE = f"gs://{BUCKET_NAME}/code/trainer"
     MODEL_SAVE_PATH = f"gs://{BUCKET_NAME}/output/models/final_model.pth"
-    # TORCH_SERVE_PATH = f"gs://{BUCKET_NAME}/code/predictor/"
     VERSION = 1
     APP_NAME = "review_sentiment_bert_model"
 
     MODEL_DISPLAY_NAME = f"{APP_NAME}-v{VERSION}"
-    MODEL_DESCRIPTION = "PyTorch serve deploymend model for amazon reviews classification"
+    MODEL_DESCRIPTION = "PyTorch serve deployment model for Amazon reviews classification"
 
-    # MODEL_NAME = APP_NAME
     health_route = "/ping"
     predict_route = f"/predictions/{APP_NAME}"
     serving_container_ports = [7080]
@@ -35,29 +40,9 @@ def run_and_monitor_pipeline():
     DOCKER_IMAGE_NAME = "pytorch_predict_{APP_NAME}"
     CUSTOM_PREDICTOR_IMAGE_URI = f"gcr.io/{PROJECT_ID}/pytorch_predict_{APP_NAME}"
 
-    # Initialize Google Cloud Storage client
-    client = storage.Client(project=GCP_PROJECT)
+    # Initialize Google Cloud Storage client with credentials
+    client = storage.Client(project=GCP_PROJECT, credentials=credentials)
     bucket = client.bucket(BUCKET_NAME)
-
-    # Function to upload folder to GCS
-    def upload_folder_to_gcs(local_folder, bucket, destination_folder):
-        # Strip the `gs://<bucket_name>/` prefix from the destination path
-        if destination_folder.startswith(f"gs://{bucket.name}/"):
-            destination_folder = destination_folder[len(f"gs://{bucket.name}/"):]
-
-        for root, _, files in os.walk(local_folder):
-            for file in files:
-                local_path = os.path.join(root, file)
-                relative_path = os.path.relpath(local_path, local_folder)
-                print(local_path,relative_path)
-
-                gcs_path = os.path.join(destination_folder, local_path).replace("\\", "/")
-                blob = bucket.blob(gcs_path)
-                blob.upload_from_filename(local_path)
-                print(f"Uploaded {local_path} to gs://{bucket.name}/{gcs_path}")
-
-
-    upload_folder_to_gcs("src", bucket, CODE_BUCKET_PATH)
 
     from kfp.v2.dsl import (
         Input,
@@ -832,3 +817,7 @@ def run_and_monitor_pipeline():
     # pipeline_job.submit()
     pipeline_job.run(sync=True)
 
+
+
+if __name__ == '__main__':
+    run_and_monitor_pipeline(SERVICE_ACCOUNT_KEY_PATH='/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/project_pipeline/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json')

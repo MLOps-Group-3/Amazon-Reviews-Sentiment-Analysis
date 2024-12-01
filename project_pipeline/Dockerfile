@@ -1,5 +1,5 @@
 # Start with the official Apache Airflow image
-FROM apache/airflow:2.10.2
+FROM apache/airflow:2.10.2-python3.9
 
 # Set the environment variable for the data file path
 ENV FILE_PATH=/opt/airflow/data/sampled_data_2018_2019.csv
@@ -20,6 +20,10 @@ COPY dags /opt/airflow/dags
 #COPY plugins /opt/airflow/plugins
 #COPY config /opt/airflow/config
 COPY tests /opt/airflow/tests
+
+# Copy .env file into the container
+COPY .env /opt/airflow/.env
+
 
 # Expose port 8080 for the Airflow webserver
 EXPOSE 8080
