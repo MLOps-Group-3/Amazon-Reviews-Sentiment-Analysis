@@ -7,3 +7,13 @@ nltk==3.9.1
 emoji==2.14.0
 snorkel==0.10.0
 vaderSentiment==3.3.2
+
+# For vertex AI
+torch==1.12.1
+transformers==4.21.0
+scikit-learn
+google-cloud-storage
+gcsfs
+accelerate==0.12.0
+PyYAML>=6.0
+tensorboard
