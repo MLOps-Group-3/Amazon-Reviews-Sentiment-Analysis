@@ -1,6 +1,7 @@
 # Import necessary libraries
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
 from datetime import datetime, timedelta
 import os
@@ -58,7 +59,6 @@ def save_documents_task(ti):
     save_documents(documents, DOCUMENT_STORE_PATH)
     logger.info("Documents saved successfully.")
 
-
 # Document Processing Task Group Functions
 def load_documents_task():
     with open(DOCUMENTS_FILE_PATH, 'r') as f:
@@ -112,7 +112,6 @@ def save_refined_documents_task(ti):
     with open(REFINED_PROCESSED_DATA_PATH, 'w') as f:
         json.dump(documents, f, indent=4)
     logger.info("Refined documents saved successfully.")
-
 
 # Define the DAG
 with DAG(
@@ -182,5 +181,14 @@ with DAG(
 
         load_documents_task_op >> process_documents_task_op >> clean_and_validate_json_task_op >> save_refined_documents_task_op
 
-    # Define DAG-level task dependencies
-    rag_data_preprocessing_group >> document_processing_group
+    # Trigger the second DAG after all tasks in the first DAG are complete
+    trigger_second_dag = TriggerDagRunOperator(
+        task_id='trigger_second_dag',
+        trigger_dag_id='flatten_and_embeddings_dag',  # The ID of the second DAG
+        conf={"key": "value"},  # Optional: you can pass configuration if needed
+        wait_for_completion=True,  # Wait for the second DAG to finish before continuing
+        dag=dag
+    )
+
+    # Set dependencies for the first DAG
+    save_documents_task_op >> trigger_second_dag

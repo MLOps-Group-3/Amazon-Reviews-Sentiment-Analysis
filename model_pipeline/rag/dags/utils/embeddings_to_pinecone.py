@@ -21,7 +21,7 @@ environment = os.getenv("PINECONE_ENVIRONMENT")
 # GCS and Pinecone setup
 BUCKET_NAME = "amazon-reviews-sentiment-analysis"
 PREFIX = "RAG/"
-SERVICE_ACCOUNT_PATH = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+SERVICE_ACCOUNT_PATH = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
 
 # Pinecone Initialization
 pc = Pinecone(api_key=api_key, pool_threads=30)

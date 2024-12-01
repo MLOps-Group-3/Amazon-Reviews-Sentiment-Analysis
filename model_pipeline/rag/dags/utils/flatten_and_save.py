@@ -1,17 +1,27 @@
 import os
 import json
 import logging
+from google.cloud import storage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def flatten_and_save(input_file: str, output_dir: str):
+# GCS and Pinecone setup
+BUCKET_NAME = "amazon-reviews-sentiment-analysis"
+PREFIX = "test-rag/"
+SERVICE_ACCOUNT_PATH = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+
+# Initialize GCS client
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = SERVICE_ACCOUNT_PATH
+storage_client = storage.Client()
+bucket = storage_client.bucket(BUCKET_NAME)
+
+def flatten_and_save_to_gcs(input_file: str):
     """
-    Flatten and save JSON data into a hierarchical directory structure.
+    Flatten and save JSON data into a hierarchical directory structure in GCS.
 
     Args:
         input_file (str): Path to the input JSON file.
-        output_dir (str): Base directory to save the chunks.
     """
     try:
         # Load the input JSON file
@@ -24,21 +34,20 @@ def flatten_and_save(input_file: str, output_dir: str):
 
         # Iterate through each record in the list
         for record in data:
-            process_record(record, output_dir)
+            process_record_to_gcs(record)
 
-        logging.info("Flattening and saving completed successfully.")
+        logging.info("Flattening and uploading to GCS completed successfully.")
     except Exception as e:
-        logging.error("Error during flattening and saving: %s", str(e), exc_info=True)
+        logging.error("Error during flattening and saving to GCS: %s", str(e), exc_info=True)
         raise
 
 
-def process_record(record: dict, output_dir: str):
+def process_record_to_gcs(record: dict):
     """
-    Process a single record and save its chunks in the specified directory.
+    Process a single record and upload its chunks to GCS.
 
     Args:
         record (dict): A single record from the JSON data.
-        output_dir (str): Base directory to save the chunks.
     """
     try:
         # Extract metadata
@@ -46,38 +55,34 @@ def process_record(record: dict, output_dir: str):
         year = str(record.get("year", "Unknown_Year"))
         month = str(record.get("month", "Unknown_Month"))
 
-        # Define directory path
-        base_dir_path = os.path.join(output_dir, category, year, month)
-
-        # Ensure base directory exists
-        os.makedirs(base_dir_path, exist_ok=True)
+        # Construct GCS path prefix
+        base_gcs_path = f"{PREFIX}{category}/{year}/{month}/"
 
         # Process analysis data
         analysis = record.get("analysis", {})
         product_summaries = analysis.get("product_summaries", {})
 
         for subcategory, aspects in product_summaries.items():
-            # Define subcategory file path
+            # Define subcategory file path in GCS
             file_name = f"{subcategory.replace(' ', '_')}.json"
-            file_path = os.path.join(base_dir_path, file_name)
+            gcs_path = f"{base_gcs_path}{file_name}"
 
-            # Ensure all parent directories for the file_path exist
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # Convert data to JSON string
+            json_data = json.dumps(aspects, indent=4)
 
-            # Save subcategory data to JSON
-            with open(file_path, "w") as file:
-                json.dump(aspects, file, indent=4)
+            # Upload to GCS
+            blob = bucket.blob(gcs_path)
+            blob.upload_from_string(json_data, content_type="application/json")
 
-            logging.info(f"Saved subcategory '{subcategory}' to {file_path}")
+            logging.info(f"Uploaded subcategory '{subcategory}' to GCS path: {gcs_path}")
 
     except Exception as e:
-        logging.error("Error processing record: %s", str(e), exc_info=True)
+        logging.error("Error processing record for GCS: %s", str(e), exc_info=True)
         raise
 
 
 if __name__ == "__main__":
-    input_file = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/refined_processed_documents.json"  # Replace with your JSON file path
-    output_dir = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/output_chunks"
+    input_file = "/opt/airflow/data/refined_processed_documents.json"  # Replace with your JSON file path
 
-    # Run the flatten and save process
-    flatten_and_save(input_file, output_dir)
+    # Run the flatten and save process to GCS
+    flatten_and_save_to_gcs(input_file)
