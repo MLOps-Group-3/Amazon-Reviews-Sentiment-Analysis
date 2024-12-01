@@ -17,3 +17,4 @@ gcsfs
 accelerate==0.12.0
 PyYAML>=6.0
 tensorboard
+kfp==2.4.0
