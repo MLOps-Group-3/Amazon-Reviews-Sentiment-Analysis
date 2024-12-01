@@ -67,20 +67,6 @@ class TransformersClassifierHandler(BaseHandler):
             logger.info(f"Received input data: {data}")
             logger.info(f"Data type: {type(data)}")
 
-            # # Handle byte inputs or TorchServe-wrapped inputs
-            # if isinstance(data, (bytes, bytearray)):
-            #     data = json.loads(data.decode("utf-8"))
-            # elif isinstance(data, list):
-            #     if isinstance(data[0], (bytes, bytearray)):
-            #         data = json.loads(data[0].decode("utf-8"))
-            #     else:
-            # data = data[0]
-
-            # # Ensure data contains "instances" key
-            # if not isinstance(data, dict):
-            #     raise ValueError("Invalid input format. Expected a JSON object.")
-            # if "instances" not in data:
-            #     raise ValueError("Invalid input format. Expected a JSON object with 'instances' key.")
 
             # Extract instances
             instances = data#.keys()
@@ -92,15 +78,16 @@ class TransformersClassifierHandler(BaseHandler):
             
             # Extract and validate data from each instance
             for instance in instances:
+                instance_data = instance.get("data")
                 # if not all(key in instance for key in ["text", "price", "price_missing", "helpful_vote", "verified_purchase"]):
                 #     raise ValueError(f"Invalid instance format: {instance}")
                 
-                texts.append(instance["text"])
+                texts.append(instance_data["text"])
                 additional_features.append([
-                    float(instance["price"]),
-                    float(instance["price_missing"]),
-                    float(instance["helpful_vote"]),
-                    float(instance["verified_purchase"])
+                    float(instance_data["price"]),
+                    float(instance_data["price_missing"]),
+                    float(instance_data["helpful_vote"]),
+                    float(instance_data["verified_purchase"])
                 ])
 
             # Log extracted inputs

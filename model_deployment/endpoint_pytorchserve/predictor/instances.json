@@ -1,22 +1,35 @@
-
 {
-    "instances": [
-        {
-            "text": "The product was excellent and exceeded my expectations.",
-            "title": "Excellent Quality",
-            "price": 49.99,
-            "price_missing": false,
-            "helpful_vote": 15,
-            "verified_purchase": true
-        },
-        {
-            "text": "The product was excellent and exceeded my expectations.",
-            "title": "Excellent Quality",
-            "price": 49.99,
-            "price_missing": false,
-            "helpful_vote": 15,
-            "verified_purchase": true
-        }
-
-    ]
+  "instances": [
+    {
+      "data": {
+        "text": "The product was excellent and exceeded my expectations.",
+        "title": "Excellent Quality",
+        "price": 49.99,
+        "price_missing": false,
+        "helpful_vote": 15,
+        "verified_purchase": true
+      }
+    },
+    {
+      "data": {
+        "text": "The product was bad and sucked to live my expectations.",
+        "title": "Excellent Quality",
+        "price": 49.99,
+        "price_missing": false,
+        "helpful_vote": 15,
+        "verified_purchase": true
+      }
+    },
+    {
+      "data": {
+        "text": "The product was very good.",
+        "title": "Excellent Quality",
+        "price": 49.99,
+        "price_missing": false,
+        "helpful_vote": 15,
+        "verified_purchase": true
+      }
+    }
+  ]
 }
+
