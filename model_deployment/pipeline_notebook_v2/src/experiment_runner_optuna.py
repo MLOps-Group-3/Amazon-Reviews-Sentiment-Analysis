@@ -62,6 +62,7 @@ def create_objective_function(datapath):
 
     def objective(trial):
         global best_model_state, best_model_params, best_score
+        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
         # Sample hyperparameters
         model_name = trial.suggest_categorical("model_name", ["BERT"])
