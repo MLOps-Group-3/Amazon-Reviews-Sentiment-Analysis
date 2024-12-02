@@ -8,7 +8,7 @@ import logging
 import torch
 from transformers import BertTokenizer
 from ts.torch_handler.base_handler import BaseHandler
-from utils.bert_model import initialize_bert_model
+from bert_model_torch_serve import initialize_bert_model
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +85,10 @@ class TransformersClassifierHandler(BaseHandler):
                     
                     texts.append(instance[0])
                     additional_features.append([
+                        float(instance_data[1]),
                         float(instance_data[2]),
                         float(instance_data[3]),
-                        float(instance_data[4]),
-                        float(instance_data[5])
+                        float(instance_data[4])
                     ])
 
                 else:
