@@ -19,7 +19,7 @@ load_dotenv()
 # SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 # SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 GCS_SERVICE_ACCOUNT_KEY = os.getenv("GCS_SERVICE_ACCOUNT_KEY", "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json")
-GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "model-deployment-from-airflow")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME_MODEL", "model-deployment-from-airflow")
 GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "amazonreviewssentimentanalysis")
 GCS_REGION = os.getenv("GCS_REGION", "us-central1")
 

@@ -12,6 +12,7 @@ def run_and_monitor_pipeline(
     import os
     from google.cloud import aiplatform
     from google.oauth2 import service_account
+    import logging
 
     # # Set Service Account Key Path
     # SERVICE_ACCOUNT_KEY_PATH = "path/to/your-service-account-key.json"  # Replace with your key file path
@@ -54,26 +55,26 @@ def run_and_monitor_pipeline(
     client = storage.Client(project=GCP_PROJECT, credentials=credentials)
     bucket = client.bucket(BUCKET_NAME)
 
-    # Function to upload folder to GCS
     def upload_folder_to_gcs(local_folder, bucket, destination_folder):
-        # Strip the `gs://<bucket_name>/` prefix from the destination path
-        if destination_folder.startswith(f"gs://{bucket.name}/"):
-            destination_folder = destination_folder[len(f"gs://{bucket.name}/") :]
+        import os
+        from google.cloud import storage
 
         for root, _, files in os.walk(local_folder):
             for file in files:
                 local_path = os.path.join(root, file)
                 relative_path = os.path.relpath(local_path, local_folder)
-                print(local_path, relative_path)
+                gcs_path = os.path.join(destination_folder, relative_path).replace("\\", "/")
 
-                gcs_path = os.path.join(destination_folder, local_path).replace(
-                    "\\", "/"
-                )
+                print(f"Uploading {local_path} to {gcs_path} in bucket {bucket.name}")
                 blob = bucket.blob(gcs_path)
                 blob.upload_from_filename(local_path)
                 print(f"Uploaded {local_path} to gs://{bucket.name}/{gcs_path}")
 
-    upload_folder_to_gcs("src", bucket, CODE_BUCKET_PATH)
+    #  absolute path to the `src` folder in Airflow
+    local_folder = "/opt/airflow/dags/model_utils/src/"
+
+    upload_folder_to_gcs(local_folder, bucket, CODE_BUCKET_PATH)
+    logging.info("Uploaded to GCS")
 
     from kfp.v2.dsl import (
         Input,
