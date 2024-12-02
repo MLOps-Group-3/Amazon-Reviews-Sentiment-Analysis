@@ -54,7 +54,7 @@ with DAG(
         python_callable=run_and_monitor_pipeline,
         op_args=[],
         op_kwargs={
-            "SERVICE_ACCOUNT_KEY_PATH": "jnjncdncn",
+            "SERVICE_ACCOUNT_KEY_PATH": GCS_SERVICE_ACCOUNT_KEY,
             "GCP_PROJECT": GCS_PROJECT_ID,
             "BUCKET_NAME": GCS_BUCKET_NAME,
             "GCP_REGION": GCS_REGION
