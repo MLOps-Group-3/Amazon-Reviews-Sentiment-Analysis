@@ -1,5 +1,6 @@
 # Ignore all CSV files
 *.csv
+*.jsonl
 
 # Ignore CRC files
 *.crc
