@@ -580,7 +580,7 @@ def run_and_monitor_pipeline(SERVICE_ACCOUNT_KEY_PATH,GCP_PROJECT="amazonreviews
         logger.info(f"Custom Docker Image URI: {CUSTOM_PREDICTOR_IMAGE_URI}")
 
         model_gcs_path = model_gcs_path.metadata["gcs_path"]
-        model_gcs_path = f"gs://arsa_model_deployment_uscentral_v2/output/models/"
+        model_gcs_path = f"gs://{bucket_name}/output/models/"
         # Create Cloud Build configuration (cloudbuild.yaml)
         cloudbuild_config = {
             'steps': [
