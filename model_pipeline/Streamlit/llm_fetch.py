@@ -129,12 +129,22 @@ def prepare_llm_input(results):
     for match in results:
         metadata = match.get("metadata", {})
         data = fetch_from_gcp(metadata)
-        if data:
+        
+        # Ensure data is a dictionary
+        if isinstance(data, dict):
             for aspect, details in data.items():
-                summary_data[aspect] = {
-                    "sentiment": details.get("sentiment", "Unknown"),
-                    "summary": details.get("summary", "No summary available."),
-                }
+                # Ensure details is a dictionary
+                if isinstance(details, dict):
+                    summary_data[aspect] = {
+                        "sentiment": details.get("sentiment", "Unknown"),
+                        "summary": details.get("summary", "No summary available."),
+                    }
+                else:
+                    # Handle cases where details are not as expected
+                    summary_data[aspect] = {
+                        "sentiment": "Unknown",
+                        "summary": "No details available.",
+                    }
 
     if not summary_data:
         return (
@@ -165,6 +175,7 @@ def prepare_llm_input(results):
     )
 
     return llm_input
+
 
 
 def get_llm_response(llm_input, is_out_of_context=False):
