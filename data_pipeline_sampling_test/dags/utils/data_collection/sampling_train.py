@@ -3,17 +3,17 @@ import pandas as pd
 import gzip
 import json
 from tqdm import tqdm
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from ..config import (
     CATEGORIES,
     TARGET_DIRECTORY,
     SAMPLED_TRAINING_DIRECTORY,
-    TRAINING_START_DATE,
-    TRAINING_END_DATE,
-    SAMPLING_FRACTION
+    SAMPLING_FRACTION,
+    DEFAULT_TRAINING_START_YEAR,
+    DEFAULT_TRAINING_START_MONTH
 )
-
+from ..data_collection.dynamic_month_train import get_next_training_period
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -116,12 +116,18 @@ def save_sampled_data(sampled_df, category_name, start_date, end_date):
     sampled_df.to_csv(file_path, index=False)
     logger.info(f"Saved sampled data to {file_path}")
 
-
-def sample_training_data(category_name, start_date=None, end_date=None):
-    start_date = start_date or TRAINING_START_DATE
-    end_date = end_date or TRAINING_END_DATE
+def sample_training_data(category_name):
     try:
+        # Get the dynamic training period for this category
+        start_date, end_date = get_next_training_period(
+            SAMPLED_TRAINING_DIRECTORY,
+            category_name,
+            default_start_year=DEFAULT_TRAINING_START_YEAR,
+            default_start_month=DEFAULT_TRAINING_START_MONTH
+        )
+        
         logger.info(f"Processing training data for category: {category_name}")
+        logger.info(f"Training period: {start_date} to {end_date}")
 
         # File paths
         reviews_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_reviews.jsonl.gz")
@@ -147,14 +153,7 @@ def sample_training_data(category_name, start_date=None, end_date=None):
     except Exception as e:
         logger.error(f"An error occurred while processing training data for category {category_name}: {e}", exc_info=True)
 
-def main():
-    # Define the initial date range
-    start_date = TRAINING_START_DATE
-    end_date = TRAINING_END_DATE
-
-    # Sample data for each category
-    for category in CATEGORIES:
-        sample_training_data(category, start_date, end_date)
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     # Sample data for each category
+#     for category in CATEGORIES:
+#         sample_training_data(category)
