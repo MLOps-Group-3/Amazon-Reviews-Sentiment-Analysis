@@ -3,7 +3,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 from utils.data_collection.sampling_train import sample_training_data
-from utils.data_collection.data_concat import concatenate_and_save_csv_files
+from utils.data_collection.data_concat_serve import concatenate_and_save_csv_files
 from utils.config import CATEGORIES
 
 # Default arguments for the DAG

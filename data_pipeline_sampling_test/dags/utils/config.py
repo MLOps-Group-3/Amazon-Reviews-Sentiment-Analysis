@@ -1,10 +1,12 @@
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
+
 # Base URLs for downloading review and metadata data
 REVIEW_BASE_URL = "https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/review_categories/"
 META_BASE_URL = "https://datarepo.eng.ucsd.edu/mcauley_group/data/amazon_2023/raw/meta_categories/"
 
 # List of categories to download
 CATEGORIES = [
+    # Uncomment categories as needed
     # "Home_and_Kitchen",
     # "Clothing_Shoes_and_Jewelry",
     # "Health_and_Household",
@@ -53,7 +55,10 @@ LABELED_DATA_PATH = "/opt/airflow/data/labeled/labeled_data.csv"
 # Labeled aspect data path
 LABELED_ASPECT_DATA_PATH = "/opt/airflow/data/labeled/labeled_aspect_data.csv"
 
-# Dynamic date parameters for sampling
+# Dynamic date parameters for training sampling
 TRAINING_START_DATE = (datetime.now() - timedelta(days=3 * 365)).strftime('%Y-01-01')
 TRAINING_END_DATE = (datetime.now() - timedelta(days=3 * 365)).strftime('%Y-12-31')
-SERVING_YEAR = 2021                 # Year for serving data
+
+# Default values for serving data
+DEFAULT_SERVING_YEAR = 2021  # Default year if no files exist
+DEFAULT_SERVING_MONTH = 1    # Default month if no files exist

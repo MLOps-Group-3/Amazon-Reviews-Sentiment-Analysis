@@ -1,15 +1,16 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from datetime import datetime, timedelta
+from utils.data_collection.dynamic_month import get_next_serving_month
+from utils.config import CATEGORIES, SAMPLED_SERVING_DIRECTORY
 from utils.data_collection.sampling_serve import sample_serving_data
-from utils.data_collection.data_concat import concatenate_and_save_csv_files
-from utils.config import CATEGORIES
+from utils.data_collection.data_concat_serve import concatenate_and_save_csv_files
+from datetime import datetime, timedelta
 
 # Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 1, 1),  # Replace with your desired start date
+    'start_date': datetime(2024, 1, 1),
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,
@@ -21,11 +22,13 @@ with DAG(
     dag_id='sampling_serve_dag',
     default_args=default_args,
     description='DAG to sample serving data dynamically on the 1st day of each month',
-    # schedule_interval='0 0 1 * *',  # Run on the 1st day of every month
-    schedule_interval=None,
+    schedule_interval=None,  # Run on the 1st day of every month
     catchup=False,
     max_active_runs=1,
 ) as dag:
+
+    # Calculate dynamic year and month
+    year, next_month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY)
 
     # Create tasks for each category
     category_tasks = []
@@ -35,8 +38,8 @@ with DAG(
             python_callable=sample_serving_data,
             op_kwargs={
                 'category_name': category_name,
-                'year': '{{ macros.ds_format(ds, "%Y-%m-%d", "%Y") }}',  # Extract year from execution date
-                'month': '{{ macros.ds_format(ds, "%Y-%m-%d", "%m") }}',  # Extract month from execution date
+                'year': year,
+                'month': next_month,
             },
         )
         category_tasks.append(task)
@@ -46,23 +49,24 @@ with DAG(
         task_id='concatenate_serving_data',
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
-            'input_dir': '/opt/airflow/data/sampled/serving',  # Directory for sampled serving files
-            'output_file': '/opt/airflow/data/sampled/serving/concatenated_serving_data.csv',  # Output file path
+            'input_dir': SAMPLED_SERVING_DIRECTORY,
+            'output_file': f"{SAMPLED_SERVING_DIRECTORY}/concatenated_serving_data_{year}_{str(next_month).zfill(2)}.csv",
         },
     )
 
-    # Commenting it out for now
-    # # Trigger data validation DAG after concatenation
+    # Trigger data validation DAG after concatenation (optional, commented for now)
     # trigger_validation_dag = TriggerDagRunOperator(
     #     task_id='trigger_validation_dag',
-    #     trigger_dag_id='03_data_validation_dag',  # ID of the validation DAG
+    #     trigger_dag_id='03_data_validation_dag',  # Replace with your validation DAG ID
     #     wait_for_completion=False,
     # )
 
-    # Set up sequential dependencies
+    # Set up sequential dependencies for category tasks
     for i in range(len(category_tasks) - 1):
         category_tasks[i] >> category_tasks[i + 1]
 
-    # Connect the last category task to concatenation and validation
-    # category_tasks[-1] >> concat_task >> trigger_validation_dag # Commenting it out for now
+    # Connect the last category task to concatenation
     category_tasks[-1] >> concat_task
+
+    # Optionally trigger the validation DAG after concatenation
+    # concat_task >> trigger_validation_dag
