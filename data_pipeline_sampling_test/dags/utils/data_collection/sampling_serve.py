@@ -137,7 +137,7 @@ def sample_serving_data(category_name, month):
 
         # Convert year and month to integers
         year = SERVING_YEAR
-        month = int(month)
+        month = 1
 
         # File paths
         reviews_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_reviews.jsonl.gz")
@@ -164,12 +164,12 @@ def sample_serving_data(category_name, month):
         logger.error(f"An error occurred while processing serving data for category {category_name}: {e}", exc_info=True)
 
 
-def main():
-    month = 1  # Start with January
+# def execute_sampling():
+#     month = 1  # Start with January
     
-    # Sample data for each category
-    for category in CATEGORIES:
-        sample_serving_data(category, month)
+#     # Sample data for each category
+#     for category in CATEGORIES:
+#         sample_serving_data(category, month)
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
