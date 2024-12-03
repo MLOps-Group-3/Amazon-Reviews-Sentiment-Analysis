@@ -3,10 +3,15 @@ from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
 from serve_utils.batch_processing import read_and_preprocess_data, upload_to_gcs, create_bq_table, submit_batch_prediction, create_output_table
 import os
+from dotenv import load_dotenv
 
-# Set the path to your service account key
-service_account_path = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
+# Load environment variables from .env file
+load_dotenv()
+
+GCS_SERVICE_ACCOUNT_KEY = os.getenv("GCS_SERVICE_ACCOUNT_KEY", "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME_MODEL", "model-deployment-from-airflow")
+GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "amazonreviewssentimentanalysis")
+GCS_REGION = os.getenv("GCS_REGION", "us-central1")
 
 default_args = {
     'owner': 'airflow',
@@ -38,6 +43,10 @@ t2 = PythonOperator(
     task_id='upload_to_gcs',
     python_callable=upload_to_gcs,
     provide_context=True,
+    op_kwargs={
+            "GCS_SERVICE_ACCOUNT_KEY": GCS_SERVICE_ACCOUNT_KEY,
+            "GCS_BUCKET_NAME": GCS_BUCKET_NAME
+        },
     dag=dag,
 )
 
@@ -45,6 +54,11 @@ t3 = PythonOperator(
     task_id='create_bq_table',
     python_callable=create_bq_table,
     provide_context=True,
+    op_kwargs={
+            "GCS_SERVICE_ACCOUNT_KEY": GCS_SERVICE_ACCOUNT_KEY,
+            "GCS_PROJECT_ID": GCS_PROJECT_ID,
+            "GCS_BUCKET_NAME": GCS_BUCKET_NAME
+        },
     dag=dag,
 )
 
@@ -52,6 +66,11 @@ t4 = PythonOperator(
     task_id='submit_batch_prediction',
     python_callable=submit_batch_prediction,
     provide_context=True,
+    op_kwargs={
+            "GCS_SERVICE_ACCOUNT_KEY": GCS_SERVICE_ACCOUNT_KEY,
+            "GCS_PROJECT_ID": GCS_PROJECT_ID,
+            "GCS_REGION": GCS_REGION
+        },
     dag=dag,
 )
 
@@ -59,6 +78,9 @@ t5 = PythonOperator(
     task_id='create_output_table',
     python_callable=create_output_table,
     provide_context=True,
+    op_kwargs={
+            "GCS_SERVICE_ACCOUNT_KEY": GCS_SERVICE_ACCOUNT_KEY
+        },
     dag=dag,
 )
 

@@ -42,18 +42,17 @@ def read_and_preprocess_data(**kwargs):
         logging.error(f"Error in read_and_preprocess_data function: {str(e)}")
         raise
 
-def upload_to_gcs(**kwargs):
+def upload_to_gcs(GCS_SERVICE_ACCOUNT_KEY, GCS_BUCKET_NAME, **kwargs):
     ti = kwargs['ti']
     try:
         logging.info("Starting upload_to_gcs function")
         
         # Set the path to your service account key
-        service_account_path = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
         
         local_file_path = ti.xcom_pull(key='output_path', task_ids='read_and_preprocess_data')
         
-        bucket_name = "model-deployment-from-airflow"
+        bucket_name = GCS_BUCKET_NAME
         destination_blob_name = "batch_processing_input/Serving Batches/processed_batch_data.csv"
         
         logging.info(f"Uploading file {local_file_path} to GCS bucket {bucket_name}")
@@ -67,18 +66,17 @@ def upload_to_gcs(**kwargs):
         logging.error(f"Error in upload_to_gcs function: {str(e)}")
         raise
 
-def create_bq_table(**kwargs):
+def create_bq_table(GCS_SERVICE_ACCOUNT_KEY, GCS_BUCKET_NAME, GCS_PROJECT_ID, **kwargs):
     try:
         logging.info("Starting create_bq_table function")
         
         # Set the path to your service account key
-        service_account_path = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
         
         client = bigquery.Client()
         
-        gcs_uri = "gs://model-deployment-from-airflow/batch_processing_input/Serving Batches/processed_batch_data.csv"
-        project_id = "amazonreviewssentimentanalysis"
+        gcs_uri = f"gs://{GCS_BUCKET_NAME}/batch_processing_input/Serving Batches/processed_batch_data.csv"
+        project_id = GCS_PROJECT_ID
         dataset_id = "amazon_reviews_sentiment"
         table_id = "processed_batch_data"
         
@@ -102,17 +100,16 @@ def create_bq_table(**kwargs):
         logging.error(f"Error in create_bq_table function: {str(e)}")
         raise
 
-def submit_batch_prediction(**kwargs):
+def submit_batch_prediction(GCS_SERVICE_ACCOUNT_KEY, GCS_PROJECT_ID, GCS_REGION, **kwargs):
     try:
         logging.info("Starting submit_batch_prediction function")
         
         # Set the path to your service account key
-        service_account_path = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
         
-        aiplatform.init(project="amazonreviewssentimentanalysis", location="us-central1")
+        aiplatform.init(project=GCS_PROJECT_ID, location=GCS_REGION)
         
-        model_name = "projects/amazonreviewssentimentanalysis/locations/us-central1/models/7777458171236319232"
+        model_name = f"projects/{GCS_PROJECT_ID}/locations/{GCS_REGION}/models/7777458171236319232"
         
         input_table = "bq://amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data"
         
@@ -140,13 +137,12 @@ def submit_batch_prediction(**kwargs):
       logging.error(f"Error in submit_batch_prediction function: {str(e)}")
       raise
 
-def create_output_table(**kwargs):
+def create_output_table(GCS_SERVICE_ACCOUNT_KEY, **kwargs):
     try:
         logging.info("Starting create_output_table function")
 
         # Set the path to your service account key
-        service_account_path = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
 
         client = bigquery.Client()
 
