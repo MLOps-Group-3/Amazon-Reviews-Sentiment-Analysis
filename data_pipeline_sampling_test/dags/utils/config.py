@@ -55,9 +55,11 @@ LABELED_DATA_PATH = "/opt/airflow/data/labeled/labeled_data.csv"
 # Labeled aspect data path
 LABELED_ASPECT_DATA_PATH = "/opt/airflow/data/labeled/labeled_aspect_data.csv"
 
-# Dynamic date parameters for training sampling
-TRAINING_START_DATE = (datetime.now() - timedelta(days=3 * 365)).strftime('%Y-01-01')
-TRAINING_END_DATE = (datetime.now() - timedelta(days=3 * 365)).strftime('%Y-12-31')
+# Training data configurations
+DEFAULT_TRAINING_START_YEAR = 2018
+DEFAULT_TRAINING_START_MONTH = 1
+TRAINING_PERIOD_MONTHS = 24  # 2 years
+TRAINING_SHIFT_MONTHS = 3 
 
 # Default values for serving data
 DEFAULT_SERVING_YEAR = 2021  # Default year if no files exist

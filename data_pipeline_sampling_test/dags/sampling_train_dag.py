@@ -3,30 +3,31 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 from utils.data_collection.sampling_train import sample_training_data
-from utils.data_collection.data_concat_serve import concatenate_and_save_csv_files
-from utils.config import CATEGORIES
+from utils.data_collection.data_concat_train import concatenate_and_save_csv_files
+from utils.data_collection.dynamic_month_train import get_next_training_period
+from utils.config import (
+    CATEGORIES, 
+    SAMPLED_TRAINING_DIRECTORY, 
+    DEFAULT_TRAINING_START_YEAR, 
+    DEFAULT_TRAINING_START_MONTH
+)
 
 # Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 1, 1),  # Replace with your desired start date
+    'start_date': datetime(2024, 1, 1),
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,
-    'email': 'vallimeenaavellaiyan@gmail.com',  # Replace with your email
+    'email': 'vallimeenaavellaiyan@gmail.com',
 }
-
-# Dynamically compute training date range
-three_years_ago = datetime.now() - timedelta(days=3 * 365)
-training_start_date = three_years_ago.replace(month=1, day=1).strftime('%Y-%m-%d')
-training_end_date = three_years_ago.replace(month=12, day=31).strftime('%Y-%m-%d')
 
 # Define the DAG
 with DAG(
     dag_id='sampling_train_dag',
     default_args=default_args,
-    description='DAG to sample training data dynamically every three months',
-    schedule_interval='0 0 2 */3 *',  # Run on the 2nd day of every three months
+    description='DAG to sample training data dynamically',
+    schedule_interval=None,  # Run on the 2nd day of every three months
     catchup=False,
     max_active_runs=1,
 ) as dag:
@@ -34,6 +35,14 @@ with DAG(
     # Create tasks for each category
     category_tasks = []
     for category_name in CATEGORIES:
+        # Get the next training period for this category
+        training_start_date, training_end_date = get_next_training_period(
+            SAMPLED_TRAINING_DIRECTORY, 
+            category_name, 
+            default_start_year=DEFAULT_TRAINING_START_YEAR,
+            default_start_month=DEFAULT_TRAINING_START_MONTH
+        )
+        
         task = PythonOperator(
             task_id=f'sample_training_{category_name}',
             python_callable=sample_training_data,
@@ -50,15 +59,15 @@ with DAG(
         task_id='concatenate_training_data',
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
-            'input_dir': '/opt/airflow/data/sampled/training',  # Directory for sampled training files
-            'output_file': '/opt/airflow/data/sampled/training/concatenated_training_data.csv',  # Output file path
+            'input_dir': SAMPLED_TRAINING_DIRECTORY,
+            'output_file': f'{SAMPLED_TRAINING_DIRECTORY}/concatenated_training_data_{{execution_date}}.csv',
         },
     )
 
     # Trigger data validation DAG after concatenation
     trigger_validation_dag = TriggerDagRunOperator(
         task_id='trigger_validation_dag',
-        trigger_dag_id='03_data_validation_dag',  # ID of the validation DAG
+        trigger_dag_id='03_data_validation_dag',
         wait_for_completion=False,
     )
 
@@ -66,8 +75,6 @@ with DAG(
     if category_tasks:
         for i in range(len(category_tasks) - 1):
             category_tasks[i] >> category_tasks[i + 1]
-
-        # Connect the last category task to concatenation and validation
         category_tasks[-1] >> concat_task >> trigger_validation_dag
     else:
         concat_task >> trigger_validation_dag

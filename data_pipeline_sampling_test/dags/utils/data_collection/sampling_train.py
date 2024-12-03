@@ -11,6 +11,7 @@ from ..config import (
     SAMPLED_TRAINING_DIRECTORY,
     TRAINING_START_DATE,
     TRAINING_END_DATE,
+    SAMPLING_FRACTION
 )
 
 
@@ -99,7 +100,7 @@ def sample_data(joined_df):
     joined_with_count_df = pd.merge(joined_df, grouped_df, on=['review_month', 'rating'], how='inner')
 
     sampled_df = joined_with_count_df.groupby(['review_month', 'rating']).apply(
-        lambda x: x.sample(frac=0.1, random_state=42)
+        lambda x: x.sample(frac=SAMPLING_FRACTION, random_state=42)
     ).reset_index(drop=True)
 
     logger.info(f"Sampled {len(sampled_df)} rows")
