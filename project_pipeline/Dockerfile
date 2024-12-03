@@ -13,7 +13,8 @@ RUN mkdir -p /opt/airflow/data/cleaned \
              /opt/airflow/data/labeled \
              /opt/airflow/data/sampled \
              /opt/airflow/data/validation \
-             /opt/airflow/data/raw
+             /opt/airflow/data/raw \
+             /opt/airflow/data/batch_processing_input
 
 # Copy DAGs, plugins, config, and tests
 COPY dags /opt/airflow/dags
