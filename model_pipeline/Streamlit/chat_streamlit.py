@@ -34,7 +34,7 @@ st.set_page_config(
 )
 
 # Define the folder path where the filter text files are stored
-items_folder_path = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items'
+items_folder_path = 'model_pipeline/Streamlit/items'
 
 # Load filter values from the text files
 filters = load_filter_values(items_folder_path)
