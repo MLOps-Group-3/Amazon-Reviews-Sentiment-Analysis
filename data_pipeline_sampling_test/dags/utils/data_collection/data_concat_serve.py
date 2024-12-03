@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from utils.dynamic_month import get_next_serving_month
+from utils.data_collection.dynamic_month import get_next_serving_month
 from utils.config import SAMPLED_SERVING_DIRECTORY, DEFAULT_SERVING_YEAR, DEFAULT_SERVING_MONTH
 
 

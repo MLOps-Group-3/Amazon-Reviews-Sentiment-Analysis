@@ -27,12 +27,13 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    # Calculate dynamic year and month
-    year, next_month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY)
 
     # Create tasks for each category
     category_tasks = []
     for category_name in CATEGORIES:
+        # Get the dynamic year and month for the category
+        year, next_month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY, category_name)
+
         task = PythonOperator(
             task_id=f'sample_serving_{category_name}',
             python_callable=sample_serving_data,
