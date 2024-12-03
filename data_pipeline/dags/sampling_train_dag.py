@@ -16,6 +16,11 @@ default_args = {
     'email': 'vallimeenaavellaiyan@gmail.com',  # Replace with your email
 }
 
+# Dynamically compute training date range
+three_years_ago = datetime.now() - timedelta(days=3 * 365)
+training_start_date = three_years_ago.replace(month=1, day=1).strftime('%Y-%m-%d')
+training_end_date = three_years_ago.replace(month=12, day=31).strftime('%Y-%m-%d')
+
 # Define the DAG
 with DAG(
     dag_id='sampling_train_dag',
@@ -34,8 +39,8 @@ with DAG(
             python_callable=sample_training_data,
             op_kwargs={
                 'category_name': category_name,
-                'start_date': '{{ macros.ds_add(ds, -90) }}',  # Adjust start_date dynamically (past 3 months)
-                'end_date': '{{ ds }}'  # Current execution date
+                'start_date': training_start_date,
+                'end_date': training_end_date,
             },
         )
         category_tasks.append(task)
@@ -58,8 +63,11 @@ with DAG(
     )
 
     # Set up sequential dependencies
-    for i in range(len(category_tasks) - 1):
-        category_tasks[i] >> category_tasks[i + 1]
+    if category_tasks:
+        for i in range(len(category_tasks) - 1):
+            category_tasks[i] >> category_tasks[i + 1]
 
-    # Connect the last category task to concatenation and validation
-    category_tasks[-1] >> concat_task >> trigger_validation_dag
+        # Connect the last category task to concatenation and validation
+        category_tasks[-1] >> concat_task >> trigger_validation_dag
+    else:
+        concat_task >> trigger_validation_dag

@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
-from utils.data_collection.sampling_train import sample_training_data
+from utils.data_collection.sampling_serve import sample_serving_data
 from utils.data_collection.data_concat import concatenate_and_save_csv_files
 from utils.config import CATEGORIES
 
@@ -18,10 +18,10 @@ default_args = {
 
 # Define the DAG
 with DAG(
-    dag_id='sampling_train_dag',
+    dag_id='sampling_serve_dag',
     default_args=default_args,
-    description='DAG to sample training data dynamically every three months',
-    schedule_interval='0 0 2 */3 *',  # Run on the 2nd day of every three months
+    description='DAG to sample serving data dynamically on the 1st day of each month',
+    schedule_interval='0 0 1 * *',  # Run on the 1st day of every month
     catchup=False,
     max_active_runs=1,
 ) as dag:
@@ -30,23 +30,23 @@ with DAG(
     category_tasks = []
     for category_name in CATEGORIES:
         task = PythonOperator(
-            task_id=f'sample_training_{category_name}',
-            python_callable=sample_training_data,
+            task_id=f'sample_serving_{category_name}',
+            python_callable=sample_serving_data,
             op_kwargs={
                 'category_name': category_name,
-                'start_date': '{{ macros.ds_add(ds, -90) }}',  # Adjust start_date dynamically (past 3 months)
-                'end_date': '{{ ds }}'  # Current execution date
+                'year': '{{ macros.ds_format(ds, "%Y-%m-%d", "%Y") }}',  # Extract year from execution date
+                'month': '{{ macros.ds_format(ds, "%Y-%m-%d", "%m") }}',  # Extract month from execution date
             },
         )
         category_tasks.append(task)
 
     # Create a task to concatenate data after all categories are sampled
     concat_task = PythonOperator(
-        task_id='concatenate_training_data',
+        task_id='concatenate_serving_data',
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
-            'input_dir': '/opt/airflow/data/sampled/training',  # Directory for sampled training files
-            'output_file': '/opt/airflow/data/sampled/training/concatenated_training_data.csv',  # Output file path
+            'input_dir': '/opt/airflow/data/sampled/serving',  # Directory for sampled serving files
+            'output_file': '/opt/airflow/data/sampled/serving/concatenated_serving_data.csv',  # Output file path
         },
     )
 
