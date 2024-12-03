@@ -34,7 +34,7 @@ st.set_page_config(
 )
 
 # Define the folder path where the filter text files are stored
-items_folder_path = 'model_pipeline/Streamlit/items'
+items_folder_path = 'items'
 
 # Load filter values from the text files
 filters = load_filter_values(items_folder_path)
@@ -42,7 +42,7 @@ filters = load_filter_values(items_folder_path)
 # Sidebar filters
 st.sidebar.header("Filters")
 category = st.sidebar.selectbox("Category", filters['categories'])
-subcategory = st.sidebar.selectbox("Subcategory", filters['subcategories'])
+#subcategory = st.sidebar.selectbox("Subcategory", filters['subcategories'])
 year = st.sidebar.selectbox("Year", filters['years'])
 month = st.sidebar.selectbox("Month", filters['months'])
 
@@ -57,7 +57,7 @@ st.markdown(
 user_input = st.text_input("Ask me a question about Amazon reviews:", "")
 
 # Set top_k for results
-top_k = st.sidebar.slider("Number of Results", min_value=1, max_value=20, value=10)
+# top_k = st.sidebar.slider("Number of Results", min_value=1, max_value=20, value=10)
 
 # Chatbot response
 if st.button("Get Response"):
@@ -65,9 +65,9 @@ if st.button("Get Response"):
         with st.spinner("Processing your query..."):
             response = process_text_query(
                 input_text=user_input,
-                top_k=top_k,
+                #top_k=top_k,
                 category=category,
-                subcategory=subcategory,
+                #subcategory=subcategory,
                 year=year,
                 month=month,
             )

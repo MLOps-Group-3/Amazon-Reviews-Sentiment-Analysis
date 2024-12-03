@@ -73,33 +73,62 @@ def query_pinecone(embedding, top_k=10):
         return []
 
 
+import logging
+
 def filter_pinecone_matches(matches, category=None, subcategory=None, year=None, month=None):
     """
-    Filter Pinecone matches based on the dropdown values for accuracy.
+    Filter Pinecone matches based on relaxed category matching and strict month matching.
 
     Parameters:
         matches (list): List of Pinecone matches.
-        category (str): Selected category filter.
-        subcategory (str): Selected subcategory filter.
-        year (str): Selected year filter.
-        month (str): Selected month filter.
+        category (str): Selected category filter (keyword search allowed).
+        subcategory (str): Selected subcategory filter (keyword search allowed).
+        year (str): Selected year filter (exact match).
+        month (str): Selected month filter (strict match).
 
     Returns:
         list: Filtered matches.
     """
     filtered_matches = []
-    for match in matches:
+    logging.info(f"Starting to filter matches with criteria - "
+                 f"Category: {category}, Subcategory: {subcategory}, Year: {year}, Month: {month}")
+
+    for i, match in enumerate(matches):
         metadata = match.get("metadata", {})
-        if category and metadata.get("category") != category:
-            continue
-        if subcategory and metadata.get("subcategory") != subcategory:
-            continue
-        if year and str(metadata.get("year")) != str(year):
-            continue
-        if month and str(metadata.get("month")) != str(month):
-            continue
+        logging.info(f"Processing match {i + 1}/{len(matches)} - Metadata: {metadata}")
+
+        # Check category (case-insensitive keyword search)
+        if category:
+            if category.lower() not in metadata.get("category", "").lower():
+                logging.info(f"Category mismatch - Expected keyword: {category}, Found: {metadata.get('category', '')}")
+                continue
+
+        # Check subcategory (case-insensitive keyword search)
+        if subcategory:
+            if subcategory.lower() not in metadata.get("subcategory", "").lower():
+                logging.info(f"Subcategory mismatch - Expected keyword: {subcategory}, Found: {metadata.get('subcategory', '')}")
+                continue
+
+        # Check year (exact match)
+        if year:
+            if str(metadata.get("year")) != str(year):
+                logging.info(f"Year mismatch - Expected: {year}, Found: {metadata.get('year', 'None')}")
+                continue
+
+        # Check month (strict match)
+        if month:
+            if str(metadata.get("month")) != str(month):
+                logging.info(f"Month mismatch - Expected: {month}, Found: {metadata.get('month', 'None')}")
+                continue
+
+        # Add to filtered results if all conditions pass
         filtered_matches.append(match)
+
+    logging.info(f"Filtering complete. {len(filtered_matches)} matches passed out of {len(matches)} total.")
     return filtered_matches
+
+
+
 
 
 def fetch_from_gcp(metadata):
@@ -221,7 +250,7 @@ def get_llm_response(llm_input, is_out_of_context=False):
             "An error occurred while generating a response. Please try again later. If the issue persists, contact support."
         )
 
-def process_text_query(input_text, top_k=10, category=None, subcategory=None, year=None, month=None):
+def process_text_query(input_text, top_k=20, category=None, subcategory=None, year=None, month=None):
     """
     Process a text query, retrieve relevant results, and generate a response.
 
@@ -243,10 +272,12 @@ def process_text_query(input_text, top_k=10, category=None, subcategory=None, ye
         return "Failed to generate embedding for the input text."
 
     matches = query_pinecone(embedding, top_k=top_k)
+    #logging.info(matches)
     filtered_matches = filter_pinecone_matches(matches, category, subcategory, year, month)
+    logging.info(filtered_matches)
 
     if not filtered_matches:
-        return "No relevant data found for your query."
+        return "No relevant data found for your query. As this is sampled data we might not have entire data.Sorry for the trouble"
 
     llm_input = prepare_llm_input(filtered_matches)
     response = get_llm_response(llm_input)
