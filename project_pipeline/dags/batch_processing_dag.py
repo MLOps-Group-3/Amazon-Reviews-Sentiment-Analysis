@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
-from batch_processing import read_and_preprocess_data, upload_to_gcs, create_bq_table, submit_batch_prediction, create_output_table
+from serve_utils.batch_processing import read_and_preprocess_data, upload_to_gcs, create_bq_table, submit_batch_prediction, create_output_table
 import os
 
 # Set the path to your service account key
@@ -11,7 +11,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_path
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2023, 1, 1),
+    'start_date': datetime(2024, 12, 3),
     'email_on_failure': True,
     'email_on_retry': False,
     'retries': 1,
@@ -20,10 +20,10 @@ default_args = {
 }
 
 dag = DAG(
-    'batch_processing',
+    '07_batch_processing_dag',
     default_args=default_args,
     description='Batch processing pipeline for Amazon Reviews Sentiment Analysis',
-    schedule_interval=timedelta(days=1),
+    schedule_interval=None,
     catchup=False
 )
 
