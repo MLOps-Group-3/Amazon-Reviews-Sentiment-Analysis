@@ -217,9 +217,7 @@
       "dag": {
         "tasks": {
           "build-and-push-torchserve-image": {
-            "cachingOptions": {
-              "enableCache": true
-            },
+            "cachingOptions": {},
             "componentRef": {
               "name": "comp-build-and-push-torchserve-image"
             },
