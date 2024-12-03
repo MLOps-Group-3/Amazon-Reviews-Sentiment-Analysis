@@ -1,5 +1,30 @@
 import streamlit as st
 from llm_fetch import process_text_query
+import os
+
+# Function to load values from text files in the specified folder
+def load_filter_values(folder_path):
+    """Load filter values from text files."""
+    filters = {
+        'categories': [],
+        'subcategories': [],
+        'years': [],
+        'months': []
+    }
+
+    try:
+        with open(os.path.join(folder_path, 'categories.txt'), 'r') as f:
+            filters['categories'] = [line.strip() for line in f.readlines()]
+        with open(os.path.join(folder_path, 'subcategories.txt'), 'r') as f:
+            filters['subcategories'] = [line.strip() for line in f.readlines()]
+        with open(os.path.join(folder_path, 'years.txt'), 'r') as f:
+            filters['years'] = [line.strip() for line in f.readlines()]
+        with open(os.path.join(folder_path, 'months.txt'), 'r') as f:
+            filters['months'] = [line.strip() for line in f.readlines()]
+    except Exception as e:
+        st.error(f"Error loading filter values: {e}")
+    
+    return filters
 
 # Streamlit app configuration
 st.set_page_config(
@@ -8,12 +33,18 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Define the folder path where the filter text files are stored
+items_folder_path = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items'
+
+# Load filter values from the text files
+filters = load_filter_values(items_folder_path)
+
 # Sidebar filters
 st.sidebar.header("Filters")
-category = st.sidebar.text_input("Category", "")
-subcategory = st.sidebar.text_input("Subcategory", "")
-year = st.sidebar.text_input("Year", "")
-month = st.sidebar.text_input("Month", "")  
+category = st.sidebar.selectbox("Category", filters['categories'])
+subcategory = st.sidebar.selectbox("Subcategory", filters['subcategories'])
+year = st.sidebar.selectbox("Year", filters['years'])
+month = st.sidebar.selectbox("Month", filters['months'])
 
 # Main page header
 st.title("Amazon Reviews Chatbot")
@@ -44,10 +75,3 @@ if st.button("Get Response"):
         st.write(response)
     else:
         st.warning("Please enter a question.")
-
-# Footer
-st.markdown("---")
-st.markdown(
-    "Powered by **OpenAI**, **Pinecone**, and **Google Cloud Platform**. "
-    "Built with 💡 by your data team."
-)
