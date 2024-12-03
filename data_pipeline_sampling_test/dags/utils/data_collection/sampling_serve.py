@@ -7,6 +7,8 @@ from datetime import datetime
 import logging
 from ..config import CATEGORIES, TARGET_DIRECTORY, SAMPLED_SERVING_DIRECTORY, SERVING_YEAR, SAMPLING_FRACTION
 from datetime import datetime, timedelta
+import calendar
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -62,8 +64,11 @@ def process_reviews_df(reviews_df, year, month):
     reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
     
     # Define start and end dates
-    start_date = f"{year}-{month:02d}-01"
-    end_date = f"{year}-{month:02d}-28" if month == 2 else f"{year}-{month:02d}-31"
+    start_date = f"{year}-{month:02d}-01 00:00:00"
+    _, last_day = calendar.monthrange(year, month)
+    end_date = f"{year}-{month:02d}-{last_day:02d} 23:59:59"
+    
+    logger.info(f"Filtering reviews from {start_date} to {end_date}")
     
     # Filter DataFrame by date range
     filtered_reviews_df = reviews_df[
