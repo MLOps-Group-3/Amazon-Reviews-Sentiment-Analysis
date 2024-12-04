@@ -1,16 +1,26 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 from utils.data_collection.sampling_train import sample_training_data
 from utils.data_collection.data_concat_train import concatenate_and_save_csv_files
 from utils.data_collection.dynamic_month_train import get_next_training_period
+from utils.gcs_operations import pull_from_gcs, push_to_gcs
 from utils.config import (
     CATEGORIES, 
     SAMPLED_TRAINING_DIRECTORY, 
     DEFAULT_TRAINING_START_YEAR, 
     DEFAULT_TRAINING_START_MONTH
 )
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+GCS_SERVICE_ACCOUNT_KEY = os.getenv("GCS_SERVICE_ACCOUNT_KEY", "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME_MODEL", "model-deployment-from-airflow")
+GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "amazonreviewssentimentanalysis")
+GCS_REGION = os.getenv("GCS_REGION", "us-central1")
 
 # Default arguments for the DAG
 default_args = {
@@ -27,10 +37,22 @@ with DAG(
     dag_id='sampling_train_dag',
     default_args=default_args,
     description='DAG to sample training data dynamically',
-    schedule_interval=None,  # Run on the 2nd day of every three months
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
 ) as dag:
+
+    # Task to pull data from GCS to local
+    pull_from_gcs_task = PythonOperator(
+        task_id='pull_from_gcs',
+        python_callable=pull_from_gcs,
+        op_kwargs={
+            'bucket_name': GCS_BUCKET_NAME,
+            'source_blob_prefix': 'data/sampled/training/',
+            'local_directory': SAMPLED_TRAINING_DIRECTORY,
+            'service_account_key': GCS_SERVICE_ACCOUNT_KEY
+        },
+    )
 
     # Create tasks for each category
     category_tasks = []
@@ -64,17 +86,21 @@ with DAG(
         },
     )
 
-    # # Trigger data validation DAG after concatenation
-    # trigger_validation_dag = TriggerDagRunOperator(
-    #     task_id='trigger_validation_dag',
-    #     trigger_dag_id='03_data_validation_dag',
-    #     wait_for_completion=False,
-    # )
+    # Task to push data from local to GCS
+    push_to_gcs_task = PythonOperator(
+        task_id='push_to_gcs',
+        python_callable=push_to_gcs,
+        op_kwargs={
+            'bucket_name': GCS_BUCKET_NAME,
+            'source_directory': SAMPLED_TRAINING_DIRECTORY,
+            'destination_blob_prefix': 'data/sampled/training/',
+            'service_account_key': GCS_SERVICE_ACCOUNT_KEY
+        },
+    )
 
-    # Set up sequential dependencies
-    if category_tasks:
+    # Set up task dependencies
+    pull_from_gcs_task >> category_tasks[0]
+    if len(category_tasks) > 1:
         for i in range(len(category_tasks) - 1):
             category_tasks[i] >> category_tasks[i + 1]
-        category_tasks[-1] >> concat_task # >> trigger_validation_dag
-    else:
-        concat_task # >> trigger_validation_dag
+    category_tasks[-1] >> concat_task >> push_to_gcs_task
