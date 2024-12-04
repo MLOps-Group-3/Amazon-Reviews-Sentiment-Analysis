@@ -65,7 +65,7 @@ def process_reviews_df(reviews_df, start_date, end_date):
     
     # Extract year
     reviews_df['year'] = reviews_df['review_datetime'].dt.year
-    logger.info(f"Created 'year' column. Sample data:\n{reviews_df[['year']].head()}")  # Log sample rows
+    reviews_df['year'] = reviews_df['year'].astype('int64')
     
     logger.info(f"Filtering data from {start_date} to {end_date}")
     filtered_reviews_df = reviews_df[

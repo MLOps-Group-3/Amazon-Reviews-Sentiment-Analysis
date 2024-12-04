@@ -46,6 +46,7 @@ def load_jsonl_gz(file_path, nrows=None):
 def process_reviews_df(reviews_df, year, month):
     reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
     reviews_df['year'] = reviews_df['review_date_timestamp'].dt.year
+    reviews_df['year'] = reviews_df['year'].astype('int64')
     start_date = f"{year}-{month:02d}-01 00:00:00"
     _, last_day = calendar.monthrange(year, month)
     end_date = f"{year}-{month:02d}-{last_day:02d} 23:59:59"
