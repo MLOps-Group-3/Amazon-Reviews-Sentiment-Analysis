@@ -42,7 +42,7 @@ with DAG(
     category_tasks = []
     for category_name in CATEGORIES:
         # Get the next training period
-        training_start_date, training_end_date = get_next_training_period(SAMPLED_TRAINING_DIRECTORY, category_name)
+        training_start_date, training_end_date = get_next_training_period(SAMPLED_TRAINING_DIRECTORY)
         task = PythonOperator(
             task_id=f'sample_training_{category_name}',
             python_callable=sample_training_data,
@@ -60,7 +60,7 @@ with DAG(
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
             'input_dir': SAMPLED_TRAINING_DIRECTORY,
-            'output_file': f'{SAMPLED_TRAINING_DIRECTORY}/concatenated_training_data_{training_start_date}_{training_end_date}.csv',
+            'output_file': f'{SAMPLED_TRAINING_DIRECTORY}/concatenated_training_data_{training_start_date}_to_{training_end_date}.csv',
         },
     )
 
@@ -76,19 +76,17 @@ with DAG(
         },
     )
 
-    # # Trigger data validation DAG after the GCS push
-    # trigger_validation_dag = TriggerDagRunOperator(
-    #     task_id='trigger_validation_dag',
-    #     trigger_dag_id='03_data_validation_dag',
-    #     wait_for_completion=False,
-    # )
+    # Trigger data validation DAG after the GCS push
+    trigger_validation_dag = TriggerDagRunOperator(
+        task_id='trigger_validation_dag',
+        trigger_dag_id='03_data_validation_dag',
+        wait_for_completion=False,
+    )
 
     # Set up sequential dependencies
     if category_tasks:
         for i in range(len(category_tasks) - 1):
             category_tasks[i] >> category_tasks[i + 1]
-        category_tasks[-1] >> concat_task >> push_to_gcs_task 
-        # >> trigger_validation_dag
+        category_tasks[-1] >> concat_task >> push_to_gcs_task >> trigger_validation_dag
     else:
-        concat_task >> push_to_gcs_task 
-        # >> trigger_validation_dag
+        concat_task >> push_to_gcs_task >> trigger_validation_dag
