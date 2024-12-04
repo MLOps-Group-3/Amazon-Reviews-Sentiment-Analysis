@@ -13,7 +13,7 @@ environment = os.getenv("PINECONE_ENVIRONMENT")
 gcp_bucket_name = os.getenv("GCS_BUCKET_NAME")
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_model = os.getenv("OPENAI_MODEL")
-service_key_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+service_key_path = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -59,39 +59,32 @@ def generate_embedding(text):
         return None
 
 
-def query_pinecone(embedding, top_k=10):
-    """Query Pinecone to get top-k related vectors."""
+def query_pinecone(embedding, top_k=10, category=None, year=None, month=None):
+    """Query Pinecone to get top-k related vectors with hybrid search."""
     try:
-        results = index.query(
+        # Vector search part
+        vector_results = index.query(
             vector=embedding,
             top_k=top_k,
-            include_metadata=True
+            include_metadata=True,
         )
-        return results.get("matches", [])
+        
+        # Filter based on metadata (category, year, month)
+        matches = vector_results.get("matches", [])
+        filtered_matches = filter_pinecone_matches(matches, category, year, month)
+        return filtered_matches
     except Exception as e:
         logging.error(f"Error querying Pinecone: {e}")
         return []
 
 
-import logging
-
-def filter_pinecone_matches(matches, category=None, subcategory=None, year=None, month=None):
+def filter_pinecone_matches(matches, category=None, year=None, month=None):
     """
-    Filter Pinecone matches based on relaxed category matching and strict month matching.
-
-    Parameters:
-        matches (list): List of Pinecone matches.
-        category (str): Selected category filter (keyword search allowed).
-        subcategory (str): Selected subcategory filter (keyword search allowed).
-        year (str): Selected year filter (exact match).
-        month (str): Selected month filter (strict match).
-
-    Returns:
-        list: Filtered matches.
+    Filter Pinecone matches based on category, year, and month.
     """
     filtered_matches = []
     logging.info(f"Starting to filter matches with criteria - "
-                 f"Category: {category}, Subcategory: {subcategory}, Year: {year}, Month: {month}")
+                 f"Category: {category}, Year: {year}, Month: {month}")
 
     for i, match in enumerate(matches):
         metadata = match.get("metadata", {})
@@ -101,12 +94,6 @@ def filter_pinecone_matches(matches, category=None, subcategory=None, year=None,
         if category:
             if category.lower() not in metadata.get("category", "").lower():
                 logging.info(f"Category mismatch - Expected keyword: {category}, Found: {metadata.get('category', '')}")
-                continue
-
-        # Check subcategory (case-insensitive keyword search)
-        if subcategory:
-            if subcategory.lower() not in metadata.get("subcategory", "").lower():
-                logging.info(f"Subcategory mismatch - Expected keyword: {subcategory}, Found: {metadata.get('subcategory', '')}")
                 continue
 
         # Check year (exact match)
@@ -126,9 +113,6 @@ def filter_pinecone_matches(matches, category=None, subcategory=None, year=None,
 
     logging.info(f"Filtering complete. {len(filtered_matches)} matches passed out of {len(matches)} total.")
     return filtered_matches
-
-
-
 
 
 def fetch_from_gcp(metadata):
@@ -206,7 +190,6 @@ def prepare_llm_input(results):
     return llm_input
 
 
-
 def get_llm_response(llm_input, is_out_of_context=False):
     """
     Generate a clear, elaborative response using OpenAI's GPT-4, focusing on detailed explanations 
@@ -250,42 +233,28 @@ def get_llm_response(llm_input, is_out_of_context=False):
             "An error occurred while generating a response. Please try again later. If the issue persists, contact support."
         )
 
-def process_text_query(input_text, top_k=20, category=None, subcategory=None, year=None, month=None):
-    """
-    Process a text query, retrieve relevant results, and generate a response.
 
-    Parameters:
-        input_text (str): User query.
-        top_k (int): Number of top results to retrieve.
-        category (str): Selected category filter.
-        subcategory (str): Selected subcategory filter.
-        year (str): Selected year filter.
-        month (str): Selected month filter.
-
-    Returns:
-        str: Chatbot response.
-    """
-    logging.info("Processing user query...")
-
+def process_text_query(input_text, top_k=25, category=None, year=None, month=None):
+    """Main function to process the text input and query Pinecone, then generate LLM response."""
+    # Step 1: Generate the query embedding
     embedding = generate_embedding(input_text)
     if not embedding:
-        return "Failed to generate embedding for the input text."
+        return "Sorry, we couldn't generate the necessary embeddings for your query."
 
-    matches = query_pinecone(embedding, top_k=top_k)
-    #logging.info(matches)
-    filtered_matches = filter_pinecone_matches(matches, category, subcategory, year, month)
-    logging.info(filtered_matches)
+    # Step 2: Query Pinecone for matching results
+    matches = query_pinecone(embedding, top_k, category, year, month)
+    if not matches:
+        return "Sorry, no relevant data found based on your query."
 
-    if not filtered_matches:
-        return "No relevant data found for your query. As this is sampled data we might not have entire data.Sorry for the trouble"
+    # Step 3: Prepare the LLM input
+    llm_input = prepare_llm_input(matches)
+    if llm_input:
+        return get_llm_response(llm_input)
 
-    llm_input = prepare_llm_input(filtered_matches)
-    response = get_llm_response(llm_input)
-    return response
+    return "No results found for your query. Please try again with different keywords."
 
-
+# Example use case
 if __name__ == "__main__":
-    user_input = "How was coffee makers in 2019?"
-    response = process_text_query(user_input, top_k=4)
-    print("Chatbot Response:")
-    print(response)
+    input_text = "Washer Parts & Accessories in 2018 month 1?"
+    result = process_text_query(input_text, top_k=20, category="Washer Parts & Accessories", year=2018, month=5)
+    print(result)

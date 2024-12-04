@@ -21,7 +21,7 @@ environment = os.getenv("PINECONE_ENVIRONMENT")
 # GCS and Pinecone setup
 BUCKET_NAME = "amazon-reviews-sentiment-analysis"
 PREFIX = "RAG/"
-SERVICE_ACCOUNT_PATH = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+SERVICE_ACCOUNT_PATH = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
 
 # Pinecone Initialization
 pc = Pinecone(api_key=api_key, pool_threads=30)
@@ -111,16 +111,39 @@ def extract_metadata(file_path):
     return {'category': category, 'subcategory': subcategory, 'year': year, 'month': month}
 
 def prepare_data_for_upsert(record, file_path):
+    """
+    Prepare a record for upsertion by combining metadata and content.
+    
+    Parameters:
+        record (dict): Content of the file.
+        file_path (str): Path of the file in GCS.
+    
+    Returns:
+        dict: A record ready for Pinecone upsertion.
+    """
     try:
+        # Extract metadata from the file path
         metadata = extract_metadata(file_path)
         if not metadata:
             return None
-        text = json.dumps(record)
+
+        # Combine metadata and record content for embedding
+        metadata_str = " ".join([f"{key}: {value}" for key, value in metadata.items()])
+        text = metadata_str + " " + json.dumps(record)  # Combine metadata and text content
+
+        # Generate embedding
         embedding = generate_embedding(text)
         if not embedding:
             return None
+
+        # Create a unique ID for the record
         unique_id = hashlib.sha256(f"{metadata.get('subcategory')}_{metadata.get('year')}_{metadata.get('month')}".encode()).hexdigest()
-        return {"id": unique_id, "values": embedding, "metadata": metadata}
+
+        return {
+            "id": unique_id,
+            "values": embedding,  # Combined embedding
+            "metadata": metadata  # Metadata as separate field
+        }
     except Exception as e:
         logging.error(f"Error processing record: {e}")
         return None

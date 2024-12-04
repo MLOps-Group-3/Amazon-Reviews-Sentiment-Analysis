@@ -1,30 +1,26 @@
 import streamlit as st
+import json
 from llm_fetch import process_text_query
-import os
+import streamlit.components.v1 as components
 
-# Function to load values from text files in the specified folder
-def load_filter_values(folder_path):
-    """Load filter values from text files."""
-    filters = {
-        'categories': [],
-        'subcategories': [],
-        'years': [],
-        'months': []
-    }
-
+# Function to load hierarchical metadata from JSON file
+def load_hierarchical_metadata(file_path):
+    """Load hierarchical metadata from a JSON file."""
     try:
-        with open(os.path.join(folder_path, 'categories.txt'), 'r') as f:
-            filters['categories'] = [line.strip() for line in f.readlines()]
-        with open(os.path.join(folder_path, 'subcategories.txt'), 'r') as f:
-            filters['subcategories'] = [line.strip() for line in f.readlines()]
-        with open(os.path.join(folder_path, 'years.txt'), 'r') as f:
-            filters['years'] = [line.strip() for line in f.readlines()]
-        with open(os.path.join(folder_path, 'months.txt'), 'r') as f:
-            filters['months'] = [line.strip() for line in f.readlines()]
+        with open(file_path, 'r') as f:
+            return json.load(f)
     except Exception as e:
-        st.error(f"Error loading filter values: {e}")
-    
-    return filters
+        st.error(f"Error loading metadata: {e}")
+        return {}
+
+# Function to get available options dynamically based on selected filters
+def get_available_options(metadata, category=None, year=None):
+    """Get dynamic options based on selected hierarchy."""
+    if category is None:
+        return list(metadata.keys())
+    if year is None:
+        return list(metadata.get(category, {}).keys())
+    return metadata.get(category, {}).get(year, [])
 
 # Streamlit app configuration
 st.set_page_config(
@@ -33,45 +29,70 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Define the folder path where the filter text files are stored
-items_folder_path = 'items'
+# Path to the hierarchical metadata file
+metadata_file_path = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items/hierarchical_metadata.json'
 
-# Load filter values from the text files
-filters = load_filter_values(items_folder_path)
+# Load metadata from the JSON file
+metadata = load_hierarchical_metadata(metadata_file_path)
 
 # Sidebar filters
 st.sidebar.header("Filters")
-category = st.sidebar.selectbox("Category", filters['categories'])
-#subcategory = st.sidebar.selectbox("Subcategory", filters['subcategories'])
-year = st.sidebar.selectbox("Year", filters['years'])
-month = st.sidebar.selectbox("Month", filters['months'])
 
-# Main page header
-st.title("Amazon Reviews Chatbot")
-st.markdown(
-    "This chatbot analyzes sentiment and provides insights based on product reviews. "
-    "Use the filters in the sidebar for a more refined search."
-)
+# Navigation
+page = st.sidebar.radio("Select a Page", ("Chatbot", "Sentiment Analysis"))
 
-# User input for chatbot query
-user_input = st.text_input("Ask me a question about Amazon reviews:", "")
-
-# Set top_k for results
-# top_k = st.sidebar.slider("Number of Results", min_value=1, max_value=20, value=10)
-
-# Chatbot response
-if st.button("Get Response"):
-    if user_input.strip():
-        with st.spinner("Processing your query..."):
-            response = process_text_query(
-                input_text=user_input,
-                #top_k=top_k,
-                category=category,
-                #subcategory=subcategory,
-                year=year,
-                month=month,
+# Chatbot Page
+if page == "Chatbot":
+    st.title("Amazon Reviews Chatbot")
+    st.markdown(
+        "This chatbot analyzes sentiment and provides insights based on product reviews. "
+        "Use the filters in the sidebar for a more refined search."
+    )
+    
+    # Dynamic category selection
+    selected_category = st.sidebar.selectbox("Category", get_available_options(metadata))
+    if selected_category:
+        # Dynamic year selection based on category
+        selected_year = st.sidebar.selectbox(
+            "Year",
+            get_available_options(metadata, selected_category)
+        )
+        if selected_year:
+            # Dynamic month selection based on category and year
+            selected_month = st.sidebar.selectbox(
+                "Month",
+                get_available_options(metadata, selected_category, selected_year)
             )
-        st.subheader("Chatbot Response")
-        st.write(response)
+        else:
+            selected_month = None
     else:
-        st.warning("Please enter a question.")
+        selected_year = None
+        selected_month = None
+
+    # User input for chatbot query
+    user_input = st.text_input("Ask me a question about Amazon reviews:", "")
+
+    # Chatbot response
+    if st.button("Get Response"):
+        if user_input.strip():
+            with st.spinner("Processing your query..."):
+                response = process_text_query(
+                    input_text=f"Find results for the query '{user_input}' in the '{selected_category}' category for the year {selected_year} and the month of {selected_month}",
+                    category=selected_category,
+                    year=selected_year,
+                    month=selected_month,
+                )
+            st.subheader("Chatbot Response")
+            st.write(response)
+        else:
+            st.warning("Please enter a question.")
+
+# Sentiment Analysis Page
+elif page == "Sentiment Analysis":
+    st.title("Product Sentiment Analysis")
+    
+    # Embed Tableau visualization using components
+    tableau_url = "https://public.tableau.com/views/MARRYLANDYEARLYROADCRASHREPORT-GROUP26-PROJECT3/MarylandYearlyRoadCrashReport"
+    components.html(f"""
+    <iframe src="{tableau_url}" width="100%" height="800px" frameborder="0"></iframe>
+    """, height=800)
