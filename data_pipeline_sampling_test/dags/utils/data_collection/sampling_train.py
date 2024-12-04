@@ -57,20 +57,25 @@ def load_jsonl_gz(file_path, nrows=None):
     return df
 
 def process_reviews_df(reviews_df, start_date, end_date):
-    """
-    Process the reviews DataFrame based on the provided date range.
-    """
     logger.info("Processing reviews DataFrame")
-    reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
-    reviews_df['year'] = reviews_df['review_date_timestamp'].dt.year
-    logger.info(f"filtering dara from {start_date} to {end_date}")
+    
+    # Convert timestamp to datetime
+    reviews_df['review_datetime'] = pd.to_datetime(reviews_df['timestamp'], unit='ms')
+    reviews_df['review_date_timestamp'] = reviews_df['review_datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Extract year
+    reviews_df['year'] = reviews_df['review_datetime'].dt.year
+    logger.info(f"Created 'year' column. Sample data:\n{reviews_df[['year']].head()}")  # Log sample rows
+    
+    logger.info(f"Filtering data from {start_date} to {end_date}")
     filtered_reviews_df = reviews_df[
-        (reviews_df['review_date_timestamp'] >= start_date) &
-        (reviews_df['review_date_timestamp'] <= end_date)
+        (reviews_df['review_datetime'] >= start_date) &
+        (reviews_df['review_datetime'] <= end_date)
     ].drop(columns=['images'], errors='ignore')
     
     logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
     return filtered_reviews_df
+
 
 def join_dataframes(filtered_reviews_df, metadata_df):
     """
