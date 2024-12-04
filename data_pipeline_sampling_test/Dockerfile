@@ -18,7 +18,7 @@ RUN mkdir -p /opt/airflow/data/cleaned \
 # Copy DAGs, plugins, config, and tests
 COPY dags /opt/airflow/dags
 #COPY plugins /opt/airflow/plugins
-#COPY config /opt/airflow/config
+COPY config /opt/airflow/config
 COPY tests /opt/airflow/tests
 
 # Expose port 8080 for the Airflow webserver
