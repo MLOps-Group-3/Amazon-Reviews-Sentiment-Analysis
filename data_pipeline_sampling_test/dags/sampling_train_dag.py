@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from utils.data_collection.sampling_train import sample_training_data
 from utils.data_collection.data_concat_train import concatenate_and_save_csv_files
 from utils.data_collection.dynamic_month_train import get_next_training_period
-from utils.gcs_operations import pull_from_gcs, push_to_gcs
+from utils.data_collection.gcs_operations import pull_from_gcs, push_to_gcs
 from utils.config import (
     CATEGORIES, 
     SAMPLED_TRAINING_DIRECTORY, 
@@ -76,13 +76,21 @@ with DAG(
         )
         category_tasks.append(task)
 
+    # Dynamically compute start and end dates for concatenation filename
+    concat_start_date, concat_end_date = get_next_training_period(
+        SAMPLED_TRAINING_DIRECTORY,
+        CATEGORIES[0],  # Assuming all categories share the same training period
+        default_start_year=DEFAULT_TRAINING_START_YEAR,
+        default_start_month=DEFAULT_TRAINING_START_MONTH
+    )
+
     # Create a task to concatenate data after all categories are sampled
     concat_task = PythonOperator(
         task_id='concatenate_training_data',
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
             'input_dir': SAMPLED_TRAINING_DIRECTORY,
-            'output_file': f'{SAMPLED_TRAINING_DIRECTORY}/concatenated_training_data_{{execution_date}}.csv',
+            'output_file': f'{SAMPLED_TRAINING_DIRECTORY}/concatenated_training_data_{concat_start_date}_to_{concat_end_date}.csv',
         },
     )
 
