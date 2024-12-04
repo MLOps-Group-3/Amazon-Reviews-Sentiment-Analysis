@@ -62,12 +62,12 @@ def process_reviews_df(reviews_df, start_date, end_date):
     """
     logger.info("Processing reviews DataFrame")
     reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
-
+    logger.info(f"filtering dara from {start_date} to {end_date}")
     filtered_reviews_df = reviews_df[
         (reviews_df['review_date_timestamp'] >= start_date) &
         (reviews_df['review_date_timestamp'] <= end_date)
     ].drop(columns=['images'], errors='ignore')
-
+    
     logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
     return filtered_reviews_df
 

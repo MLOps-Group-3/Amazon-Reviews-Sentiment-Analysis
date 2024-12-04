@@ -64,17 +64,17 @@ with DAG(
         },
     )
 
-    # Trigger data validation DAG after concatenation
-    trigger_validation_dag = TriggerDagRunOperator(
-        task_id='trigger_validation_dag',
-        trigger_dag_id='03_data_validation_dag',
-        wait_for_completion=False,
-    )
+    # # Trigger data validation DAG after concatenation
+    # trigger_validation_dag = TriggerDagRunOperator(
+    #     task_id='trigger_validation_dag',
+    #     trigger_dag_id='03_data_validation_dag',
+    #     wait_for_completion=False,
+    # )
 
     # Set up sequential dependencies
     if category_tasks:
         for i in range(len(category_tasks) - 1):
             category_tasks[i] >> category_tasks[i + 1]
-        category_tasks[-1] >> concat_task >> trigger_validation_dag
+        category_tasks[-1] >> concat_task # >> trigger_validation_dag
     else:
-        concat_task >> trigger_validation_dag
+        concat_task # >> trigger_validation_dag

@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from dynamic_month_train import get_next_training_period
+from utils.data_collection.dynamic_month_train import get_next_training_period
 from utils.config import (
     SAMPLED_TRAINING_DIRECTORY, 
     DEFAULT_TRAINING_START_YEAR, 
