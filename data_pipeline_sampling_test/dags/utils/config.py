@@ -41,7 +41,7 @@ TRAINING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/training"
 SERVING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/serving"
 
 # Validation Data Result Path
-VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation/validation_results.csv"
+VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation"
 
 # Post preprocessing cleaned data path
 CLEANED_DATA_PATH = "/opt/airflow/data/cleaned/cleaned_data.csv"

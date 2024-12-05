@@ -45,20 +45,34 @@ def log_data_card(df, task_name):
     logger.info(f"Data Types:\n{df.dtypes}")
     logger.info(f"Missing Values:\n{df.isnull().sum()}")
 
+# Utility function to get the latest file
+def get_latest_file(directory):
+    """Get the latest file in a directory."""
+    files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.csv')]
+    if not files:
+        raise FileNotFoundError(f"No CSV files found in directory: {directory}")
+    return max(files, key=os.path.getmtime)
+
 # Define task functions
 def data_cleaning_task(mode):
     """Task to perform data cleaning."""
     try:
         logger.info(f"Starting data cleaning task for mode: {mode}")
         
-        # Select data file based on mode
-        data_file = TRAINING_SAMPLED_DATA_PATH if mode == "training" else SERVING_SAMPLED_DATA_PATH
+        # Select the latest data file based on the mode
+        data_directory = TRAINING_SAMPLED_DATA_PATH if mode == "training" else SERVING_SAMPLED_DATA_PATH
+        data_file = get_latest_file(data_directory)
         df = pd.read_csv(data_file)
         logger.info(f"Loaded raw data with shape: {df.shape} from {data_file}")
         log_data_card(df, "Raw Data")
         
-        # Perform data cleaning
-        validation_df = pd.read_csv(VALIDATION_RESULT_DATA_PATH)
+        # Select the correct validation folder based on the mode
+        validation_directory = os.path.join(VALIDATION_RESULT_DATA_PATH, mode)
+        validation_file = get_latest_file(validation_directory)
+        validation_df = pd.read_csv(validation_file)
+        logger.info(f"Loaded validation data with shape: {validation_df.shape} from {validation_file}")
+        
+        # Extract emoji indices for cleaning
         emoji_indices = eval(validation_df.loc[validation_df["function"] == "emoji_detection", "row_indices"].values[0])
         df_cleaned = clean_amazon_reviews(df, emoji_indices)
         
