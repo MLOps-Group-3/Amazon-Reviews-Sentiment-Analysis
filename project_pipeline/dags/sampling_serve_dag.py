@@ -78,7 +78,7 @@ with DAG(
     # Trigger data validation DAG after the GCS push (optional)
     trigger_validation_dag = TriggerDagRunOperator(
         task_id='trigger_validation_dag',
-        trigger_dag_id='03_data_validation_dag',
+        trigger_dag_id='04_data_validation_dag',
         wait_for_completion=False,
         conf={'triggering_dag_id': '03_sampling_serve_dag'},
     )

@@ -9,15 +9,6 @@ from airflow.models import Variable
 # Set the LOG_DIRECTORY variable
 Variable.set("LOG_DIRECTORY", "/opt/airflow/logs", description="Directory for storing logs")
 
-# default_args = {
-#     'owner': 'airflow',
-#     'depends_on_past': False,
-#     'start_date': datetime(2024, 10, 30),
-#     'email_on_failure': True,
-#     'email_on_retry': True,
-#     'retries': 1,
-#     'retry_delay': timedelta(minutes=5)
-# }
 default_args = {
     'owner': 'airflow',
     'start_date': datetime(2024, 10, 22),
@@ -45,23 +36,7 @@ acquire_data_task = PythonOperator(
     dag=dag,
 )
 
-# send_success_email = EmailOperator(
-#     task_id='send_success_email',
-#     # to='subramanian.ni@northeastern.edu',
-#     subject='Data Acquisition Task Completed Successfully',
-#     html_content='The data acquisition task for Amazon reviews has been completed successfully.',
-#     dag=dag,
-# )
-
-# send_failure_email = EmailOperator(
-#     task_id='send_failure_email',
-#     to='subraamanian.ni@northeastern.edu',
-#     subject='Data Acquisition Task Failed',
-#     html_content='The data acquisition task for Amazon reviews has failed.',
-#     dag=dag,
-#     trigger_rule='one_failed'
-# )
-
+# Old
 # trigger_sampling_dag = TriggerDagRunOperator(
 #     task_id='trigger_sampling_dag',
 #     trigger_dag_id='02_data_sampling_dag',  # ID of the next DAG to trigger
@@ -69,6 +44,12 @@ acquire_data_task = PythonOperator(
 #     dag=dag,
 # )
 
+trigger_gcs_pull_dag = TriggerDagRunOperator(
+    task_id='trigger_gcs_pull_dag',
+    trigger_dag_id='02_GCS_pull_tasks',  # ID of the next DAG to trigger
+    wait_for_completion=False,  # Wait until sampling_dag completes
+    dag=dag,
+)
 
-acquire_data_task #>> trigger_sampling_dag
-# >> [send_success_email, send_failure_email]
+
+acquire_data_task >> trigger_gcs_pull_dag

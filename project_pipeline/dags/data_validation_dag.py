@@ -200,7 +200,7 @@ def save_results(ti, **kwargs):
 
 # Define the DAG
 with DAG(
-    dag_id='03_data_validation_dag',
+    dag_id='04_data_validation_dag',
     default_args=default_args,
     schedule_interval=None,
     catchup=False,
@@ -261,7 +261,7 @@ with DAG(
 
     trigger_preprocessing_dag = TriggerDagRunOperator(
             task_id='trigger_preprocessing_data_pipeline',
-            trigger_dag_id='04_data_preprocessing_dag',
+            trigger_dag_id='05_data_preprocessing_dag',
             conf={
                 'triggering_dag_id': '{{ dag_run.conf["triggering_dag_id"] }}'
             }

@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
 from datetime import datetime, timedelta
 from data_utils.data_collection.sampling_train import sample_training_data
@@ -9,6 +10,7 @@ from data_utils.data_collection.gcs_operations import pull_from_gcs, push_to_gcs
 from data_utils.config import (
     CATEGORIES, 
     SAMPLED_TRAINING_DIRECTORY,
+    SAMPLED_SERVING_DIRECTORY,
 )
 import os
 from dotenv import load_dotenv
@@ -42,7 +44,7 @@ with DAG(
 ) as dag:
 
     # Pull from GCS train sampling task
-    pull_from_gcs_task = PythonOperator(
+    pull_from_gcs_training_task = PythonOperator(
         task_id='pull_from_gcs_group_train_sampling',
         python_callable=pull_from_gcs,
         op_kwargs={
@@ -53,6 +55,32 @@ with DAG(
         },
     )
 
-    
+    # Pull from GCS serve sampling task
+    pull_from_gcs_serving_task = PythonOperator(
+        task_id='pull_from_gcs_group_serving_sampling',
+        python_callable=pull_from_gcs,
+        op_kwargs={
+            'bucket_name': GCS_BUCKET_NAME,
+            'source_blob_prefix': 'data/sampled/serving/',
+            'local_directory': SAMPLED_SERVING_DIRECTORY,
+            'service_account_key': GCS_SERVICE_ACCOUNT_KEY
+        },
+    )
+
+    trigger_sampling_serve_dag = TriggerDagRunOperator(
+        task_id='trigger_sampling_serve_dag',
+        trigger_dag_id='03_sampling_serve_dag',  # ID of the next DAG to trigger
+        wait_for_completion=False,  # Wait until sampling_dag completes
+        dag=dag,
+    )
+
+    trigger_sampling_train_dag = TriggerDagRunOperator(
+        task_id='trigger_sampling_train_dag',
+        trigger_dag_id='03_sampling_train_dag',  # ID of the next DAG to trigger
+        wait_for_completion=False,  # Wait until sampling_dag completes
+        dag=dag,
+    )
+
     # Define the overall DAG structure
-    pull_from_gcs_task
+    pull_from_gcs_serving_task >> trigger_sampling_serve_dag
+    pull_from_gcs_training_task >> trigger_sampling_train_dag
