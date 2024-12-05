@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
-from serve_utils.batch_processing import read_and_preprocess_data, upload_to_gcs, create_bq_table, submit_batch_prediction, create_output_table
+from serve_utils.batch_processing import read_and_preprocess_data, upload_to_gcs, create_bq_table, submit_batch_prediction, create_output_table, drop_batch_pred_output_table
 import os
 from dotenv import load_dotenv
 
@@ -63,6 +63,18 @@ t3 = PythonOperator(
 )
 
 t4 = PythonOperator(
+    task_id='drop_batch_pred_output_table',
+    python_callable=drop_batch_pred_output_table,
+    provide_context=True,
+    op_kwargs={
+            "GCS_SERVICE_ACCOUNT_KEY": GCS_SERVICE_ACCOUNT_KEY,
+            "GCS_PROJECT_ID": GCS_PROJECT_ID,
+            "GCS_REGION": GCS_REGION
+        },
+    dag=dag,
+)
+
+t5 = PythonOperator(
     task_id='submit_batch_prediction',
     python_callable=submit_batch_prediction,
     provide_context=True,
@@ -74,7 +86,7 @@ t4 = PythonOperator(
     dag=dag,
 )
 
-t5 = PythonOperator(
+t6 = PythonOperator(
     task_id='create_output_table',
     python_callable=create_output_table,
     provide_context=True,
@@ -84,4 +96,4 @@ t5 = PythonOperator(
     dag=dag,
 )
 
-t1 >> t2 >> t3 >> t4 >> t5
+t1 >> t2 >> t3 >> t4 >> t5 >> t6

@@ -271,3 +271,27 @@ def create_output_table(GCS_SERVICE_ACCOUNT_KEY, **kwargs):
     except Exception as e:
         logging.error(f"Error in create_output_table function: {str(e)}")
         raise
+
+def drop_batch_pred_output_table(GCS_SERVICE_ACCOUNT_KEY, **kwargs):
+    try:
+        logging.info("Starting create_output_table function")
+
+        # Set the path to your service account key
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
+
+        client = bigquery.Client()
+
+        query = """
+        DROP TABLE IF EXISTS `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions`;
+        """
+
+        logging.info("Executing SQL query to drop output BQ prediction results table")
+
+        job = client.query(query)
+        job.result()  # Wait for the query to finish
+
+        logging.info("drop_batch_pred_output_table function completed successfully")
+    except Exception as e:
+        logging.error(f"Error in drop_batch_pred_output_table function: {str(e)}")
+        raise
+
