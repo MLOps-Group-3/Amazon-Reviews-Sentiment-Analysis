@@ -60,6 +60,8 @@ LABELED_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_data.csv"
 # Labeled aspect data paths (only for training)
 LABELED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_aspect_data.csv"
 
+BATCH_PROCESSING_DIRECTORY = "/opt/airflow/data/batch_processing_input"
+
 # Training data configurations
 DEFAULT_TRAINING_START_YEAR = 2018
 DEFAULT_TRAINING_START_MONTH = 1

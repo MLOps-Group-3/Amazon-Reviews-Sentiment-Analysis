@@ -6,7 +6,7 @@ from google.cloud import bigquery
 from google.cloud import aiplatform
 from google.cloud.aiplatform.model_monitoring.objective import ObjectiveConfig, SkewDetectionConfig, DriftDetectionConfig
 from google.cloud.aiplatform.model_monitoring import EmailAlertConfig
-from data_utils.config import CLEANED_DATA_PATH_SERVE
+from data_utils.config import CLEANED_DATA_PATH_SERVE, BATCH_PROCESSING_DIRECTORY
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -16,6 +16,12 @@ def read_and_preprocess_data(**kwargs):
     try:
         logging.info("Starting read_and_preprocess_data function")
         # file_path = "/opt/airflow/data/cleaned/cleaned_data.csv"
+
+        # Ensure the batch processing directory exists
+        if not os.path.exists(BATCH_PROCESSING_DIRECTORY):
+            logging.info(f"Creating batch processing directory: {BATCH_PROCESSING_DIRECTORY}")
+            os.makedirs(BATCH_PROCESSING_DIRECTORY, exist_ok=True)
+            
         file_path = CLEANED_DATA_PATH_SERVE
         logging.info(f"Reading data from {file_path}")
         data = pd.read_csv(file_path)
@@ -36,7 +42,7 @@ def read_and_preprocess_data(**kwargs):
         new_column_order = first_columns + remaining_columns
         data = data[new_column_order]
         
-        output_path = "/opt/airflow/data/batch_processing_input/processed_batch_data.csv"
+        output_path = f"{BATCH_PROCESSING_DIRECTORY}/processed_batch_data.csv"
         logging.info(f"Saving processed data to {output_path}")
         data.to_csv(output_path, index=False)
         
