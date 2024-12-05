@@ -17,6 +17,7 @@ from google.cloud import aiplatform
 from dsl_components import *
 from dsl_pipeline import *
 
+from model_config import *
 
 def upload_folder_to_gcs(local_folder, bucket, destination_folder):
     # Strip the `gs://<bucket_name>/` prefix from the destination path
@@ -64,8 +65,8 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
 
     # Run the pipeline
     print("Running the pipeline...")
-    pipeline_job.run(sync=True)
-    print("Pipeline execution completed.")
+    pipeline_job.submit()
+    print("Pipeline job submitted.")
 
 def main():
     # Set up logging
@@ -73,9 +74,9 @@ def main():
     # Google Cloud credentials and project details
     credentials_path = 'gcp-key.json'  
     
-    GCP_PROJECT = "amazonreviewssentimentanalysis"
-    GCP_REGION = "us-central1"
-    BUCKET_NAME = "model-deployment-from-airflow"
+    # GCP_PROJECT = "amazonreviewssentimentanalysis"
+    # GCP_REGION = "us-central1"
+    # BUCKET_NAME = "model-deployment-from-airflow"
     
     client = storage.Client(project=GCP_PROJECT)
     bucket = client.bucket(BUCKET_NAME)
