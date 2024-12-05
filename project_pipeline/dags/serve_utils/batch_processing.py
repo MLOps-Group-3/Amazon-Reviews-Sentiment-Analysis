@@ -4,6 +4,8 @@ import os
 from google.cloud import storage
 from google.cloud import bigquery
 from google.cloud import aiplatform
+from google.cloud.aiplatform.model_monitoring.objective import ObjectiveConfig, SkewDetectionConfig, DriftDetectionConfig
+from google.cloud.aiplatform.model_monitoring import EmailAlertConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -114,23 +116,88 @@ def submit_batch_prediction(GCS_SERVICE_ACCOUNT_KEY, GCS_PROJECT_ID, GCS_REGION,
         input_table = "bq://amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data"
         
         output_table_prefix = "bq://amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions"
-        
+
+        train_table = "bq://amazonreviewssentimentanalysis.batch_processing_input_batch_test_data.batch_processing_input_train"
+
         batch_prediction_name = "Amazon-Month-Batch-BQ-rearranged"
         
         model = aiplatform.Model(model_name=model_name)
         
-        batch_prediction_job = model.batch_predict(
+        # batch_prediction_job = model.batch_predict(
+        #     job_display_name=batch_prediction_name,
+        #     bigquery_source=input_table,
+        #     bigquery_destination_prefix=output_table_prefix,
+        #     machine_type="n1-standard-2",
+        #     starting_replica_count=2,
+        #     max_replica_count=2,
+        #     sync=True
+        # )
+        
+        # output_info_table = batch_prediction_job.output_info.bigquery_output_table
+
+        # Define the skew detection config
+        skew_detection_config = SkewDetectionConfig(
+            data_source=train_table,
+            # target_field="price",
+            skew_thresholds={
+                "text": 0.3,
+                "price_missing": 0.1,
+                "helpful_vote": 0.2,
+                "verified_purchase": 0.1,
+                "price": 0.3
+            }
+        )
+
+        # Define the drift detection config (They say in documentation this doesn't work)
+        drift_detection_config = DriftDetectionConfig(
+            drift_thresholds={
+                "text": 0.3,
+                "price_missing": 0.1,
+                "helpful_vote": 0.2,
+                "verified_purchase": 0.1
+            }
+        )
+
+        # Create the objective config
+        model_monitoring_objective_config = ObjectiveConfig(
+            skew_detection_config=skew_detection_config,
+            drift_detection_config=drift_detection_config
+        )
+
+        # Create the email alert configuration
+        model_monitoring_alert_config = EmailAlertConfig(
+            user_emails=["mlopsgrp3@gmail.com"]
+        )
+
+        # Create the batch prediction job
+        batch_prediction_job = aiplatform.BatchPredictionJob.create(
             job_display_name=batch_prediction_name,
+            model_name=model_name,
+            instances_format="bigquery",
+            predictions_format="bigquery",
             bigquery_source=input_table,
             bigquery_destination_prefix=output_table_prefix,
-            machine_type="n1-standard-2",
-            starting_replica_count=2,
-            max_replica_count=2,
-            sync=True
+            model_parameters=None,
+            machine_type="n1-standard-4",
+            accelerator_type=None,
+            accelerator_count=None,
+            starting_replica_count=1,
+            max_replica_count=10,
+            generate_explanation=False,
+            explanation_metadata=None,
+            explanation_parameters=None,
+            encryption_spec_key_name=None,
+            sync=True,
+            model_monitoring_objective_config=model_monitoring_objective_config,
+            model_monitoring_alert_config=model_monitoring_alert_config
         )
-        
-        output_info_table = batch_prediction_job.output_info.bigquery_output_table
-        
+
+        # Wait for the job to complete
+        batch_prediction_job.wait()
+
+        logging.info(f"Batch prediction job completed with state: {batch_prediction_job.state}")
+        logging.info(f"Prediction results saved to: {batch_prediction_job.output_info.bigquery_output_dataset}")
+
         logging.info(f"Batch Prediction Job {batch_prediction_name} completed.")
         
     except Exception as e:
