@@ -42,30 +42,54 @@ metadata = load_hierarchical_metadata(metadata_file_path)
 st.sidebar.header("Navigation")
 page = st.sidebar.radio("Select a Page", ("Introduction", "Summary Generator"))
 
+# Custom CSS for styling
+st.markdown("""
+    <style>
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        color: #333;
+    }
+    .main-header {
+        font-size: 28px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    .intro-text {
+        font-size: 16px;
+        color: #555;
+        line-height: 1.7;
+    }
+    .highlight {
+        font-weight: bold;
+        color: #1abc9c;
+    }
+    .sub-header {
+        font-size: 22px;
+        font-weight: bold;
+        color: #34495e;
+        margin-top: 20px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 14px;
+        color: #95a5a6;
+        margin-top: 50px;
+    }
+    .btn-primary {
+        background-color: #1abc9c;
+        color: white;
+        border: none;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Introduction Page
 if page == "Introduction":
     # Title and Header Section
-    st.title("📊 Welcome to the Amazon Reviews Dashboard")
-    st.markdown("""
-        <style>
-        .intro-header {
-            font-size: 22px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-top: 15px;
-            margin-bottom: 15px;
-        }
-        .intro-text {
-            font-size: 18px;
-            color: #333;
-            line-height: 1.6;
-        }
-        .highlight {
-            font-weight: bold;
-            color: #2E8B57;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📊 Welcome to the Amazon Reviews Dashboard</div>', unsafe_allow_html=True)
 
     # GitHub Repository Link
     st.markdown("""
@@ -99,14 +123,21 @@ if page == "Introduction":
     </div>
     """, unsafe_allow_html=True)
 
+    # Footer Section
+    st.markdown("""
+    <div class="footer">
+        Designed for data-driven decision-making by MLOps-Group-3.
+    </div>
+    """, unsafe_allow_html=True)
 
 # Summary Generator Page
 elif page == "Summary Generator":
-    st.title("Amazon Reviews Summary Generator")
+    st.markdown('<div class="main-header">Amazon Reviews Summary Generator</div>', unsafe_allow_html=True)
     st.markdown(
-        "Select the filters below to generate a summary of Amazon reviews based on the chosen category, year, and month."
+        "<div class='intro-text'>Select the filters below to generate a summary of Amazon reviews based on the chosen category, year, and month.</div>",
+        unsafe_allow_html=True,
     )
-    
+
     # Dynamic category selection
     selected_category = st.selectbox("Category", get_available_options(metadata))
     selected_year = None
@@ -126,7 +157,7 @@ elif page == "Summary Generator":
             )
 
     # Process Button
-    if st.button("Proceed"):
+    if st.button("Proceed", key="proceed", help="Click to generate the summary"):
         if selected_category and selected_year and selected_month:
             with st.spinner("Generating summary..."):
                 response = process_text_query(
@@ -135,7 +166,7 @@ elif page == "Summary Generator":
                     year=selected_year,
                     month=selected_month,
                 )
-            st.subheader("Summary")
+            st.markdown('<div class="sub-header">Summary</div>', unsafe_allow_html=True)
             st.success(response)
         else:
             st.warning("Please select all filters (Category, Year, and Month) to proceed.")
