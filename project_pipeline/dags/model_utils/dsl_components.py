@@ -15,7 +15,7 @@ from kfp.v2.dsl import (
 )
 @component(
     packages_to_install=["pandas", "scikit-learn", "google-cloud-storage", "torch", "gcsfs","arsa-pipeline-tools"],
-    # base_image="python:3.9",
+    base_image="python:3.7",
 )
 def data_split(
     code_bucket_path: str,
