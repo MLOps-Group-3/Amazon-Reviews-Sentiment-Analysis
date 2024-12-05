@@ -262,7 +262,9 @@ with DAG(
     trigger_preprocessing_dag = TriggerDagRunOperator(
         task_id='trigger_preprocessing_data_pipeline',
         trigger_dag_id='04_data_preprocessing_dag',
+        conf={"mode": "{{ dag_run.conf.get('triggering_dag_id', 'training') }}"},
     )
+
 
     set_input_path >> [schema_validation, range_check, missing_duplicates,
                        privacy_compliance, emoji_detection, anomaly_detection,

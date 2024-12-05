@@ -37,8 +37,8 @@ LOG_DIRECTORY = "/opt/airflow/logs"
 SAMPLED_TRAINING_DIRECTORY = "/opt/airflow/data/sampled/training"
 SAMPLED_SERVING_DIRECTORY = "/opt/airflow/data/sampled/serving"
 
-TRAINING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/training/concatenated_training_data.csv"
-SERVING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/serving/concatenated_serving_data.csv"
+TRAINING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/training"
+SERVING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/serving"
 
 # Validation Data Result Path
 VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation/validation_results.csv"

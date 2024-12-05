@@ -28,7 +28,7 @@ default_args = {
 
 # Define the DAG
 with DAG(
-    dag_id='sampling_serve_dag',
+    dag_id='03_sampling_serve_dag',
     default_args=default_args,
     description='DAG to sample serving data dynamically on the 1st day of each month',
     schedule_interval=None,
@@ -80,6 +80,7 @@ with DAG(
         task_id='trigger_validation_dag',
         trigger_dag_id='03_data_validation_dag',
         wait_for_completion=False,
+        conf={'triggering_dag_id': 'sampling_serve_dag'},
     )
 
     # Set up sequential dependencies for category tasks
