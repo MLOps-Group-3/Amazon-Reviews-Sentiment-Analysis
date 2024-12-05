@@ -62,13 +62,13 @@ acquire_data_task = PythonOperator(
 #     trigger_rule='one_failed'
 # )
 
-trigger_sampling_dag = TriggerDagRunOperator(
-    task_id='trigger_sampling_dag',
-    trigger_dag_id='02_data_sampling_dag',  # ID of the next DAG to trigger
-    wait_for_completion=False,  # Wait until sampling_dag completes
-    dag=dag,
-)
+# trigger_sampling_dag = TriggerDagRunOperator(
+#     task_id='trigger_sampling_dag',
+#     trigger_dag_id='02_data_sampling_dag',  # ID of the next DAG to trigger
+#     wait_for_completion=False,  # Wait until sampling_dag completes
+#     dag=dag,
+# )
 
 
-acquire_data_task >> trigger_sampling_dag
+acquire_data_task #>> trigger_sampling_dag
 # >> [send_success_email, send_failure_email]

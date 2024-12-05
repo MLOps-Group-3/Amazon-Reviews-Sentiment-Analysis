@@ -1,45 +1,22 @@
+import os
 import pandas as pd
 import gzip
 import json
 from tqdm import tqdm
-import logging
-import logging.config
-import os
 from datetime import datetime
-from ..config import CATEGORIES, TARGET_DIRECTORY_SAMPLED, TARGET_DIRECTORY, SAMPLING_FRACTION
+import logging
+from ..config import (
+    CATEGORIES,
+    TARGET_DIRECTORY,
+    SAMPLED_TRAINING_DIRECTORY,
+    SAMPLING_FRACTION,
+    DEFAULT_TRAINING_START_YEAR,
+    DEFAULT_TRAINING_START_MONTH
+)
+from ..data_collection.dynamic_month_train import get_next_training_period
 
-# Set up logging configuration
-logging.config.dictConfig({
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'standard': {
-            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-        },
-    },
-    'handlers': {
-        'default': {
-            'level': 'INFO',
-            'formatter': 'standard',
-            'class': 'logging.StreamHandler',
-        },
-        'file_handler': {
-            'level': 'DEBUG',
-            'formatter': 'standard',
-            'class': 'logging.FileHandler',
-            'filename': f'log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
-            'mode': 'w'
-        }
-    },
-    'loggers': {
-        '': {  # root logger
-            'handlers': ['default', 'file_handler'],
-            'level': 'DEBUG',
-            'propagate': True
-        }
-    }
-})
-
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 def read_jsonl_gz_in_chunks(file_path, chunksize=10000):
@@ -65,46 +42,40 @@ def load_jsonl_gz(file_path, nrows=None):
     """
     chunks = []
     total_rows = 0
-    
+
     for chunk in tqdm(read_jsonl_gz_in_chunks(file_path), desc="Loading data"):
         chunks.append(chunk)
         total_rows += len(chunk)
         if nrows is not None and total_rows >= nrows:
             break
-    
+
     df = pd.concat(chunks, ignore_index=True)
     if nrows is not None:
         df = df.head(nrows)
-    
+
     logger.info(f"Loaded {len(df)} rows from {file_path}")
     return df
 
-import calendar
-from datetime import datetime
-
-def process_reviews_df(reviews_df, year, month):
-    """
-    Process the reviews DataFrame based on the provided year and month.
-    """
+def process_reviews_df(reviews_df, start_date, end_date):
     logger.info("Processing reviews DataFrame")
-
-    # Ensure year and month are integers
-    year = int(year)
-    month = int(month)
-
-    # Define start and end dates
-    start_date = f"{year}-{month:02d}-01 00:00:00"
-    _, last_day = calendar.monthrange(year, month)
-    end_date = f"{year}-{month:02d}-{last_day:02d} 23:59:59"
     
-    # Filter DataFrame by date range
+    # Convert timestamp to datetime
+    reviews_df['review_datetime'] = pd.to_datetime(reviews_df['timestamp'], unit='ms')
+    reviews_df['review_date_timestamp'] = reviews_df['review_datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Extract year
+    reviews_df['year'] = reviews_df['review_datetime'].dt.year
+    reviews_df['year'] = reviews_df['year'].astype('int64')
+    
+    logger.info(f"Filtering data from {start_date} to {end_date}")
     filtered_reviews_df = reviews_df[
-        (reviews_df['timestamp'] >= start_date) & 
-        (reviews_df['timestamp'] <= end_date)
+        (reviews_df['review_datetime'] >= start_date) &
+        (reviews_df['review_datetime'] <= end_date)
     ].drop(columns=['images'], errors='ignore')
     
     logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
     return filtered_reviews_df
+
 
 def join_dataframes(filtered_reviews_df, metadata_df):
     """
@@ -115,13 +86,13 @@ def join_dataframes(filtered_reviews_df, metadata_df):
     metadata_df_renamed = metadata_df_renamed[
         ['parent_asin', 'main_category', 'product_name', 'categories', 'price', 'average_rating', 'rating_number']
     ]
-    
+
     joined_df = filtered_reviews_df.merge(
         metadata_df_renamed,
         on='parent_asin',
         how='left'
     )
-    
+
     logger.info(f"Joined DataFrame has {len(joined_df)} rows")
     return joined_df
 
@@ -133,60 +104,62 @@ def sample_data(joined_df):
     joined_df['review_month'] = pd.to_datetime(joined_df['review_date_timestamp']).dt.month
     grouped_df = joined_df.groupby(['review_month', 'rating']).size().reset_index(name='count')
     joined_with_count_df = pd.merge(joined_df, grouped_df, on=['review_month', 'rating'], how='inner')
-    
+
     sampled_df = joined_with_count_df.groupby(['review_month', 'rating']).apply(
         lambda x: x.sample(frac=SAMPLING_FRACTION, random_state=42)
     ).reset_index(drop=True)
-    
+
     logger.info(f"Sampled {len(sampled_df)} rows")
     return sampled_df
 
-def process_sampled_data(sampled_df):
+def save_sampled_data(sampled_df, category_name, start_date, end_date):
     """
-    Process the sampled data and split into two DataFrames.
+    Save the sampled data to a CSV file.
     """
-    logger.info("Processing sampled data")
-    sampled_df['review_date_timestamp'] = pd.to_datetime(sampled_df['review_date_timestamp'], format='%Y-%m-%d %H:%M:%S')
-    sampled_df['year'] = sampled_df['review_date_timestamp'].dt.year
-    sampled_df['categories'] = sampled_df['categories'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-    sampled_df = sampled_df.drop(columns=['count'])
-    
-    sampled_2018_2019_df = sampled_df[sampled_df['year'].isin([2018, 2019])]
-    sampled_2020_df = sampled_df[sampled_df['year'] == 2020]
-    
-    logger.info(f"Split data into {len(sampled_2018_2019_df)} rows for 2018-2019 and {len(sampled_2020_df)} rows for 2020")
-    return sampled_2018_2019_df, sampled_2020_df
+    os.makedirs(SAMPLED_TRAINING_DIRECTORY, exist_ok=True)
+    file_name = f"sampled_data_{start_date}_to_{end_date}_{category_name}.csv"
+    file_path = os.path.join(SAMPLED_TRAINING_DIRECTORY, file_name)
+    sampled_df.to_csv(file_path, index=False)
+    logger.info(f"Saved sampled data to {file_path}")
 
-def sample_category(category_name):
+def sample_training_data(category_name):
     try:
-        logger.info(f"Starting data processing for category: {category_name}")
+        # Get the dynamic training period for this category
+        start_date, end_date = get_next_training_period(
+            SAMPLED_TRAINING_DIRECTORY,
+            category_name,
+            default_start_year=DEFAULT_TRAINING_START_YEAR,
+            default_start_month=DEFAULT_TRAINING_START_MONTH
+        )
         
+        logger.info(f"Processing training data for category: {category_name}")
+        logger.info(f"Training period: {start_date} to {end_date}")
+
         # File paths
         reviews_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_reviews.jsonl.gz")
         meta_file = os.path.join(TARGET_DIRECTORY, f"{category_name}_meta.jsonl.gz")
-        
+
         # Load the data
         reviews_df = load_jsonl_gz(reviews_file)
         metadata_df = load_jsonl_gz(meta_file)
-        
+
         # Process the reviews DataFrame
-        filtered_reviews_df = process_reviews_df(reviews_df)
-        
+        filtered_reviews_df = process_reviews_df(reviews_df, start_date, end_date)
+
         # Join DataFrames
         joined_df = join_dataframes(filtered_reviews_df, metadata_df)
-        
+
         # Sample data
         sampled_df = sample_data(joined_df)
-        
-        # Process sampled data
-        sampled_2018_2019_df, sampled_2020_df = process_sampled_data(sampled_df)
-        
-        # Save to CSV
-        os.makedirs(TARGET_DIRECTORY_SAMPLED, exist_ok=True)
-        sampled_2018_2019_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2018_2019_{category_name}.csv"), index=False)
-        sampled_2020_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2020_{category_name}.csv"), index=False)
-        
-        logger.info("Data processing completed successfully")
-    except Exception as e:
-        logger.exception(f"An error occurred during data processing: {str(e)}")
 
+        # Save the sampled data
+        save_sampled_data(sampled_df, category_name, start_date, end_date)
+
+        logger.info(f"Training data sampling completed for category: {category_name}")
+    except Exception as e:
+        logger.error(f"An error occurred while processing training data for category {category_name}: {e}", exc_info=True)
+
+# def main():
+#     # Sample data for each category
+#     for category in CATEGORIES:
+#         sample_training_data(category)

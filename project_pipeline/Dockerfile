@@ -14,17 +14,13 @@ RUN mkdir -p /opt/airflow/data/cleaned \
              /opt/airflow/data/sampled \
              /opt/airflow/data/validation \
              /opt/airflow/data/raw \
-             /opt/airflow/data/batch_processing_input
+             /opt/airflow/data/sampled/serving
 
 # Copy DAGs, plugins, config, and tests
 COPY dags /opt/airflow/dags
 #COPY plugins /opt/airflow/plugins
-#COPY config /opt/airflow/config
+COPY config /opt/airflow/config
 COPY tests /opt/airflow/tests
-
-# Copy .env file into the container
-COPY .env /opt/airflow/.env
-
 
 # Expose port 8080 for the Airflow webserver
 EXPOSE 8080
