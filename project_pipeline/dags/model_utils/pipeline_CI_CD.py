@@ -996,13 +996,13 @@ def main():
     
     # Initialize the GCS client with credentials
     # credentials = service_account.Credentials.from_service_account_file(os.getenv('GCS_CREDENTIALS_PATH'))
-    credentials_json = os.getenv('GCP_SA_KEY')  # Retrieve the JSON string of the credentials from the secret
-    credentials_info = json.loads(credentials_json)  # Parse the JSON string
+    # credentials_json = os.getenv('GCP_SA_KEY')  # Retrieve the JSON string of the credentials from the secret
+    # credentials_info = json.loads(credentials_json)  # Parse the JSON string
 
-    # Create credentials using the parsed JSON
-    credentials = service_account.Credentials.from_service_account_info(credentials_info)
+    # # Create credentials using the parsed JSON
+    # credentials = service_account.Credentials.from_service_account_info(credentials_info)
 
-    client = storage.Client(project=GCP_PROJECT, credentials=credentials)
+    client = storage.Client(project=GCP_PROJECT)
     bucket = client.bucket(BUCKET_NAME)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))

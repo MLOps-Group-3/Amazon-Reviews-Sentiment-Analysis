@@ -26,11 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install google-cloud-storage google-cloud-aiplatform kfp  # Install necessary dependencies for GCS, Vertex AI, and Kubeflow Pipelines
 
-    - name: Authenticate to Google Cloud
-      run: |
-        # Decode the service account JSON key from the GitHub secret and store it in a file
-        echo "${{ secrets.GCP_SA_KEY }}" > $HOME/gcp-key.json  # Use the service account key stored as a GitHub secret
-        export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json  # Set the path for Google Cloud credentials
+
+    - name: Authenticate with GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'  # Use the service account key stored as a GitHub secret
     
     - name: Run the pipeline script
       run: |
