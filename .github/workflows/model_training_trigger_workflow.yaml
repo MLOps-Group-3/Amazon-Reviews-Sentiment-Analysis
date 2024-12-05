@@ -1,0 +1,36 @@
+name: GCS Upload and Vertex AI Pipeline
+
+on:
+  push:
+    branches:
+      - pipeline-orchestration  # Trigger on push to the main branch
+    paths:
+      - project_pipeline/dags/model_utils/**  # Trigger only when files in this directory change
+      - .github/workflows/model_training_trigger_workflow.yaml
+
+jobs:
+  gcs-upload-and-pipeline:
+    runs-on: ubuntu-latest  # Using the latest Ubuntu environment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Checkout the repository's code
+
+    - name: Set up Python environment
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'  # Specify the version of Python to use
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-cloud-storage google-cloud-aiplatform kfp  # Install necessary dependencies for GCS, Vertex AI, and Kubeflow Pipelines
+
+    - name: Authenticate to Google Cloud
+      run: |
+        echo ${{ secrets.GCP_SA_KEY }} > $HOME/gcp-key.json  # Use the service account key stored as a GitHub secret
+        export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json  # Set the path for Google Cloud credentials
+
+    - name: Run the pipeline script
+      run: |
+        python project_pipeline/dags/model_utils/pipeline_CI_CD.py  # Run your pipeline script
