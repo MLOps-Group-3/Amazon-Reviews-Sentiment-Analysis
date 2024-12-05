@@ -1,4 +1,4 @@
-PROCESSED_DATA_PATH = "/opt/airflow/data/labeled_data_test.csv"
+PROCESSED_DATA_PATH = "/opt/airflow/data/Amazon_Sentiment_Analysis.csv"
 DOCUMENT_STORE_PATH = "/opt/airflow/data/document_store_1.json"
 REFINED_PROCESSED_DATA_PATH = "/opt/airflow/data/refined_processed_documents.json"
 DOCUMENTS_FILE_PATH = "/opt/airflow/data/document_store_1.json"

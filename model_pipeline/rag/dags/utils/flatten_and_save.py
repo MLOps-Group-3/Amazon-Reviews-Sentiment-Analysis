@@ -2,14 +2,18 @@ import os
 import json
 import logging
 from google.cloud import storage
+from dotenv import load_dotenv
 
+
+#load_env
+load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # GCS and Pinecone setup
-BUCKET_NAME = "amazon-reviews-sentiment-analysis"
-PREFIX = "test-rag/"
-SERVICE_ACCOUNT_PATH = "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+PREFIX = "RAG/"
+SERVICE_ACCOUNT_PATH = os.getenv("GCS_SERVICE_ACCOUNT_KEY")
 
 # Initialize GCS client
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = SERVICE_ACCOUNT_PATH

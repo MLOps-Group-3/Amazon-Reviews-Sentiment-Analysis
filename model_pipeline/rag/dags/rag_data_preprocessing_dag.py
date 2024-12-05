@@ -181,14 +181,14 @@ with DAG(
 
         load_documents_task_op >> process_documents_task_op >> clean_and_validate_json_task_op >> save_refined_documents_task_op
 
+    # Set dependencies for the two task groups
+    save_documents_task_op >> document_processing_group
+
     # Trigger the second DAG after all tasks in the first DAG are complete
-    trigger_second_dag = TriggerDagRunOperator(
+    save_refined_documents_task_op >> TriggerDagRunOperator(
         task_id='trigger_second_dag',
         trigger_dag_id='flatten_and_embeddings_dag',  # The ID of the second DAG
-        conf={"key": "value"},  # Optional: you can pass configuration if needed
-        wait_for_completion=True,  # Wait for the second DAG to finish before continuing
+        conf={"key": "value"},  
+        wait_for_completion=False,  # Wait for the second DAG to finish before continuing
         dag=dag
     )
-
-    # Set dependencies for the first DAG
-    save_documents_task_op >> trigger_second_dag
