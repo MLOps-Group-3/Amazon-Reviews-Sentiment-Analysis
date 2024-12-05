@@ -53,6 +53,8 @@ logs
 #adding it for secrets
 .env
 
+#add service key json
+amazonreviewssentimentanalysis-8dfde6e21c1d.json
 # Ignore model output directories
 saved_model/
 saved_roberta_model/
