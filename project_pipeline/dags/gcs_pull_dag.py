@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
 from datetime import datetime, timedelta
@@ -23,7 +23,6 @@ GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME_MODEL", "model-deployment-from-airf
 GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "amazonreviewssentimentanalysis")
 GCS_REGION = os.getenv("GCS_REGION", "us-central1")
 
-# Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
     'start_date': datetime(2024, 1, 1),
@@ -33,7 +32,6 @@ default_args = {
     'email': 'vallimeenaavellaiyan@gmail.com',
 }
 
-# Define the DAG
 with DAG(
     dag_id='02_GCS_pull_tasks',
     default_args=default_args,
@@ -43,19 +41,21 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    # Pull from GCS train sampling task
-    pull_from_gcs_training_task = PythonOperator(
-        task_id='pull_from_gcs_group_train_sampling',
-        python_callable=pull_from_gcs,
-        op_kwargs={
-            'bucket_name': GCS_BUCKET_NAME,
-            'source_blob_prefix': 'data/sampled/training/',
-            'local_directory': SAMPLED_TRAINING_DIRECTORY,
-            'service_account_key': GCS_SERVICE_ACCOUNT_KEY
-        },
+    def choose_task(**context):
+        acquisition_type = context['dag_run'].conf.get('acquisition_type')
+        if acquisition_type == 'monthly':
+            return 'pull_from_gcs_group_serving_sampling'
+        elif acquisition_type == 'quarterly':
+            return 'pull_from_gcs_group_training_sampling'
+        else:
+            raise ValueError(f"Invalid acquisition type: {acquisition_type}")
+
+    branch_task = BranchPythonOperator(
+        task_id='branch_task',
+        python_callable=choose_task,
+        provide_context=True,
     )
 
-    # Pull from GCS serve sampling task
     pull_from_gcs_serving_task = PythonOperator(
         task_id='pull_from_gcs_group_serving_sampling',
         python_callable=pull_from_gcs,
@@ -67,20 +67,30 @@ with DAG(
         },
     )
 
+    pull_from_gcs_training_task = PythonOperator(
+        task_id='pull_from_gcs_group_training_sampling',
+        python_callable=pull_from_gcs,
+        op_kwargs={
+            'bucket_name': GCS_BUCKET_NAME,
+            'source_blob_prefix': 'data/sampled/training/',
+            'local_directory': SAMPLED_TRAINING_DIRECTORY,
+            'service_account_key': GCS_SERVICE_ACCOUNT_KEY
+        },
+    )
+
     trigger_sampling_serve_dag = TriggerDagRunOperator(
         task_id='trigger_sampling_serve_dag',
-        trigger_dag_id='03_sampling_serve_dag',  # ID of the next DAG to trigger
-        wait_for_completion=False,  # Wait until sampling_dag completes
-        dag=dag,
+        trigger_dag_id='03_sampling_serve_dag',
+        wait_for_completion=False,
     )
 
     trigger_sampling_train_dag = TriggerDagRunOperator(
         task_id='trigger_sampling_train_dag',
-        trigger_dag_id='03_sampling_train_dag',  # ID of the next DAG to trigger
-        wait_for_completion=False,  # Wait until sampling_dag completes
-        dag=dag,
+        trigger_dag_id='03_sampling_train_dag',
+        wait_for_completion=False,
     )
 
-    # Define the overall DAG structure
+    # Define the task dependencies
+    branch_task >> [pull_from_gcs_serving_task, pull_from_gcs_training_task]
     pull_from_gcs_serving_task >> trigger_sampling_serve_dag
     pull_from_gcs_training_task >> trigger_sampling_train_dag

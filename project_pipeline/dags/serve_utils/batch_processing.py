@@ -6,6 +6,7 @@ from google.cloud import bigquery
 from google.cloud import aiplatform
 from google.cloud.aiplatform.model_monitoring.objective import ObjectiveConfig, SkewDetectionConfig, DriftDetectionConfig
 from google.cloud.aiplatform.model_monitoring import EmailAlertConfig
+from data_utils.config import CLEANED_DATA_PATH_SERVE
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,7 +15,8 @@ def read_and_preprocess_data(**kwargs):
     ti = kwargs['ti']
     try:
         logging.info("Starting read_and_preprocess_data function")
-        file_path = "/opt/airflow/data/cleaned/cleaned_data.csv"
+        # file_path = "/opt/airflow/data/cleaned/cleaned_data.csv"
+        file_path = CLEANED_DATA_PATH_SERVE
         logging.info(f"Reading data from {file_path}")
         data = pd.read_csv(file_path)
         
@@ -213,15 +215,45 @@ def create_output_table(GCS_SERVICE_ACCOUNT_KEY, **kwargs):
 
         client = bigquery.Client()
 
+        # query = """
+        # DROP TABLE IF EXISTS `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean`;
+        # CREATE TABLE `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean` AS
+        # SELECT * EXCEPT(prediction),
+        #   JSON_EXTRACT_SCALAR(prediction, '$[0]') AS sentiment_label,
+        #   CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].POS') AS FLOAT64) AS POS_confidence,
+        #   CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEU') AS FLOAT64) AS NEU_confidence,
+        #   CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEG') AS FLOAT64) AS NEG_confidence
+        # FROM `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions`;
+        # """
+
         query = """
-        DROP TABLE IF EXISTS `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean`;
-        CREATE TABLE `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean` AS
-        SELECT * EXCEPT(prediction),
-          JSON_EXTRACT_SCALAR(prediction, '$[0]') AS sentiment_label,
-          CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].POS') AS FLOAT64) AS POS_confidence,
-          CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEU') AS FLOAT64) AS NEU_confidence,
-          CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEG') AS FLOAT64) AS NEG_confidence
-        FROM `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions`;
+        -- Step: Check if the table exists and create or insert accordingly
+        BEGIN
+          -- Check if the table exists
+          IF NOT EXISTS (
+            SELECT 1
+            FROM `amazonreviewssentimentanalysis.amazon_reviews_sentiment.__TABLES__`
+            WHERE table_id = 'processed_batch_data_w_predictions_clean'
+          ) THEN
+            -- Create the table if it doesn't exist
+            CREATE TABLE `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean` AS
+            SELECT * EXCEPT(prediction),
+              JSON_EXTRACT_SCALAR(prediction, '$[0]') AS sentiment_label,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].POS') AS FLOAT64) AS POS_confidence,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEU') AS FLOAT64) AS NEU_confidence,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEG') AS FLOAT64) AS NEG_confidence
+            FROM `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions`;
+          ELSE
+            -- Insert into the existing table
+            INSERT INTO `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions_clean`
+            SELECT * EXCEPT(prediction),
+              JSON_EXTRACT_SCALAR(prediction, '$[0]') AS sentiment_label,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].POS') AS FLOAT64) AS POS_confidence,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEU') AS FLOAT64) AS NEU_confidence,
+              CAST(JSON_EXTRACT_SCALAR(prediction, '$[1].NEG') AS FLOAT64) AS NEG_confidence
+            FROM `amazonreviewssentimentanalysis.amazon_reviews_sentiment.processed_batch_data_w_predictions`;
+          END IF;
+        END;
         """
 
         logging.info("Executing SQL query to clean prediction results")
