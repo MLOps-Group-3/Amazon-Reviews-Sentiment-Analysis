@@ -980,7 +980,7 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
 
     # Run the pipeline
     print("Running the pipeline...")
-    # pipeline_job.run(sync=True)
+    pipeline_job.run(sync=True)
     print("Pipeline execution completed.")
 
 def main():
