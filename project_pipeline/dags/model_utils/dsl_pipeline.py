@@ -75,13 +75,14 @@ def model_pipeline():
         model_gcs_path=load_latest_model_task.outputs["archive_model"],  # Pass Model artifact
         test_data=data_prep_task.outputs["test_data"],  # Pass Test Data artifact
         f1_threshold=0.6,
-    ).set_cpu_limit("8") \
-    .set_gpu_limit(1) \
-    .set_accelerator_type("NVIDIA_TESLA_T4")
+    ).set_cpu_limit("8") 
+    # \
+    # .set_gpu_limit(1) \
+    # .set_accelerator_type("NVIDIA_TESLA_T4")
 
     optuna_experiment_task.after(data_prep_task)
     train_save_task.after(optuna_experiment_task)
-    # data_prep_task.set_caching_options(False)
+    data_prep_task.set_caching_options(False)
     load_latest_model_task.set_caching_options(False)
 
     # Conditional Logic: Check if eval passed

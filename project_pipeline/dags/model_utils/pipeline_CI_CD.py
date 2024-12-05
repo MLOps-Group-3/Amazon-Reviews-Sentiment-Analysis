@@ -48,15 +48,15 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
         pipeline_file_path: Optional path to save the compiled pipeline JSON file (default: 'model_pipeline.json').
     """
     # Compile the pipeline
-    print("Compiling pipeline...")
+    logging.info("Compiling pipeline...")
     Compiler().compile(pipeline_func=model_pipeline, package_path=pipeline_file_path)
 
     # Initialize Vertex AI
-    print("Initializing Vertex AI...")
+    logging.info("Initializing Vertex AI...")
     aiplatform.init(project=GCP_PROJECT, location=GCP_REGION)
 
     # Submit the pipeline job to Vertex AI
-    print("Submitting pipeline job to Vertex AI...")
+    logging.info("Submitting pipeline job to Vertex AI...")
     pipeline_job = aiplatform.PipelineJob(
         display_name="model-pipeline",
         template_path=pipeline_file_path,
@@ -64,9 +64,9 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
     )
 
     # Run the pipeline
-    print("Running the pipeline...")
-    pipeline_job.submit()
-    print("Pipeline job submitted.")
+    logging.info("Running the pipeline...")
+    pipeline_job.run(sync=True)
+    logging.info("Pipeline job submitted.")
 
 def main():
     # Set up logging
@@ -98,6 +98,32 @@ def main():
     logging.info("Submitting pipeline to Vertex AI...")
     submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME)
     logging.info("Pipeline submission completed")
+
+
+def run_pipeline():
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+
+    # Authenticate using service account key
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCS_SERVICE_ACCOUNT_KEY
+    # Initialize credentials
+    credentials = service_account.Credentials.from_service_account_file(
+        GCS_SERVICE_ACCOUNT_KEY
+    )
+
+    # Initialize GCS client
+    client = storage.Client(project=GCP_PROJECT,credentials=credentials)
+    bucket = client.bucket(BUCKET_NAME)
+
+    # Step 1: Upload folder to GCS
+    logging.info(f"Uploading folder to GCS...,\n local_folder: {AIRFLOW_LOCAL}, CODE_BUCKET_PATH:{CODE_BUCKET_PATH}")
+    upload_folder_to_gcs(AIRFLOW_LOCAL, bucket, CODE_BUCKET_PATH)
+    logging.info("Uploaded to GCS")
+
+    # Step 2: Submit the pipeline to Vertex AI
+    logging.info("Submitting pipeline to Vertex AI...")
+    submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME)
+    logging.info("Pipeline submission completed.")
 
 if __name__ == '__main__':
     main()

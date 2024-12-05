@@ -1,3 +1,4 @@
+import os
 
 GCP_PROJECT="amazonreviewssentimentanalysis"
 BUCKET_NAME="model-deployment-from-airflow"
@@ -26,3 +27,6 @@ serving_container_ports = [7080]
 PROJECT_ID = GCP_PROJECT
 DOCKER_IMAGE_NAME = f"pytorch_predict_{APP_NAME}"
 CUSTOM_PREDICTOR_IMAGE_URI = f"gcr.io/{PROJECT_ID}/{DOCKER_IMAGE_NAME}"
+
+GCS_SERVICE_ACCOUNT_KEY = os.getenv("GCS_SERVICE_ACCOUNT_KEY", "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json")
+AIRFLOW_LOCAL = "/opt/airflow/dags/model_utils/src/"

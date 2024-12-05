@@ -3,7 +3,7 @@ name: GCS Upload and Vertex AI Pipeline
 on:
   push:
     branches:
-      - pipeline-orchestration  # Trigger on push to the main branch
+      - main  # Trigger on push to the main branch
     paths:
       - project_pipeline/dags/model_utils/**  # Trigger only when files in this directory change
       - .github/workflows/model_training_trigger_workflow.yaml
@@ -19,7 +19,7 @@ jobs:
     - name: Set up Python environment
       uses: actions/setup-python@v2
       with:
-        python-version: '3.9'  # Specify the version of Python to use
+        python-version: '3.7'  # Specify the version of Python to use
 
     - name: Install dependencies
       run: |
