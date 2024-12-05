@@ -42,7 +42,6 @@ metadata = load_hierarchical_metadata(metadata_file_path)
 st.sidebar.header("Navigation")
 page = st.sidebar.radio("Select a Page", ("Introduction", "Summary Generator"))
 
-
 # Introduction Page
 if page == "Introduction":
     # Title and Header Section
@@ -68,59 +67,43 @@ if page == "Introduction":
         </style>
         """, unsafe_allow_html=True)
 
-    # Image Header
-    st.image(
-        "https://via.placeholder.com/800x200",
-        caption="Amazon Reviews Insights Dashboard",
-        use_column_width=True
-    )
+    # GitHub Repository Link
+    st.markdown("""
+        <div class="intro-text">
+            For more details, please visit our 
+            <a href="https://github.com/MLOps-Group-3/Amazon-Reviews-Sentiment-Analysis/tree/main" 
+            target="_blank" class="highlight">GitHub Repository</a>, which contains the full end-to-end sentiment analysis pipeline.
+        </div>
+    """, unsafe_allow_html=True)
 
     # Dashboard Description
     st.markdown("""
     <div class="intro-text">
-        Welcome to the <span class="highlight">Amazon Reviews Dashboard</span>, a comprehensive platform designed to provide actionable insights from customer feedback. This dashboard empowers you to:
+        Welcome to the <span class="highlight">Amazon Reviews Dashboard</span>, a comprehensive platform designed to extract actionable insights from customer feedback. This tool empowers stakeholders to:
     </div>
     """, unsafe_allow_html=True)
 
     # Features Section
     st.markdown("""
     <ul class="intro-text">
-        <li>📈 Explore review trends and key sentiment insights.</li>
-        <li>🛠️ Refine your analysis using dynamic filters like <span class="highlight">Category</span>, <span class="highlight">Year</span>, and <span class="highlight">Month</span>.</li>
-        <li>💡 Generate summaries that highlight performance, quality, and customer satisfaction.</li>
+        <li>📈 Analyze trends and sentiment insights effectively.</li>
+        <li>🛠️ Refine data exploration using dynamic filters like <span class="highlight">Category</span>, <span class="highlight">Year</span>, and <span class="highlight">Month</span>.</li>
+        <li>💡 Generate data-driven summaries focusing on performance, quality, and customer satisfaction metrics.</li>
     </ul>
     """, unsafe_allow_html=True)
 
     # Usage Instructions
     st.markdown("""
     <div class="intro-text">
-        Navigate to the <span class="highlight">Summary Generator</span> tab using the sidebar to explore data insights. Start by selecting filters and click "Proceed" to view the summaries.
+        Use the sidebar to navigate to the <span class="highlight">Summary Generator</span> tab for data insights. Apply the filters provided and click "Proceed" to generate insights tailored to your requirements.
     </div>
     """, unsafe_allow_html=True)
-
-    # Call-to-Action Buttons
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📖 Learn More"):
-            st.markdown("""
-            <div class="intro-text">
-                Explore detailed documentation and understand how this dashboard was built.
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col2:
-        if st.button("🚀 Get Started"):
-            st.markdown("""
-            <div class="intro-text">
-                Jump straight into exploring reviews and generating insights!
-            </div>
-            """, unsafe_allow_html=True)
 
     # Footer Section
     st.markdown("""
     <hr>
     <div style="text-align: center; font-size: 14px; color: #666;">
-        Built with ❤️ using Streamlit | Designed for data-driven decision-making.
+        Built with ❤️ using Streamlit | Designed for data-driven decision-making by MLOps-Group-3.
     </div>
     """, unsafe_allow_html=True)
 

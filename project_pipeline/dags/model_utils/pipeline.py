@@ -967,7 +967,7 @@ def run_and_monitor_pipeline(
 
 
     # pipeline_job.submit()
-    # pipeline_job.run(sync=True)
+    pipeline_job.run(sync=True)
 
 
 if __name__ == "__main__":
