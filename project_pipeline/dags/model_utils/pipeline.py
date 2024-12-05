@@ -749,6 +749,7 @@ def run_and_monitor_pipeline(
     ) -> NamedTuple("Outputs", [("model_display_name", str), ("model_resource_name", str), ("model_version", str)]):
         """Uploads the model to the AI platform and ensures versioning."""
         from google.cloud import aiplatform
+        from google.cloud import storage
         import logging
         import time
         import os
