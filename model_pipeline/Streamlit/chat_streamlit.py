@@ -99,13 +99,6 @@ if page == "Introduction":
     </div>
     """, unsafe_allow_html=True)
 
-    # Footer Section
-    st.markdown("""
-    <hr>
-    <div style="text-align: center; font-size: 14px; color: #666;">
-        Built with ❤️ using Streamlit | Designed for data-driven decision-making by MLOps-Group-3.
-    </div>
-    """, unsafe_allow_html=True)
 
 # Summary Generator Page
 elif page == "Summary Generator":
