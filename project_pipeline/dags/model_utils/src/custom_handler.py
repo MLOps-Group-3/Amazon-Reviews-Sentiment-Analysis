@@ -142,11 +142,27 @@ class TransformersClassifierHandler(BaseHandler):
                 )
                 logits = outputs["logits"]
                 predictions = torch.argmax(logits, dim=1).tolist()
+                probs = torch.nn.functional.softmax(logits, dim=-1)
 
             logger.info(f"Inference outputs (logits): {logits}")
+            logger.info(f"Inference probs: {probs}")
+
             logger.info(f"Predicted labels: {predictions}")
             logger.info(self.mapping,[(self.mapping.get(str(pred), "Unknown"),pred) for pred in predictions])
-            return [self.mapping.get(str(pred), "Unknown") for pred in predictions]
+            confidence_scores = []
+            for i, prob in enumerate(probs):
+                class_confidence = {self.mapping.get(str(idx), "Unknown")[:3]: round(prob[idx].item(),2) for idx in range(len(prob))}
+                confidence_scores.append(class_confidence)
+    
+        #     predicted_labels = [self.mapping.get(str(pred), "Unknown") for pred in predictions]
+        #     result = {
+        #     "predictions": predicted_labels,
+        #     "probabilities": confidence_scores
+        # }
+
+            # return [self.mapping.get(str(pred), "Unknown") for pred in predictions]
+            return [(self.mapping.get(str(predictions[i]), "Unknown"),confidence_scores[i]) for i in range(len(predictions))]
+
         except Exception as e:
             logger.error(f"Inference failed: {e}")
             raise ValueError(f"Error during inference: {e}")
