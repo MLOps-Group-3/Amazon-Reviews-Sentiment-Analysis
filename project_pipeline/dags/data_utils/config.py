@@ -64,8 +64,8 @@ LABELED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_aspect
 DEFAULT_TRAINING_START_YEAR = 2018
 DEFAULT_TRAINING_START_MONTH = 1
 TRAINING_PERIOD_MONTHS = 24  # 2 years
-TRAINING_SHIFT_MONTHS = 3 
+TRAINING_SHIFT_MONTHS = 4
 
 # Default values for serving data
-DEFAULT_SERVING_YEAR = 2021  # Default year if no files exist
+DEFAULT_SERVING_YEAR = 2020  # Default year if no files exist
 DEFAULT_SERVING_MONTH = 1    # Default month if no files exist

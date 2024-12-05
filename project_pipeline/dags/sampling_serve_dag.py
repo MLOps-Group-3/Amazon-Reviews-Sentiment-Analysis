@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from data_utils.data_collection.dynamic_month import get_next_serving_month
-from data_utils.config import CATEGORIES, SAMPLED_SERVING_DIRECTORY
+from data_utils.config import CATEGORIES, SAMPLED_SERVING_DIRECTORY, DEFAULT_SERVING_YEAR, DEFAULT_SERVING_MONTH
 from data_utils.data_collection.sampling_serve import sample_serving_data
 from data_utils.data_collection.data_concat_serve import concatenate_and_save_csv_files
 from data_utils.data_collection.gcs_operations import push_to_gcs
@@ -36,19 +36,19 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    # Create tasks for each category
+    # Get the dynamic year and month for all categories based on existing sampled/concatenated files
+    year, month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY, '', DEFAULT_SERVING_YEAR, DEFAULT_SERVING_MONTH)
+
+    # Create tasks for each category using consistent year and month values across all tasks in this run
     category_tasks = []
     for category_name in CATEGORIES:
-        # Get the dynamic year and month for the category
-        year, next_month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY, category_name)
-
         task = PythonOperator(
             task_id=f'sample_serving_{category_name}',
             python_callable=sample_serving_data,
             op_kwargs={
                 'category_name': category_name,
                 'year': year,
-                'month': next_month,
+                'month': month,
             },
         )
         category_tasks.append(task)
@@ -59,7 +59,7 @@ with DAG(
         python_callable=concatenate_and_save_csv_files,
         op_kwargs={
             'input_dir': SAMPLED_SERVING_DIRECTORY,
-            'output_file': f"{SAMPLED_SERVING_DIRECTORY}/concatenated_serving_data_{year}_{str(next_month).zfill(2)}.csv",
+            'output_file': f"{SAMPLED_SERVING_DIRECTORY}/concatenated_serving_data_{year}_{str(month).zfill(2)}.csv",
         },
     )
 
@@ -75,7 +75,7 @@ with DAG(
         },
     )
 
-    # Trigger data validation DAG after the GCS push (optional, commented for now)
+    # Trigger data validation DAG after the GCS push (optional)
     trigger_validation_dag = TriggerDagRunOperator(
         task_id='trigger_validation_dag',
         trigger_dag_id='03_data_validation_dag',
@@ -83,12 +83,9 @@ with DAG(
         conf={'triggering_dag_id': '03_sampling_serve_dag'},
     )
 
-    # Set up sequential dependencies for category tasks
+    # Set up sequential dependencies for category tasks and other tasks in order of execution
     for i in range(len(category_tasks) - 1):
         category_tasks[i] >> category_tasks[i + 1]
 
-    # Connect the last category task to concatenation, then to GCS push
-    category_tasks[-1] >> concat_task >> push_to_gcs_task
-
-    # Optionally trigger the validation DAG after GCS push
-    push_to_gcs_task >> trigger_validation_dag
+    # Connect the last category task to concatenation, then to GCS push and validation DAG trigger (optional)
+    category_tasks[-1] >> concat_task >> push_to_gcs_task >> trigger_validation_dag

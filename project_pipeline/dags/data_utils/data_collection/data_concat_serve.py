@@ -19,7 +19,7 @@ def concatenate_and_save_csv_files(input_dir, output_file):
 
         # Loop through the files in the input directory
         for filename in os.listdir(input_dir):
-            if filename.endswith('.csv'):
+            if filename.startswith("sampled_data_") and filename.endswith('.csv'):
                 file_path = os.path.join(input_dir, filename)
                 df = pd.read_csv(file_path)
                 dfs.append(df)
@@ -36,8 +36,8 @@ def concatenate_and_save_csv_files(input_dir, output_file):
 
 
 if __name__ == "__main__":
-    # Dynamically determine the year and month
-    year, month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY, DEFAULT_SERVING_YEAR, DEFAULT_SERVING_MONTH)
+    # Dynamically determine the year and month based on existing concatenated or sampled data files
+    year, month = get_next_serving_month(SAMPLED_SERVING_DIRECTORY, '', DEFAULT_SERVING_YEAR, DEFAULT_SERVING_MONTH)
 
     # Define input and output paths
     input_dir = SAMPLED_SERVING_DIRECTORY
