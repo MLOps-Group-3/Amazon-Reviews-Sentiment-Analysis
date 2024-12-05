@@ -13,7 +13,7 @@ environment = os.getenv("PINECONE_ENVIRONMENT")
 gcp_bucket_name = os.getenv("GCS_BUCKET_NAME")
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_model = os.getenv("OPENAI_MODEL")
-service_key_path = "/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
+service_key_path = os.getenv("GCS_SERVICE_ACCOUNT_KEY_LOCAL")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -135,28 +135,33 @@ def fetch_from_gcp(metadata):
         return None
 
 
+
 def prepare_llm_input(results):
-    """Prepare input for the LLM based on retrieval results."""
+    """
+    Prepare input for the LLM based on retrieval results.
+    Handles both Pinecone matches and fallback data from GCP.
+    """
     summary_data = {}
 
-    for match in results:
-        metadata = match.get("metadata", {})
-        data = fetch_from_gcp(metadata)
-        
-        # Ensure data is a dictionary
-        if isinstance(data, dict):
-            for aspect, details in data.items():
-                # Ensure details is a dictionary
+    for result in results:
+        # Handle Pinecone match data with metadata
+        if "metadata" in result:
+            metadata = result.get("metadata", {})
+            data = fetch_from_gcp(metadata)  # Fetch additional data from GCP
+            if isinstance(data, dict):
+                for aspect, details in data.items():
+                    if isinstance(details, dict):
+                        summary_data[aspect] = {
+                            "sentiment": details.get("sentiment", "Unknown"),
+                            "summary": details.get("summary", "No summary available."),
+                        }
+        # Handle fallback GCP data directly
+        elif isinstance(result, dict):
+            for aspect, details in result.items():
                 if isinstance(details, dict):
                     summary_data[aspect] = {
                         "sentiment": details.get("sentiment", "Unknown"),
                         "summary": details.get("summary", "No summary available."),
-                    }
-                else:
-                    # Handle cases where details are not as expected
-                    summary_data[aspect] = {
-                        "sentiment": "Unknown",
-                        "summary": "No details available.",
                     }
 
     if not summary_data:
@@ -233,6 +238,23 @@ def get_llm_response(llm_input, is_out_of_context=False):
             "An error occurred while generating a response. Please try again later. If the issue persists, contact support."
         )
 
+def fetch_all_files_from_gcp(category, year, month):
+    """Fallback: Fetch all JSON files from GCP bucket for a specific category/year/month."""
+    try:
+        bucket = storage_client.bucket(gcp_bucket_name)
+        prefix = f"RAG/{category}/{year}/{month}/"
+        blobs = bucket.list_blobs(prefix=prefix)
+        all_files_data = []
+        for blob in blobs:
+            if blob.name.endswith('.json'):
+                file_data = blob.download_as_text()
+                all_files_data.append(json.loads(file_data))
+        return all_files_data
+    except Exception as e:
+        logging.error(f"Error fetching files from GCP: {e}")
+        return []
+
+
 
 def process_text_query(input_text, top_k=25, category=None, year=None, month=None):
     """Main function to process the text input and query Pinecone, then generate LLM response."""
@@ -244,7 +266,13 @@ def process_text_query(input_text, top_k=25, category=None, year=None, month=Non
     # Step 2: Query Pinecone for matching results
     matches = query_pinecone(embedding, top_k, category, year, month)
     if not matches:
-        return "Sorry, no relevant data found based on your query."
+    # Fallback: Fetch all files from GCP
+        fallback_data = fetch_all_files_from_gcp(category, year, month)
+        if fallback_data:
+            fallback_llm_input = prepare_llm_input(fallback_data)
+            return get_llm_response(fallback_llm_input)
+        return "No data available for the specified filters."
+
 
     # Step 3: Prepare the LLM input
     llm_input = prepare_llm_input(matches)
