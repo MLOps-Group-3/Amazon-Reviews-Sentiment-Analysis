@@ -92,7 +92,7 @@ def run_and_monitor_pipeline(
 
 
     #  absolute path to the `src` folder in Airflow
-    local_folder = "/opt/airflow/dags/model_utils/src/"
+    local_folder = "src/"
 
     logging.info(f"current working directory: {os.getcwd()}")
 
