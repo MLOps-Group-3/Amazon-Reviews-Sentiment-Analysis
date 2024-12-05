@@ -29,7 +29,7 @@ def run_and_monitor_pipeline(
     # GCP_PROJECT = "amazonreviewssentimentanalysis"
     # GCP_REGION = "us-central1"
     # BUCKET_NAME = "arsa_model_deployment_uscentral_v2"
-    DATA_PATH = f"gs://{BUCKET_NAME}/input/labeled_data_1perc.csv"
+    DATA_PATH = f"gs://{BUCKET_NAME}/input/labeled_data.csv"
     OUTPUT_DIR = f"gs://{BUCKET_NAME}/output/data/"
     CODE_BUCKET_PATH = f"gs://{BUCKET_NAME}/code"
     SOURCE_CODE = f"gs://{BUCKET_NAME}/code/src"

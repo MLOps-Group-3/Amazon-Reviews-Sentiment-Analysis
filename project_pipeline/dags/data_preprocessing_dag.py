@@ -9,6 +9,7 @@ import os
 from data_utils.data_preprocessing.data_cleaning_pandas import clean_amazon_reviews
 from data_utils.data_preprocessing.data_labeling import apply_labelling
 from data_utils.data_preprocessing.aspect_extraction import tag_and_expand_aspects, get_synonyms
+from data_utils.data_collection.gcs_operations import push_to_gcs
 from data_utils.data_preprocessing.aspect_data_labeling import apply_vader_labeling
 from data_utils.config import (
     CLEANED_DATA_PATH_TRAIN,
@@ -22,6 +23,14 @@ from data_utils.config import (
     VALIDATION_RESULT_TRAINING_DATA_PATH,
     VALIDATION_RESULT_SERVING_DATA_PATH,
 )
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+GCS_SERVICE_ACCOUNT_KEY = os.getenv("GCS_SERVICE_ACCOUNT_KEY", "/opt/airflow/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME_MODEL", "model-deployment-from-airflow")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -233,8 +242,26 @@ with DAG(
         dag=dag,
     )
 
+    push_to_gcs_task = PythonOperator(
+        task_id='push_labeled_train_files_to_gcs',
+        python_callable=push_to_gcs,
+        op_kwargs={
+            'bucket_name': GCS_BUCKET_NAME,
+            'source_directory': LABELED_DATA_PATH_TRAIN,
+            'destination_blob_prefix': 'data/input/',
+            'service_account_key': GCS_SERVICE_ACCOUNT_KEY,
+        },
+    )
+
+    trigger_ml_training = TriggerDagRunOperator(
+        task_id='trigger_ml_model_training_dag',
+        trigger_dag_id='06_vertex_ai_pipeline_job_submission_with_run',
+        wait_for_completion=False,
+        dag=dag,
+    )
+
     # Task dependencies
     data_cleaning >> aspect_extraction >> branching
-    branching >> run_labeling >> [data_labeling, data_labeling_aspect]
+    branching >> run_labeling >> [data_labeling, data_labeling_aspect] >> push_to_gcs_task >> trigger_ml_training
     branching >> skip_labeling
     skip_labeling >> trigger_batch_processing

@@ -40,11 +40,11 @@ default_args = {
 
 # Define the DAG
 with DAG(
-    dag_id="vertex_ai_pipeline_job_submission_with_run",
+    dag_id="06_vertex_ai_pipeline_job_submission_with_run",
     default_args=default_args,
     description="Run and monitor Vertex AI pipeline using pipeline.py",
     schedule_interval=None,
-    start_date=datetime(2023, 1, 1),
+    start_date=datetime(2024, 12, 1),
     catchup=False,
 ) as dag:
 
