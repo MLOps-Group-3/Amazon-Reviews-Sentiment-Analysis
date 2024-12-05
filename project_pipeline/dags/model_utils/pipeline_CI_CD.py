@@ -9,7 +9,7 @@ from google.cloud import aiplatform
 from google.oauth2 import service_account
 import logging
 import sys
-
+import json
 
     # SERVICE_ACCOUNT_KEY_PATH,
 GCP_PROJECT="amazonreviewssentimentanalysis"
@@ -995,7 +995,13 @@ def main():
     BUCKET_NAME = "model-deployment-from-airflow"
     
     # Initialize the GCS client with credentials
-    credentials = service_account.Credentials.from_service_account_file(credentials_path)
+    # credentials = service_account.Credentials.from_service_account_file(os.getenv('GCS_CREDENTIALS_PATH'))
+    credentials_json = os.getenv('GCP_SA_KEY')  # Retrieve the JSON string of the credentials from the secret
+    credentials_info = json.loads(credentials_json)  # Parse the JSON string
+
+    # Create credentials using the parsed JSON
+    credentials = service_account.Credentials.from_service_account_info(credentials_info)
+
     client = storage.Client(project=GCP_PROJECT, credentials=credentials)
     bucket = client.bucket(BUCKET_NAME)
 
