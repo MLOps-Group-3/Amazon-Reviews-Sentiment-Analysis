@@ -80,7 +80,7 @@ with DAG(
         task_id='trigger_validation_dag',
         trigger_dag_id='03_data_validation_dag',
         wait_for_completion=False,
-        conf={'triggering_dag_id': 'sampling_serve_dag'},
+        conf={'triggering_dag_id': '03_sampling_serve_dag'},
     )
 
     # Set up sequential dependencies for category tasks

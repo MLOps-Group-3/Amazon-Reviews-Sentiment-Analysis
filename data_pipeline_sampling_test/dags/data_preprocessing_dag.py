@@ -10,13 +10,16 @@ from utils.data_preprocessing.data_labeling import apply_labelling
 from utils.data_preprocessing.aspect_extraction import tag_and_expand_aspects, get_synonyms
 from utils.data_preprocessing.aspect_data_labeling import apply_vader_labeling
 from utils.config import (
-    TRAINING_SAMPLED_DATA_PATH,
-    SERVING_SAMPLED_DATA_PATH,
-    VALIDATION_RESULT_DATA_PATH,
-    CLEANED_DATA_PATH,
-    CLEANED_ASPECT_DATA_PATH,
-    LABELED_DATA_PATH,
-    LABELED_ASPECT_DATA_PATH,
+    CLEANED_DATA_PATH_TRAIN,
+    CLEANED_DATA_PATH_SERVE,
+    CLEANED_ASPECT_DATA_PATH_TRAIN,
+    CLEANED_ASPECT_DATA_PATH_SERVE,
+    LABELED_DATA_PATH_TRAIN,
+    LABELED_ASPECT_DATA_PATH_TRAIN,
+    SAMPLED_TRAINING_DIRECTORY,
+    SAMPLED_SERVING_DIRECTORY,
+    VALIDATION_RESULT_TRAINING_DATA_PATH,
+    VALIDATION_RESULT_SERVING_DATA_PATH,
 )
 
 # Set up logging
@@ -45,30 +48,49 @@ def log_data_card(df, task_name):
     logger.info(f"Data Types:\n{df.dtypes}")
     logger.info(f"Missing Values:\n{df.isnull().sum()}")
 
-# Utility function to get the latest file
-def get_latest_file(directory):
-    """Get the latest file in a directory."""
-    files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.csv')]
+def get_latest_file_with_prefix(directory, prefix):
+    """Get the latest file in a directory with a specific prefix."""
+    files = [os.path.join(directory, f) for f in os.listdir(directory) if f.startswith(prefix) and f.endswith('.csv')]
     if not files:
-        raise FileNotFoundError(f"No CSV files found in directory: {directory}")
+        raise FileNotFoundError(f"No CSV files found with prefix '{prefix}' in directory: {directory}")
     return max(files, key=os.path.getmtime)
 
+def get_validation_file(directory):
+    """Get the validation_results.csv file from the specified directory."""
+    file_path = os.path.join(directory, "validation_results.csv")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"validation_results.csv not found in directory: {directory}")
+    return file_path
+
 # Define task functions
-def data_cleaning_task(mode):
+def data_cleaning_task(**kwargs):
     """Task to perform data cleaning."""
     try:
-        logger.info(f"Starting data cleaning task for mode: {mode}")
+        triggering_dag_id = kwargs['dag_run'].conf.get('triggering_dag_id')
+        logger.info(f"Starting data cleaning task. Triggered by: {triggering_dag_id}")
         
-        # Select the latest data file based on the mode
-        data_directory = TRAINING_SAMPLED_DATA_PATH if mode == "training" else SERVING_SAMPLED_DATA_PATH
-        data_file = get_latest_file(data_directory)
+        # Select the correct directories and paths based on the triggering DAG
+        if triggering_dag_id == '03_sampling_train_dag':
+            data_directory = SAMPLED_TRAINING_DIRECTORY
+            validation_directory = VALIDATION_RESULT_TRAINING_DATA_PATH
+            cleaned_data_path = CLEANED_DATA_PATH_TRAIN
+            cleaned_aspect_data_path = CLEANED_ASPECT_DATA_PATH_TRAIN
+        elif triggering_dag_id == '03_sampling_serve_dag':
+            data_directory = SAMPLED_SERVING_DIRECTORY
+            validation_directory = VALIDATION_RESULT_SERVING_DATA_PATH
+            cleaned_data_path = CLEANED_DATA_PATH_SERVE
+            cleaned_aspect_data_path = CLEANED_ASPECT_DATA_PATH_SERVE
+        else:
+            raise ValueError(f"Unknown triggering DAG ID: {triggering_dag_id}")
+        
+        # Get the latest concatenated data file
+        data_file = get_latest_file_with_prefix(data_directory, 'concatenated_')
         df = pd.read_csv(data_file)
         logger.info(f"Loaded raw data with shape: {df.shape} from {data_file}")
         log_data_card(df, "Raw Data")
         
-        # Select the correct validation folder based on the mode
-        validation_directory = os.path.join(VALIDATION_RESULT_DATA_PATH, mode)
-        validation_file = get_latest_file(validation_directory)
+        # Get the validation file
+        validation_file = get_validation_file(validation_directory)
         validation_df = pd.read_csv(validation_file)
         logger.info(f"Loaded validation data with shape: {validation_df.shape} from {validation_file}")
         
@@ -77,31 +99,27 @@ def data_cleaning_task(mode):
         df_cleaned = clean_amazon_reviews(df, emoji_indices)
         
         # Save cleaned data
-        os.makedirs(os.path.dirname(CLEANED_DATA_PATH), exist_ok=True)
-        df_cleaned.to_csv(CLEANED_DATA_PATH, index=False)
-        logger.info(f"Cleaned data saved to {CLEANED_DATA_PATH}")
+        os.makedirs(os.path.dirname(cleaned_data_path), exist_ok=True)
+        df_cleaned.to_csv(cleaned_data_path, index=False)
+        logger.info(f"Cleaned data saved to {cleaned_data_path}")
+        
+        # Store the cleaned data path and triggering DAG ID for downstream tasks
+        kwargs['ti'].xcom_push(key='cleaned_data_path', value=cleaned_data_path)
+        kwargs['ti'].xcom_push(key='cleaned_aspect_data_path', value=cleaned_aspect_data_path)
+        kwargs['ti'].xcom_push(key='triggering_dag_id', value=triggering_dag_id)
+        
     except Exception as e:
         logger.error("Error during data cleaning task.", exc_info=True)
         raise e
 
-def data_labeling_task():
-    """Task to perform data labeling."""
-    try:
-        logger.info("Starting data labeling task...")
-        df = pd.read_csv(CLEANED_DATA_PATH)
-        df_labeled = apply_labelling(df)
-        os.makedirs(os.path.dirname(LABELED_DATA_PATH), exist_ok=True)
-        df_labeled.to_csv(LABELED_DATA_PATH, index=False)
-        log_data_card(df_labeled, "Labeled Data")
-    except Exception as e:
-        logger.error("Error during data labeling task.", exc_info=True)
-        raise e
-
-def aspect_extraction_task():
+def aspect_extraction_task(**kwargs):
     """Task to perform aspect extraction."""
     try:
         logger.info("Starting aspect extraction task...")
-        df = pd.read_csv(CLEANED_DATA_PATH)
+        cleaned_data_path = kwargs['ti'].xcom_pull(task_ids='data_cleaning', key='cleaned_data_path')
+        cleaned_aspect_data_path = kwargs['ti'].xcom_pull(task_ids='data_cleaning', key='cleaned_aspect_data_path')
+        
+        df = pd.read_csv(cleaned_data_path)
         aspects = {
             "delivery": get_synonyms("delivery") | {"arrive", "shipping"},
             "quality": get_synonyms("quality") | {"craftsmanship", "durable"},
@@ -110,21 +128,40 @@ def aspect_extraction_task():
             "cost": get_synonyms("cost") | get_synonyms("price") | {"value", "expensive", "cheap", "affordable"},
         }
         df_aspect = tag_and_expand_aspects(df, aspects)
-        os.makedirs(os.path.dirname(CLEANED_ASPECT_DATA_PATH), exist_ok=True)
-        df_aspect.to_csv(CLEANED_ASPECT_DATA_PATH, index=False)
+        
+        os.makedirs(os.path.dirname(cleaned_aspect_data_path), exist_ok=True)
+        df_aspect.to_csv(cleaned_aspect_data_path, index=False)
         log_data_card(df_aspect, "Aspect Extracted Data")
+        
     except Exception as e:
         logger.error("Error during aspect extraction task.", exc_info=True)
         raise e
 
-def data_labeling_aspect_task():
+def data_labeling_task(**kwargs):
+    """Task to perform data labeling."""
+    try:
+        logger.info("Starting data labeling task...")
+        cleaned_data_path = kwargs['ti'].xcom_pull(task_ids='data_cleaning', key='cleaned_data_path')
+        df = pd.read_csv(cleaned_data_path)
+        df_labeled = apply_labelling(df)
+        
+        os.makedirs(os.path.dirname(LABELED_DATA_PATH_TRAIN), exist_ok=True)
+        df_labeled.to_csv(LABELED_DATA_PATH_TRAIN, index=False)
+        log_data_card(df_labeled, "Labeled Data")
+    except Exception as e:
+        logger.error("Error during data labeling task.", exc_info=True)
+        raise e
+
+def data_labeling_aspect_task(**kwargs):
     """Task to perform aspect-based data labeling."""
     try:
         logger.info("Starting aspect-based data labeling task...")
-        df = pd.read_csv(CLEANED_ASPECT_DATA_PATH)
+        cleaned_aspect_data_path = kwargs['ti'].xcom_pull(task_ids='data_cleaning', key='cleaned_aspect_data_path')
+        df = pd.read_csv(cleaned_aspect_data_path)
         df_labeled = apply_vader_labeling(df)
-        os.makedirs(os.path.dirname(LABELED_ASPECT_DATA_PATH), exist_ok=True)
-        df_labeled.to_csv(LABELED_ASPECT_DATA_PATH, index=False)
+        
+        os.makedirs(os.path.dirname(LABELED_ASPECT_DATA_PATH_TRAIN), exist_ok=True)
+        df_labeled.to_csv(LABELED_ASPECT_DATA_PATH_TRAIN, index=False)
         log_data_card(df_labeled, "Aspect Labeled Data")
     except Exception as e:
         logger.error("Error during aspect data labeling task.", exc_info=True)
@@ -139,32 +176,21 @@ with DAG(
 ) as dag:
 
     def is_training(**kwargs):
-        """Check if the mode is training."""
-        return kwargs['dag_run'].conf.get('mode', 'training') == 'training'
+        """Check if the triggering DAG is for training."""
+        return kwargs['ti'].xcom_pull(task_ids='data_cleaning', key='triggering_dag_id') == '03_sampling_train_dag'
 
     # Task 1: Data Cleaning
     data_cleaning = PythonOperator(
         task_id='data_cleaning',
-        python_callable=lambda **kwargs: data_cleaning_task(kwargs['dag_run'].conf.get('mode', 'training')),
+        python_callable=data_cleaning_task,
         provide_context=True,
     )
 
-    # Task 2.1: Data Labeling for overall sentiment
-    data_labeling = PythonOperator(
-        task_id='data_labeling',
-        python_callable=data_labeling_task,
-    )
-
-    # Task 2.2: Aspect Extraction
+    # Task 2: Aspect Extraction
     aspect_extraction = PythonOperator(
         task_id='aspect_extraction',
         python_callable=aspect_extraction_task,
-    )
-
-    # Task 3: Aspect Data Labeling for aspect-based sentiment
-    data_labeling_aspect = PythonOperator(
-        task_id='data_labeling_aspect',
-        python_callable=data_labeling_aspect_task,
+        provide_context=True,
     )
 
     # Branching task to decide whether to run labeling
@@ -174,10 +200,24 @@ with DAG(
         provide_context=True,
     )
 
+    # Task 3: Data Labeling for overall sentiment (only for training)
+    data_labeling = PythonOperator(
+        task_id='data_labeling',
+        python_callable=data_labeling_task,
+        provide_context=True,
+    )
+
+    # Task 4: Aspect Data Labeling for aspect-based sentiment (only for training)
+    data_labeling_aspect = PythonOperator(
+        task_id='data_labeling_aspect',
+        python_callable=data_labeling_aspect_task,
+        provide_context=True,
+    )
+
     # Dummy tasks for branching
     run_labeling = BashOperator(
         task_id='run_labeling',
-        bash_command="echo 'Running labeling tasks.'",
+        bash_command="echo 'Running labeling tasks for training data.'",
     )
 
     skip_labeling = BashOperator(

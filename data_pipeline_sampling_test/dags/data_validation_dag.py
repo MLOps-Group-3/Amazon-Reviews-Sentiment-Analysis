@@ -55,9 +55,9 @@ def get_data_path(**kwargs):
     if not triggering_dag_id:
         raise ValueError("triggering_dag_id not provided. Please provide 'sampling_train_dag' or 'sampling_serve_dag'.")
     logging.info(f"Triggering DAG ID: {triggering_dag_id}")
-    if triggering_dag_id == 'sampling_train_dag':
+    if triggering_dag_id == '03_sampling_train_dag':
         return get_latest_file(SAMPLED_TRAINING_DIRECTORY, "concatenated_training_data")
-    elif triggering_dag_id == 'sampling_serve_dag':
+    elif triggering_dag_id == '03_sampling_serve_dag':
         return get_latest_file(SAMPLED_SERVING_DIRECTORY, "concatenated_serving_data")
     else:
         raise ValueError(f"Unknown triggering DAG ID: {triggering_dag_id}")
@@ -144,9 +144,9 @@ def review_length_checker_task(ti, data_file):
 def save_results(ti, **kwargs):
     """Collect and save results from XCom to a CSV file."""
     triggering_dag_id = kwargs.get('dag_run').conf.get('triggering_dag_id')
-    if triggering_dag_id == 'sampling_train_dag':
+    if triggering_dag_id == '03_sampling_train_dag':
         output_dir = "/opt/airflow/data/validation/training"
-    elif triggering_dag_id == 'sampling_serve_dag':
+    elif triggering_dag_id == '03_sampling_serve_dag':
         output_dir = "/opt/airflow/data/validation/serving"
     else:
         raise ValueError(f"Unknown triggering DAG ID: {triggering_dag_id}")
@@ -260,11 +260,12 @@ with DAG(
     )
 
     trigger_preprocessing_dag = TriggerDagRunOperator(
-        task_id='trigger_preprocessing_data_pipeline',
-        trigger_dag_id='04_data_preprocessing_dag',
-        conf={"mode": "{{ dag_run.conf.get('triggering_dag_id', 'training') }}"},
+            task_id='trigger_preprocessing_data_pipeline',
+            trigger_dag_id='04_data_preprocessing_dag',
+            conf={
+                'triggering_dag_id': '{{ dag_run.conf["triggering_dag_id"] }}'
+            }
     )
-
 
     set_input_path >> [schema_validation, range_check, missing_duplicates,
                        privacy_compliance, emoji_detection, anomaly_detection,

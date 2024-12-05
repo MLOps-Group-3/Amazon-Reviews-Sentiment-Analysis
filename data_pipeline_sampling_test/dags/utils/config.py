@@ -43,17 +43,22 @@ SERVING_SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/serving"
 # Validation Data Result Path
 VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation"
 
-# Post preprocessing cleaned data path
-CLEANED_DATA_PATH = "/opt/airflow/data/cleaned/cleaned_data.csv"
+VALIDATION_RESULT_TRAINING_DATA_PATH = "/opt/airflow/data/validation/training"
+VALIDATION_RESULT_SERVING_DATA_PATH = "/opt/airflow/data/validation/serving"
 
-# Cleaned aspect data path
-CLEANED_ASPECT_DATA_PATH = "/opt/airflow/data/cleaned/aspect_extracted_data.csv"
+# Post preprocessing cleaned data paths
+CLEANED_DATA_PATH_TRAIN = "/opt/airflow/data/cleaned/train/cleaned_data.csv"
+CLEANED_DATA_PATH_SERVE = "/opt/airflow/data/cleaned/serve/cleaned_data.csv"
 
-# Labeled data path
-LABELED_DATA_PATH = "/opt/airflow/data/labeled/labeled_data.csv"
+# Cleaned aspect data paths
+CLEANED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/cleaned/train/aspect_extracted_data.csv"
+CLEANED_ASPECT_DATA_PATH_SERVE = "/opt/airflow/data/cleaned/serve/aspect_extracted_data.csv"
 
-# Labeled aspect data path
-LABELED_ASPECT_DATA_PATH = "/opt/airflow/data/labeled/labeled_aspect_data.csv"
+# Labeled data paths (only for training)
+LABELED_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_data.csv"
+
+# Labeled aspect data paths (only for training)
+LABELED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_aspect_data.csv"
 
 # Training data configurations
 DEFAULT_TRAINING_START_YEAR = 2018
