@@ -49,7 +49,7 @@ def run_and_monitor_pipeline(
     serving_container_ports = [7080]
 
     PROJECT_ID = GCP_PROJECT
-    DOCKER_IMAGE_NAME = "pytorch_predict_{APP_NAME}"
+    DOCKER_IMAGE_NAME = f"pytorch_predict_{APP_NAME}"
     CUSTOM_PREDICTOR_IMAGE_URI = f"gcr.io/{PROJECT_ID}/{DOCKER_IMAGE_NAME}"
     # CUSTOM_PREDICTOR_IMAGE_URI = f"gcr.io/{PROJECT_ID}/pytorch_predict_{APP_NAME}"
 
