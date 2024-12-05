@@ -14,7 +14,7 @@ CATEGORIES = [
     # "Baby_Products",
     # "All_Beauty",
     "Appliances",
-    # "Amazon_Fashion",
+    "Amazon_Fashion",
     "Health_and_Personal_Care",
 ]
 
