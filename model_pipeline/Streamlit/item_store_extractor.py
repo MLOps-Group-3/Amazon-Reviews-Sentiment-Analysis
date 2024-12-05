@@ -6,24 +6,40 @@ from collections import defaultdict
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def extract_metadata_from_documents(documents):
-    """Extract metadata from a list of JSON documents and group by category, year, and month."""
+def extract_metadata(file_path):
+    """Extract metadata from a file path."""
+    parts = file_path.split('/')
+    if len(parts) < 4:
+        logging.warning(f"Invalid file path structure: {file_path}")
+        return None
+    category = parts[1]
+    year = parts[2]
+    month = parts[3]
+    return category, year, month
+
+def extract_metadata_from_json_files(folder_path):
+    """Extract metadata from all JSON files in a folder and group by category, year, and month."""
     metadata_map = defaultdict(lambda: defaultdict(set))
 
-    for document in documents:
-        try:
-            # Extract metadata fields
-            category = document.get('category', '').strip()
-            year = str(document.get('year', '')).strip()
-            month = str(document.get('month', '')).strip()
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith('.json'):  # Process only JSON files
+                file_path = os.path.join(root, file)
 
-            if category and year and month:
-                # Group data by category, year, and month
-                metadata_map[category][year].add(month)
-            else:
-                logging.warning(f"Missing metadata in document: {document}")
-        except Exception as e:
-            logging.error(f"Error processing document: {e}")
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                        metadata = data.get('metadata', {})
+                        if metadata:
+                            category = metadata.get('category', '')
+                            year = metadata.get('year', '')
+                            month = metadata.get('month', '')
+
+                            if category and year and month:
+                                # Group data by category, year, and month
+                                metadata_map[category][year].add(month)
+                except Exception as e:
+                    logging.error(f"Failed to process {file_path}: {e}")
 
     # Convert sets to lists for JSON serialization
     json_serializable_map = {
@@ -35,7 +51,7 @@ def extract_metadata_from_documents(documents):
 
 def save_hierarchical_metadata(metadata_map):
     """Save hierarchical metadata to a JSON file."""
-    output_folder = '/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items'
+    output_folder = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items'
     os.makedirs(output_folder, exist_ok=True)
 
     hierarchy_file = os.path.join(output_folder, 'hierarchical_metadata.json')
@@ -44,21 +60,19 @@ def save_hierarchical_metadata(metadata_map):
 
     logging.info(f"Hierarchical metadata saved to {hierarchy_file}")
 
-# Replace this with the actual path to the refined_process_documents.json file
-refined_documents_path = '/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/refined_processed_documents.json'
+def get_available_options(metadata_map, category=None, year=None):
+    """Get available options dynamically based on the selected hierarchy."""
+    if category is None:
+        return list(metadata_map.keys())
+    if year is None:
+        return list(metadata_map.get(category, {}).keys())
+    return list(metadata_map.get(category, {}).get(year, []))
 
-# Load the refined documents JSON file
-try:
-    with open(refined_documents_path, 'r') as f:
-        refined_process_documents = json.load(f)
+# Folder containing the embedding metadata files
+folder_path = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/data/embedding_meta'
 
-    # Extract metadata from documents
-    metadata_map = extract_metadata_from_documents(refined_process_documents)
+# Extract metadata from all files in the folder and group by category, year, and month
+metadata_map = extract_metadata_from_json_files(folder_path)
 
-    # Save the hierarchical metadata to a file
-    save_hierarchical_metadata(metadata_map)
-
-except FileNotFoundError:
-    logging.error(f"File not found: {refined_documents_path}")
-except json.JSONDecodeError as e:
-    logging.error(f"Error decoding JSON: {e}")
+# Save the hierarchical metadata to a file
+save_hierarchical_metadata(metadata_map)
