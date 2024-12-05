@@ -19,9 +19,9 @@ api_key = os.getenv("PINECONE_API_KEY")
 environment = os.getenv("PINECONE_ENVIRONMENT")
 
 # GCS and Pinecone setup
-BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+BUCKET_NAME = "amazon-reviews-sentiment-analysis"
 PREFIX = "RAG/"
-SERVICE_ACCOUNT_PATH = os.getenv("GCS_SERVICE_ACCOUNT_KEY")
+SERVICE_ACCOUNT_PATH = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/rag/config/amazonreviewssentimentanalysis-8dfde6e21c1d.json"
 
 # Pinecone Initialization
 pc = Pinecone(api_key=api_key, pool_threads=30)

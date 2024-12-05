@@ -1,7 +1,10 @@
 import streamlit as st
 import json
 from llm_fetch import process_text_query
-import streamlit.components.v1 as components
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Function to load hierarchical metadata from JSON file
 def load_hierarchical_metadata(file_path):
@@ -24,75 +27,139 @@ def get_available_options(metadata, category=None, year=None):
 
 # Streamlit app configuration
 st.set_page_config(
-    page_title="Amazon Reviews Chatbot",
+    page_title="Amazon Reviews Dashboard",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # Path to the hierarchical metadata file
-metadata_file_path = '/Users/praneethkorukonda/Documents/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items/hierarchical_metadata.json'
+metadata_file_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items/hierarchical_metadata.json"
 
 # Load metadata from the JSON file
 metadata = load_hierarchical_metadata(metadata_file_path)
 
-# Sidebar filters
-st.sidebar.header("Filters")
+# Sidebar navigation
+st.sidebar.header("Navigation")
+page = st.sidebar.radio("Select a Page", ("Introduction", "Summary Generator"))
 
-# Navigation
-page = st.sidebar.radio("Select a Page", ("Chatbot", "Sentiment Analysis"))
 
-# Chatbot Page
-if page == "Chatbot":
-    st.title("Amazon Reviews Chatbot")
+# Introduction Page
+if page == "Introduction":
+    # Title and Header Section
+    st.title("📊 Welcome to the Amazon Reviews Dashboard")
+    st.markdown("""
+        <style>
+        .intro-header {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .intro-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #2E8B57;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    # Image Header
+    st.image(
+        "https://via.placeholder.com/800x200",
+        caption="Amazon Reviews Insights Dashboard",
+        use_column_width=True
+    )
+
+    # Dashboard Description
+    st.markdown("""
+    <div class="intro-text">
+        Welcome to the <span class="highlight">Amazon Reviews Dashboard</span>, a comprehensive platform designed to provide actionable insights from customer feedback. This dashboard empowers you to:
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Features Section
+    st.markdown("""
+    <ul class="intro-text">
+        <li>📈 Explore review trends and key sentiment insights.</li>
+        <li>🛠️ Refine your analysis using dynamic filters like <span class="highlight">Category</span>, <span class="highlight">Year</span>, and <span class="highlight">Month</span>.</li>
+        <li>💡 Generate summaries that highlight performance, quality, and customer satisfaction.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+
+    # Usage Instructions
+    st.markdown("""
+    <div class="intro-text">
+        Navigate to the <span class="highlight">Summary Generator</span> tab using the sidebar to explore data insights. Start by selecting filters and click "Proceed" to view the summaries.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Call-to-Action Buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📖 Learn More"):
+            st.markdown("""
+            <div class="intro-text">
+                Explore detailed documentation and understand how this dashboard was built.
+            </div>
+            """, unsafe_allow_html=True)
+
+    with col2:
+        if st.button("🚀 Get Started"):
+            st.markdown("""
+            <div class="intro-text">
+                Jump straight into exploring reviews and generating insights!
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Footer Section
+    st.markdown("""
+    <hr>
+    <div style="text-align: center; font-size: 14px; color: #666;">
+        Built with ❤️ using Streamlit | Designed for data-driven decision-making.
+    </div>
+    """, unsafe_allow_html=True)
+
+# Summary Generator Page
+elif page == "Summary Generator":
+    st.title("Amazon Reviews Summary Generator")
     st.markdown(
-        "This chatbot analyzes sentiment and provides insights based on product reviews. "
-        "Use the filters in the sidebar for a more refined search."
+        "Select the filters below to generate a summary of Amazon reviews based on the chosen category, year, and month."
     )
     
     # Dynamic category selection
-    selected_category = st.sidebar.selectbox("Category", get_available_options(metadata))
+    selected_category = st.selectbox("Category", get_available_options(metadata))
+    selected_year = None
+    selected_month = None
+
     if selected_category:
         # Dynamic year selection based on category
-        selected_year = st.sidebar.selectbox(
+        selected_year = st.selectbox(
             "Year",
             get_available_options(metadata, selected_category)
         )
         if selected_year:
             # Dynamic month selection based on category and year
-            selected_month = st.sidebar.selectbox(
+            selected_month = st.selectbox(
                 "Month",
                 get_available_options(metadata, selected_category, selected_year)
             )
-        else:
-            selected_month = None
-    else:
-        selected_year = None
-        selected_month = None
 
-    # User input for chatbot query
-    user_input = st.text_input("Ask me a question about Amazon reviews:", "")
-
-    # Chatbot response
-    if st.button("Get Response"):
-        if user_input.strip():
-            with st.spinner("Processing your query..."):
+    # Process Button
+    if st.button("Proceed"):
+        if selected_category and selected_year and selected_month:
+            with st.spinner("Generating summary..."):
                 response = process_text_query(
-                    input_text=f"Find results for the query '{user_input}' in the '{selected_category}' category for the year {selected_year} and the month of {selected_month}",
+                    input_text=f"Generate a summary for the '{selected_category}' category for the year {selected_year} and the month of {selected_month}.",
                     category=selected_category,
                     year=selected_year,
                     month=selected_month,
                 )
-            st.subheader("Chatbot Response")
-            st.write(response)
+            st.subheader("Summary")
+            st.success(response)
         else:
-            st.warning("Please enter a question.")
-
-# Sentiment Analysis Page
-elif page == "Sentiment Analysis":
-    st.title("Product Sentiment Analysis")
-    
-    # Embed Tableau visualization using components
-    tableau_url = "https://public.tableau.com/views/MARRYLANDYEARLYROADCRASHREPORT-GROUP26-PROJECT3/MarylandYearlyRoadCrashReport"
-    components.html(f"""
-    <iframe src="{tableau_url}" width="100%" height="800px" frameborder="0"></iframe>
-    """, height=800)
+            st.warning("Please select all filters (Category, Year, and Month) to proceed.")
