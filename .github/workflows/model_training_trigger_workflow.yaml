@@ -28,9 +28,10 @@ jobs:
 
     - name: Authenticate to Google Cloud
       run: |
-        echo ${{ secrets.GCP_SA_KEY }} > $HOME/gcp-key.json  # Use the service account key stored as a GitHub secret
+        # Decode the service account JSON key from the GitHub secret and store it in a file
+        echo "${{ secrets.GCP_SA_KEY }}" > $HOME/gcp-key.json  # Use the service account key stored as a GitHub secret
         export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json  # Set the path for Google Cloud credentials
-
+    
     - name: Run the pipeline script
       run: |
         python project_pipeline/dags/model_utils/pipeline_CI_CD.py  # Run your pipeline script
