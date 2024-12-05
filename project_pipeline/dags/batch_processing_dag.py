@@ -25,7 +25,7 @@ default_args = {
 }
 
 dag = DAG(
-    '07_batch_processing_dag',
+    '06_batch_processing_dag',
     default_args=default_args,
     description='Batch processing pipeline for Amazon Reviews Sentiment Analysis',
     schedule_interval=None,

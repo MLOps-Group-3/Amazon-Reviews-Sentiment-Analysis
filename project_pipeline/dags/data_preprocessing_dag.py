@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 import pandas as pd
@@ -225,7 +226,15 @@ with DAG(
         bash_command="echo 'Skipping labeling tasks for serving data.'",
     )
 
+    trigger_batch_processing = TriggerDagRunOperator(
+        task_id='trigger_batch_processing_dag',
+        trigger_dag_id='06_batch_processing_dag',
+        wait_for_completion=False,
+        dag=dag,
+    )
+
     # Task dependencies
     data_cleaning >> aspect_extraction >> branching
     branching >> run_labeling >> [data_labeling, data_labeling_aspect]
     branching >> skip_labeling
+    skip_labeling >> trigger_batch_processing
