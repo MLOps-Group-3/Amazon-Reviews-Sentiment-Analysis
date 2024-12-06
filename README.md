@@ -73,25 +73,19 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
     │   │   ├── data_preprocessing       # Data preprocessing related scripts 
     │   │   ├── data_validation          # Data validation related scripts 
     │   │   ├── __init__.py              # Initialization file for the data_utils package.
-    │   │   └── __pycache__              # Cached Python files for performance 
     │   ├── data_validation_dag.py       # DAG for data validation tasks.
     │   ├── gcs_pull_dag.py              # DAG for pulling data from Google Cloud Storage (GCS).
     │   ├── __init__.py                  # Initialization file for the DAG package.
     │   ├── model_utils                  # Directory for model utility scripts.
-    │   │   ├── dsl_components.py        # Domain-specific language components for the pipeline.
-    │   │   ├── dsl_pipeline.py          # Pipeline definition using a domain-specific language.
-    │   │   ├── model_config.py          # Configuration file for models (e.g., hyperparameters, structure).
-    │   │   ├── pipeline_CI_CD_archive.py# CI/CD pipeline for archiving models and related artifacts.
+    │   │   ├── dsl_components.py        # Kubeflow components for the pipeline.
+    │   │   ├── dsl_pipeline.py          # Pipeline definition using a components.
+    │   │   ├── model_config.py          # Configuration file for models.
     │   │   ├── pipeline_CI_CD.py        # CI/CD pipeline for model deployment and monitoring.
-    │   │   ├── pipeline.py              # Main pipeline script for orchestrating tasks.
-    │   │   ├── __pycache__              # Cached Python files for performance 
     │   │   └── src                      # Source code for model utility components 
-    │   ├── __pycache__                  # Cached Python files for the DAGs 
     │   ├── sampling_serve_dag.py        # DAG for serving sampled data.
     │   ├── sampling_train_dag.py        # DAG for training models with sampled data.
     │   ├── serve_utils                  # Directory for serving-related utilities.
     │   │   ├── batch_processing.py      # Script for batch processing during model serving.
-    │   │   └── __pycache__              # Cached Python files for performance 
     │   └── vertex_ai_submit_dag.py      # DAG for submitting jobs to Vertex AI.
     ├── data                             # Directory for storing datasets.
     │   ├── labeled                      # Labeled data for training and serving.
