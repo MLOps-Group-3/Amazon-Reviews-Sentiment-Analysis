@@ -1,5 +1,6 @@
 # Ignore all CSV files
 *.csv
+*.jsonl
 
 # Ignore CRC files
 *.crc
@@ -52,6 +53,8 @@ logs
 #adding it for secrets
 .env
 
+#add service key json
+amazonreviewssentimentanalysis-8dfde6e21c1d.json
 # Ignore model output directories
 saved_model/
 saved_roberta_model/
@@ -74,3 +77,4 @@ trainer_state.txt
 special_tokens_map.json
 tokenizer_config.json
 vocab.json
+amazonreviewssentimentanalysis-8dfde6e21c1d.json

@@ -1,0 +1,1321 @@
+{
+  "components": {
+    "comp-bias-detect-component": {
+      "executorLabel": "exec-bias-detect-component",
+      "inputDefinitions": {
+        "artifacts": {
+          "metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "gcs_artifact_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "bias_detect": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-build-and-push-torchserve-image": {
+      "executorLabel": "exec-build-and-push-torchserve-image",
+      "inputDefinitions": {
+        "artifacts": {
+          "model_gcs_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "docker_image_name": {
+            "parameterType": "STRING"
+          },
+          "gcp_project": {
+            "parameterType": "STRING"
+          },
+          "gcp_region": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-condition-1": {
+      "dag": {
+        "outputs": {
+          "artifacts": {
+            "evaluate-slices-component-eval_slices_metrics": {
+              "artifactSelectors": [
+                {
+                  "outputArtifactKey": "eval_slices_metrics",
+                  "producerSubtask": "evaluate-slices-component"
+                }
+              ]
+            }
+          }
+        },
+        "tasks": {
+          "bias-detect-component": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-bias-detect-component"
+            },
+            "dependentTasks": [
+              "evaluate-slices-component"
+            ],
+            "inputs": {
+              "artifacts": {
+                "metrics": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "eval_slices_metrics",
+                    "producerTask": "evaluate-slices-component"
+                  }
+                }
+              },
+              "parameters": {
+                "code_bucket_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                  }
+                },
+                "gcs_artifact_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/output/metrics"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "bias-detect-component"
+            }
+          },
+          "condition-2": {
+            "componentRef": {
+              "name": "comp-condition-2"
+            },
+            "dependentTasks": [
+              "bias-detect-component"
+            ],
+            "inputs": {
+              "artifacts": {
+                "pipelinechannel--train-save-stage-model": {
+                  "componentInputArtifact": "pipelinechannel--train-save-stage-model"
+                }
+              },
+              "parameters": {
+                "pipelinechannel--bias-detect-component-bias_detect": {
+                  "taskOutputParameter": {
+                    "outputParameterKey": "bias_detect",
+                    "producerTask": "bias-detect-component"
+                  }
+                },
+                "pipelinechannel--evaluate-model-component-2-f1_score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-model-component-2-f1_score"
+                },
+                "pipelinechannel--evaluate-model-component-f1_score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-model-component-f1_score"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "bias-check-condtional-deploy"
+            },
+            "triggerPolicy": {
+              "condition": "inputs.parameter_values['pipelinechannel--bias-detect-component-bias_detect'] == 'false'"
+            }
+          },
+          "evaluate-slices-component": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-evaluate-slices-component"
+            },
+            "inputs": {
+              "artifacts": {
+                "model_gcs_path": {
+                  "componentInputArtifact": "pipelinechannel--train-save-stage-model"
+                },
+                "test_data": {
+                  "componentInputArtifact": "pipelinechannel--data-prep-stage-test_data"
+                }
+              },
+              "parameters": {
+                "code_bucket_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                  }
+                },
+                "f1_threshold": {
+                  "runtimeValue": {
+                    "constant": 0.6
+                  }
+                },
+                "gcs_artifact_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/output/metrics"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "evaluate-slices-component"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "artifacts": {
+          "pipelinechannel--data-prep-stage-test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "pipelinechannel--train-save-stage-model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "pipelinechannel--evaluate-model-component-2-f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--evaluate-model-component-f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "evaluate-slices-component-eval_slices_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-condition-2": {
+      "dag": {
+        "tasks": {
+          "build-and-push-torchserve-image": {
+            "cachingOptions": {},
+            "componentRef": {
+              "name": "comp-build-and-push-torchserve-image"
+            },
+            "inputs": {
+              "artifacts": {
+                "model_gcs_path": {
+                  "componentInputArtifact": "pipelinechannel--train-save-stage-model"
+                }
+              },
+              "parameters": {
+                "bucket_name": {
+                  "runtimeValue": {
+                    "constant": "arsa_model_deployment_uscentral_v2"
+                  }
+                },
+                "code_bucket_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                  }
+                },
+                "docker_image_name": {
+                  "runtimeValue": {
+                    "constant": "pytorch_predict_review_sentiment_bert_model"
+                  }
+                },
+                "gcp_project": {
+                  "runtimeValue": {
+                    "constant": "amazonreviewssentimentanalysis"
+                  }
+                },
+                "gcp_region": {
+                  "runtimeValue": {
+                    "constant": "us-central1"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "build-and-push-torchserve-image"
+            }
+          },
+          "upload-model-to-registry": {
+            "cachingOptions": {},
+            "componentRef": {
+              "name": "comp-upload-model-to-registry"
+            },
+            "dependentTasks": [
+              "build-and-push-torchserve-image"
+            ],
+            "inputs": {
+              "parameters": {
+                "app_name": {
+                  "runtimeValue": {
+                    "constant": "review_sentiment_bert_model"
+                  }
+                },
+                "bucket_name": {
+                  "runtimeValue": {
+                    "constant": "arsa_model_deployment_uscentral_v2"
+                  }
+                },
+                "docker_image_uri": {
+                  "runtimeValue": {
+                    "constant": "gcr.io/amazonreviewssentimentanalysis/pytorch_predict_review_sentiment_bert_model"
+                  }
+                },
+                "model_archive_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/output/models/archive/"
+                  }
+                },
+                "model_description": {
+                  "runtimeValue": {
+                    "constant": "PyTorch serve deployment model for amazon reviews sentiment classification"
+                  }
+                },
+                "model_display_name": {
+                  "runtimeValue": {
+                    "constant": "review_sentiment_bert_model-v1"
+                  }
+                },
+                "model_save_path": {
+                  "runtimeValue": {
+                    "constant": "gs://arsa_model_deployment_uscentral_v2/output/models/train_job/final_model.pth"
+                  }
+                },
+                "project_id": {
+                  "runtimeValue": {
+                    "constant": "amazonreviewssentimentanalysis"
+                  }
+                },
+                "region": {
+                  "runtimeValue": {
+                    "constant": "us-central1"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "upload-model-to-registry"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "artifacts": {
+          "pipelinechannel--train-save-stage-model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "pipelinechannel--bias-detect-component-bias_detect": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-model-component-2-f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--evaluate-model-component-f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-data-prep-stage": {
+      "executorLabel": "exec-data-prep-stage",
+      "inputDefinitions": {
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "input_path": {
+            "parameterType": "STRING"
+          },
+          "output_dir": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-evaluate-model-component": {
+      "executorLabel": "exec-evaluate-model-component",
+      "inputDefinitions": {
+        "artifacts": {
+          "model_gcs_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "f1_threshold": {
+            "defaultValue": 0.6,
+            "isOptional": true,
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "eval_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "eval_pass": {
+            "parameterType": "STRING"
+          },
+          "f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-evaluate-model-component-2": {
+      "executorLabel": "exec-evaluate-model-component-2",
+      "inputDefinitions": {
+        "artifacts": {
+          "model_gcs_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "f1_threshold": {
+            "defaultValue": 0.6,
+            "isOptional": true,
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "eval_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "eval_pass": {
+            "parameterType": "STRING"
+          },
+          "f1_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-evaluate-slices-component": {
+      "executorLabel": "exec-evaluate-slices-component",
+      "inputDefinitions": {
+        "artifacts": {
+          "model_gcs_path": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "f1_threshold": {
+            "defaultValue": 0.6,
+            "isOptional": true,
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "gcs_artifact_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "eval_slices_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-load-latest-model": {
+      "executorLabel": "exec-load-latest-model",
+      "inputDefinitions": {
+        "parameters": {
+          "model_archive_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "archive_model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-run-optuna-experiment": {
+      "executorLabel": "exec-run-optuna-experiment",
+      "inputDefinitions": {
+        "artifacts": {
+          "test_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "data_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "best_hyperparams_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-train-save-stage": {
+      "executorLabel": "exec-train-save-stage",
+      "inputDefinitions": {
+        "artifacts": {
+          "best_hyperparams_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "train_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "val_data": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "data_path": {
+            "parameterType": "STRING"
+          },
+          "model_save_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "model": {
+            "artifactType": {
+              "schemaTitle": "system.Model",
+              "schemaVersion": "0.0.1"
+            }
+          },
+          "model_metrics": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-upload-model-to-registry": {
+      "executorLabel": "exec-upload-model-to-registry",
+      "inputDefinitions": {
+        "parameters": {
+          "app_name": {
+            "parameterType": "STRING"
+          },
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "docker_image_uri": {
+            "parameterType": "STRING"
+          },
+          "health_route": {
+            "defaultValue": "/ping",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "model_archive_path": {
+            "parameterType": "STRING"
+          },
+          "model_description": {
+            "parameterType": "STRING"
+          },
+          "model_display_name": {
+            "parameterType": "STRING"
+          },
+          "model_save_path": {
+            "parameterType": "STRING"
+          },
+          "predict_route": {
+            "defaultValue": "/predictions/",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "region": {
+            "parameterType": "STRING"
+          },
+          "serving_container_ports": {
+            "defaultValue": [
+              7080.0
+            ],
+            "isOptional": true,
+            "parameterType": "LIST"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "model_display_name": {
+            "parameterType": "STRING"
+          },
+          "model_resource_name": {
+            "parameterType": "STRING"
+          },
+          "model_version": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "defaultPipelineRoot": "gs://arsa_model_deployment_uscentral_v2/pipeline_root/",
+  "deploymentSpec": {
+    "executors": {
+      "exec-bias-detect-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "bias_detect_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers[torch]' 'pandas' 'scikit-learn' 'google-cloud-storage' 'gcsfs' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef bias_detect_component(\n    code_bucket_path: str,\n    metrics: Input[Metrics],\n    gcs_artifact_path: str,\n)-> NamedTuple(\"output\", [(\"bias_detect\", str)]):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    # Ensure `evaluate_module_slices.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"bias_detect.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_module_slices.py` not found in {code_dir}\")\n\n    # Load `evaluate_module_slices.py` dynamically\n    bias_detect = load_module_from_file(evaluate_script_path)\n\n\n    # Call `gcp_eval` method from the module\n    biased_rows, f1_threshold = bias_detect.detect_bias(\n        slice_metrics_path=metrics.metadata[\"slice_metrics_csv\"],\n    )\n    bias_report = {}\n\n    # Log results\n    if not biased_rows.empty:\n        bias_report[\"bias_detected\"] = True\n        bias_report[\"details\"] = biased_rows.to_dict(orient=\"records\")\n\n        logger.warning(\"Potential bias detected in the following slices:\")\n        for _, row in biased_rows.iterrows():\n            logger.error(\n                f\"Slice Column: {row['Slice Column']}, Slice Value: {row['Slice Value']}, \"\n                f\"Samples: {row['Samples']}, F1 Score: {row['F1 Score']:.4f} (Threshold: {f1_threshold:.4f})\"\n            )\n        logger.error(\"Potential bias detected. Check bias_detection.log for details.\")\n    else:\n        bias_report[\"bias_detected\"] = False\n        bias_report[\"details\"] = []\n        logger.info(\"No significant bias detected.\")\n        # print(\"No significant bias detected.\")\n\n    # Save bias report as JSON to GCS\n    gcs_bucket_name = gcs_artifact_path.split('/')[2]\n    gcs_blob_path = '/'.join(gcs_artifact_path.split('/')[3:])\n    bias_json_path = f\"{gcs_blob_path}/bias.json\"\n\n    try:\n        client = storage.Client()\n        bucket = client.bucket(gcs_bucket_name)\n        blob = bucket.blob(bias_json_path)\n        blob.upload_from_string(json.dumps(bias_report, indent=4), content_type=\"application/json\")\n        logging.info(f\"Bias report saved to GCS at gs://{gcs_bucket_name}/{bias_json_path}\")\n    except Exception as e:\n        logging.error(f\"Failed to save bias report to GCS: {e}\")\n        raise\n\n    # bias_metrics.log_metric(\"bias_detected\",)\n\n    # Raise an error if bias is detected to stop the pipeline\n    if bias_report[\"bias_detected\"]:\n        # bias_metrics.log_metric(\"bias_detected\",True)\n        bias_detect = \"true\"\n        return (bias_detect,)\n        # raise RuntimeError(\"Bias detected in slice metrics. Stopping the pipeline.\")\n    else:\n        bias_detect = \"false\"\n        return (bias_detect,)\n        # bias_metrics.log_metric(\"bias_detected\",False)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-build-and-push-torchserve-image": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "build_and_push_torchserve_image"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-storage' 'google-cloud-build' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef build_and_push_torchserve_image(\n    code_bucket_path: str,\n    gcp_project: str, \n    gcp_region: str, \n    bucket_name: str, \n    docker_image_name: str,\n    model_gcs_path: Input[Model]\n):\n    # Import inside the component\n    from google.cloud.devtools import cloudbuild_v1 as cloudbuild\n    from google.cloud import storage\n    import logging\n    import os\n    # Set up logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Define environment variables\n    TORCH_SERVE_PATH = f\"gs://{bucket_name}/code/predictor/\"\n    CUSTOM_PREDICTOR_IMAGE_URI = f\"gcr.io/{gcp_project}/{docker_image_name}\"\n\n    # Set up the CloudBuild client\n    client = cloudbuild.CloudBuildClient()\n\n    # Log the environment variables for debugging\n    logger.info(f\"GCP Project: {gcp_project}\")\n    logger.info(f\"GCP Region: {gcp_region}\")\n    logger.info(f\"Bucket Name: {bucket_name}\")\n    logger.info(f\"TorchServe Path: {TORCH_SERVE_PATH}\")\n    logger.info(f\"Docker Image Name: {docker_image_name}\")\n    logger.info(f\"Custom Docker Image URI: {CUSTOM_PREDICTOR_IMAGE_URI}\")\n\n    model_gcs_path = model_gcs_path.metadata[\"gcs_path\"]\n    logger.info(model_gcs_path)\n    model_gcs_path = f\"gs://{bucket_name}/output/models/train_job/\"\n    # Create Cloud Build configuration (cloudbuild.yaml)\n    cloudbuild_config = {\n        'steps': [\n            # Step 1: Download code files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{code_bucket_path}/*',  # Copy all contents from the code folder\n                    '.'  # Copy to the current working directory\n                ],\n            },\n            # Step 2: Create the destination directory for model files\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"mkdir\",\n                    \"-p\",  # Create parent directories as needed\n                    \"./bert-sent-model\"\n                ],\n            },\n            # Step 3: Download model files from GCS\n            {\n                \"name\": \"gcr.io/cloud-builders/gsutil\",\n                \"args\": [\n                    'cp',\n                    '-r',  # Recursive copy\n                    f'{model_gcs_path}*',  # Add wildcard to include all files in the folder\n                    './bert-sent-model/'  # Ensure the trailing slash\n                ],\n            },\n            # Step 3: List files in the current working directory\n            {\n                \"name\": \"ubuntu\",\n                \"args\": [\n                    \"ls\",\n                    \"-R\",  # Recursive listing\n                    \".\"    # Current working directory\n                ],\n            },\n            # Step 4: Build the Docker image\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'build',\n                    '-t',\n                    CUSTOM_PREDICTOR_IMAGE_URI,\n                    '.'\n                ],\n            },\n            # Step 5: Push the Docker image to the container registry\n            {\n                'name': 'gcr.io/cloud-builders/docker',\n                'args': [\n                    'push',\n                    CUSTOM_PREDICTOR_IMAGE_URI\n                ],\n            },\n        ],\n        'images': [CUSTOM_PREDICTOR_IMAGE_URI],\n    }\n\n    # Create a Cloud Build build request\n    build = cloudbuild.Build(\n        steps=cloudbuild_config['steps'],\n        images=cloudbuild_config['images'],\n    )\n\n    # Trigger Cloud Build job\n    build_response = client.create_build(project_id=gcp_project, build=build)\n\n    logging.info(\"IN PROGRESS:\")\n    logging.info(build_response.metadata)\n\n    # get build status\n    result = build_response.result()\n    logging.info(\"RESULT:\", result.status)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-data-prep-stage": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "data_prep_stage"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn' 'google-cloud-storage' 'torch' 'gcsfs' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef data_prep_stage(\n    code_bucket_path: str,\n    input_path: str,\n    output_dir: str,\n    train_data: Output[Dataset],\n    val_data: Output[Dataset],\n    test_data: Output[Dataset],\n\n):\n    import os\n    import sys\n    import importlib.util\n    import pandas as pd\n    from google.cloud import storage\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n    # Logging setup\n    import logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n\n    download_files_from_gcs(code_bucket_path,code_dir)\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    prepare_data_module = load_module_from_file(f\"{code_dir}/prepare_data.py\")\n    train_df, val_df, test_df, label_encoder = prepare_data_module.split_and_save_data(input_path, output_dir)\n    train_df.to_pickle(train_data.path)\n    val_df.to_pickle(val_data.path)\n    test_df.to_pickle(test_data.path)\n    # label_encoder.to_pickle(label_encoder_data.path)\n    logger.info(\"Artifacts for train, dev, and test data created successfully.\")\n\n"
+          ],
+          "image": "python:3.7"
+        }
+      },
+      "exec-evaluate-model-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers[torch]' 'pandas' 'numpy' 'scikit-learn' 'google-cloud-storage' 'gcsfs' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model_component(\n    code_bucket_path: str,\n    model_gcs_path: Input[Model],\n    test_data: Input[Dataset],\n    eval_metrics: Output[Metrics],\n    # f1_score: Output[float],\n    f1_threshold: float = 0.6,\n)-> NamedTuple(\"output\", [(\"eval_pass\", str),(\"f1_score\", float)]):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    # Ensure `evaluate_model.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"evaluate_model.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_model.py` not found in {code_dir}\")\n\n    # Load `evaluate_model.py` dynamically\n    evaluate_module = load_module_from_file(evaluate_script_path)\n\n    logger.info(f\"model_gcs_path : {model_gcs_path},\\t model_gcs_path.uri {model_gcs_path.uri}, metadata {model_gcs_path.metadata['gcs_path']}\")\n    # Call `gcp_eval` method from the module\n    accuracy, precision, recall, f1 = evaluate_module.gcp_eval(\n        test_df=test_data,\n        model_path=model_gcs_path.metadata[\"gcs_path\"],\n    )\n\n    # Log metrics to Vertex AI\n    eval_metrics.log_metric(\"accuracy\", accuracy)\n    eval_metrics.log_metric(\"precision\", precision)\n    eval_metrics.log_metric(\"recall\", recall)\n    eval_metrics.log_metric(\"f1\", f1)\n    # Conditional check\n    if f1 >= f1_threshold:\n        logger.info(f\"Model passed the F1 threshold: {f1:.4f} >= {f1_threshold}\")\n        eval_pass = \"true\"\n        return (eval_pass,f1)\n    else:\n        logger.error(f\"Model failed to meet the F1 threshold: {f1:.4f} < {f1_threshold}\")\n        eval_pass = \"false\"\n        return (eval_pass,f1)\n\n        # raise ValueError(f\"F1 score {f1:.4f} is below the threshold {f1_threshold}\")\n\n"
+          ],
+          "image": "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu118.py310",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_TESLA_T4"
+            },
+            "cpuLimit": 8.0
+          }
+        }
+      },
+      "exec-evaluate-model-component-2": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers[torch]' 'pandas' 'numpy' 'scikit-learn' 'google-cloud-storage' 'gcsfs' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model_component(\n    code_bucket_path: str,\n    model_gcs_path: Input[Model],\n    test_data: Input[Dataset],\n    eval_metrics: Output[Metrics],\n    # f1_score: Output[float],\n    f1_threshold: float = 0.6,\n)-> NamedTuple(\"output\", [(\"eval_pass\", str),(\"f1_score\", float)]):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    # Ensure `evaluate_model.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"evaluate_model.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_model.py` not found in {code_dir}\")\n\n    # Load `evaluate_model.py` dynamically\n    evaluate_module = load_module_from_file(evaluate_script_path)\n\n    logger.info(f\"model_gcs_path : {model_gcs_path},\\t model_gcs_path.uri {model_gcs_path.uri}, metadata {model_gcs_path.metadata['gcs_path']}\")\n    # Call `gcp_eval` method from the module\n    accuracy, precision, recall, f1 = evaluate_module.gcp_eval(\n        test_df=test_data,\n        model_path=model_gcs_path.metadata[\"gcs_path\"],\n    )\n\n    # Log metrics to Vertex AI\n    eval_metrics.log_metric(\"accuracy\", accuracy)\n    eval_metrics.log_metric(\"precision\", precision)\n    eval_metrics.log_metric(\"recall\", recall)\n    eval_metrics.log_metric(\"f1\", f1)\n    # Conditional check\n    if f1 >= f1_threshold:\n        logger.info(f\"Model passed the F1 threshold: {f1:.4f} >= {f1_threshold}\")\n        eval_pass = \"true\"\n        return (eval_pass,f1)\n    else:\n        logger.error(f\"Model failed to meet the F1 threshold: {f1:.4f} < {f1_threshold}\")\n        eval_pass = \"false\"\n        return (eval_pass,f1)\n\n        # raise ValueError(f\"F1 score {f1:.4f} is below the threshold {f1_threshold}\")\n\n"
+          ],
+          "image": "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu118.py310",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_TESLA_T4"
+            },
+            "cpuLimit": 8.0
+          }
+        }
+      },
+      "exec-evaluate-slices-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_slices_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers[torch]' 'pandas' 'numpy' 'scikit-learn' 'google-cloud-storage' 'gcsfs' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_slices_component(\n    code_bucket_path: str,\n    model_gcs_path: Input[Model],\n    test_data: Input[Dataset],\n    eval_slices_metrics: Output[Metrics],\n    gcs_artifact_path: str,\n    f1_threshold: float = 0.6,\n):\n    import logging\n    import json\n    import importlib.util\n    from google.cloud import storage\n    import os\n    import sys\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    # Ensure `evaluate_module_slices.py` exists\n    evaluate_script_path = os.path.join(code_dir, \"evaluate_model_slices.py\")\n    if not os.path.exists(evaluate_script_path):\n        raise FileNotFoundError(f\"`evaluate_module_slices.py` not found in {code_dir}\")\n\n    # Load `evaluate_module_slices.py` dynamically\n    evaluate_module_slices = load_module_from_file(evaluate_script_path)\n\n    logger.info(f\"model_gcs_path : {model_gcs_path},\\t model_gcs_path.uri {model_gcs_path.uri}, metadata {model_gcs_path.metadata['gcs_path']}\")\n    # Call `gcp_eval` method from the module\n    metrics_df = evaluate_module_slices.gcp_eval_slices(\n        test_df=test_data,\n        model_path=model_gcs_path.metadata[\"gcs_path\"],\n    )\n    logger.info(metrics_df)\n\n    gcs_bucket_name = gcs_artifact_path.split('/')[2]\n    gcs_blob_path = '/'.join(gcs_artifact_path.split('/')[3:])\n    csv_filename = f\"{gcs_blob_path}/slice_metrics.csv\"\n    json_filename = f\"{gcs_blob_path}/slice_metrics.json\"\n\n    client = storage.Client()\n    bucket = client.bucket(gcs_bucket_name)\n\n    # Save as CSV\n    csv_blob = bucket.blob(csv_filename)\n    csv_blob.upload_from_string(metrics_df.to_csv(index=False), content_type=\"text/csv\")\n    logger.info(f\"Slice metrics saved to GCS as CSV at gs://{gcs_bucket_name}/{csv_filename}\")\n\n    # Save as JSON\n    json_blob = bucket.blob(json_filename)\n    json_blob.upload_from_string(metrics_df.to_json(orient=\"records\"), content_type=\"application/json\")\n    logger.info(f\"Slice metrics saved to GCS as JSON at gs://{gcs_bucket_name}/{json_filename}\")\n\n    # Log paths of the artifacts in metrics\n    eval_slices_metrics.metadata[\"slice_metrics_csv\"] = f\"gs://{gcs_bucket_name}/{csv_filename}\"\n    eval_slices_metrics.metadata[\"slice_metrics_json\"] = f\"gs://{gcs_bucket_name}/{json_filename}\"\n\n"
+          ],
+          "image": "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu118.py310",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_TESLA_T4"
+            },
+            "cpuLimit": 8.0
+          }
+        }
+      },
+      "exec-load-latest-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "load_latest_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-storage' 'gcsfs' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef load_latest_model(\n    model_archive_path: str,\n    archive_model: Output[Model]\n\n):\n    from google.cloud import storage\n    import logging\n    from urllib.parse import urlparse\n\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Parse the GCS path\n    if not model_archive_path.startswith(\"gs://\"):\n        raise ValueError(f\"Invalid GCS path: {model_archive_path}\")\n\n    parsed_url = urlparse(model_archive_path)\n    bucket_name = parsed_url.netloc  # Extract bucket name\n    prefix = parsed_url.path.lstrip(\"/\")  # Extract the prefix, stripping leading \"/\"\n\n    # Initialize the GCS client\n    client = storage.Client()\n    bucket = client.bucket(bucket_name)\n\n    # List all the blobs (files) in the specified GCS folder (model_archive_path)\n    blobs = list(bucket.list_blobs(prefix=prefix))\n\n    if not blobs:\n        raise ValueError(f\"No models found in the specified GCS path: {model_archive_path}\")\n\n    # Find the latest model by comparing the 'updated' timestamp of each blob\n    latest_blob = max(blobs, key=lambda blob: blob.updated)\n\n    # Return the path to the latest model\n    latest_model_path = f\"gs://{bucket_name}/{latest_blob.name}\"\n\n    logger.info(latest_model_path)\n    archive_model.metadata[\"gcs_path\"] = latest_model_path\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-run-optuna-experiment": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "run_optuna_experiment"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'optuna' 'mlflow' 'torch' 'transformers[torch]' 'numpy' 'google-cloud-storage' 'scikit-learn' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef run_optuna_experiment(\n    code_bucket_path: str,\n    data_path: str,\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    test_data: Input[Dataset],\n    best_hyperparams_metrics: Output[Metrics],\n):\n    import os\n    import sys\n    import importlib.util\n    import logging\n    from google.cloud import storage\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\"}\n\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    # Ensure `experiment_runner_optuna.py` exists\n    script_path = os.path.join(code_dir, \"experiment_runner_optuna.py\")\n    if not os.path.exists(script_path):\n        raise FileNotFoundError(f\"`experiment_runner_optuna.py` not found in {code_dir}\")\n\n    # Load and execute the experiment\n    experiment_module = load_module_from_file(script_path)\n\n    # Run the Optuna experiment\n    best_hyperparameters = experiment_module.find_best_hyperparameters(data_path)\n    logger.info(best_hyperparameters)\n    # Save the best hyperparameters to the output artifact\n    # Log hyperparameters to Metrics artifact\n    for key, value in best_hyperparameters.items():\n        best_hyperparams_metrics.log_metric(key, value)\n\n"
+          ],
+          "image": "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu118.py310",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_TESLA_T4"
+            },
+            "cpuLimit": 8.0,
+            "memoryLimit": 32.0
+          }
+        }
+      },
+      "exec-train-save-stage": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "train_save_stage"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'torch' 'transformers[torch]' 'scikit-learn' 'numpy' 'pandas' 'google-cloud-storage' 'PyYAML>=6.0' 'tensorboard' 'arsa-pipeline-tools' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_save_stage(\n    code_bucket_path: str,\n    data_path: str,\n    model_save_path: str,\n    train_data: Input[Dataset],\n    val_data: Input[Dataset],\n    best_hyperparams_metrics: Input[Metrics],\n    model: Output[Model],\n    model_metrics: Output[Metrics],\n\n\n):\n    import os\n    import sys\n    import logging\n    from google.cloud import storage\n    import importlib.util\n    from accelerate import Accelerator\n    from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file\n\n\n    # Logging setup\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n    # Initialize Accelerator\n    accelerator = Accelerator()\n\n    # Check available device\n    logger.info(f\"Using device: {accelerator.device}\")\n\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n    ALLOWED_EXTENSIONS = {\".py\", \".json\", \".yaml\", \".csv\", \".pkl\"}\n\n    download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)\n\n    logger.info(f\"Files in {code_dir}: {os.listdir(code_dir)}\")\n    sys.path.insert(0, code_dir)\n\n    train_save_module = load_module_from_file(f\"{code_dir}/train_save.py\")\n    hyperparameters_path = os.path.join(code_dir, \"best_hyperparameters.json\")\n\n    best_hyperparams = {key: value for key, value in best_hyperparams_metrics.metadata.items()}\n    logger.info(f\"Read best hyperparameters from metrics: {best_hyperparams}\")\n\n    returned_model_path, epoch_metrics = train_save_module.train_and_save_final_model(\n        hyperparameters=best_hyperparams,  #train_save_module.load_hyperparameters(hyperparameters_path),\n        data_path=data_path,\n        train_data = train_data,\n        val_data = val_data, \n        model_save_path=model_save_path,\n    )\n\n\n    model.metadata[\"gcs_path\"] = returned_model_path\n    logger.info(f\"Model artifact metadata updated with GCS path: {returned_model_path}\")\n\n    print(epoch_metrics)\n    logger.info(f\"epoch_metrics: {epoch_metrics}\")\n    # Log metrics to the Vertex AI UI\n    # Corrected logging for Vertex AI\n    for epoch, metric in enumerate(epoch_metrics, start=1):\n        # Log accuracy and loss (ensure keys match)\n        model_metrics.log_metric(f\"epoch_{epoch}_accuracy\", metric[\"eval_accuracy\"])\n        model_metrics.log_metric(f\"epoch_{epoch}_loss\", metric[\"eval_loss\"])\n        model_metrics.log_metric(f\"epoch_{epoch}_precision\", metric[\"eval_precision\"])\n        model_metrics.log_metric(f\"epoch_{epoch}_recall\", metric[\"eval_recall\"])\n        model_metrics.log_metric(f\"epoch_{epoch}_f1\", metric[\"eval_f1\"])\n\n        # metrics.log_metric(f\"epoch_{epoch}_runtime\", metric[\"eval_runtime\"])\n        # metrics.log_metric(f\"epoch_{epoch}_samples_per_second\", metric[\"eval_samples_per_second\"])\n        # metrics.log_metric(f\"epoch_{epoch}_steps_per_second\", metric[\"eval_steps_per_second\"])\n\n        # Log to standard output\n        logger.info(f\"Logged metrics for epoch {epoch}: {metric}\")\n\n"
+          ],
+          "image": "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu118.py310",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_TESLA_T4"
+            },
+            "cpuLimit": 8.0,
+            "memoryLimit": 32.0
+          }
+        }
+      },
+      "exec-upload-model-to-registry": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "upload_model_to_registry"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-aiplatform' 'google-auth' 'google-cloud-storage' 'gcsfs' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef upload_model_to_registry(\n    project_id: str,\n    region: str,\n    bucket_name: str,\n    model_display_name: str,\n    docker_image_uri: str,\n    model_description: str,\n    app_name: str,\n    model_save_path: str,\n    model_archive_path: str,\n    health_route: str = \"/ping\",\n    predict_route: str = \"/predictions/\",\n    serving_container_ports: list = [7080],\n) -> NamedTuple(\"Outputs\", [(\"model_display_name\", str), (\"model_resource_name\", str), (\"model_version\", str)]):\n    \"\"\"Uploads the model to the AI platform and ensures versioning.\"\"\"\n    from google.cloud import aiplatform\n    import logging\n    import time\n    import os\n    import sys\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Initialize the AI Platform\n    aiplatform.init(project=project_id, location=region, staging_bucket=bucket_name)\n\n    # Check if the model with the same display name exists\n    existing_models = aiplatform.Model.list(filter=f\"display_name={model_display_name}\")\n\n    if existing_models:\n        # Model exists, register as a new version\n        model_resource_name = existing_models[0].resource_name\n        print(f\"Model with display name '{model_display_name}' exists. Registering as a new version.\")\n        model_version = f\"v{len(existing_models) + 1}\"  # Increment version number\n    else:\n        # Model does not exist, create a new one\n        model_resource_name = None\n        print(f\"Model with display name '{model_display_name}' does not exist. Creating a new model.\")\n        model_version = \"v1\"\n\n    # Upload the model\n    model = aiplatform.Model.upload(\n        display_name=model_display_name,\n        description=model_description,\n        serving_container_image_uri=docker_image_uri,\n        serving_container_predict_route=predict_route + app_name,\n        serving_container_health_route=health_route,\n        serving_container_ports=serving_container_ports,\n        parent_model=model_resource_name,  # Register under an existing model if applicable\n    )\n\n    model.wait()\n\n    logger.info(f\"model.display_name: {model.display_name}, model.resource_name: {model.resource_name}, model_version: {model_version}\")\n    # Return output information\n\n    try:\n        # Initialize GCS client\n        client = storage.Client()\n\n        # Extract bucket and blob paths from the GCS paths\n        model_bucket_name, model_blob_path = model_save_path.replace(\"gs://\", \"\").split(\"/\", 1)\n        archive_bucket_name, archive_blob_path = model_archive_path.replace(\"gs://\", \"\").split(\"/\", 1)\n\n        logger.info(f\"Source model path: {model_save_path}\")\n        logger.info(f\"Destination archive path: {model_archive_path}\")\n\n        # Get the source bucket and blob objects\n        model_bucket = client.get_bucket(model_bucket_name)\n        model_blob = model_bucket.blob(model_blob_path)\n\n        # Add timestamp to the model file name for versioning\n        timestamp = time.strftime(\"%Y%m%d-%H%M%S\")\n        new_blob_name = f\"{os.path.splitext(os.path.basename(model_blob_path))[0]}_{timestamp}{os.path.splitext(model_blob_path)[1]}\"\n        archive_bucket = client.get_bucket(archive_bucket_name)\n        archive_blob_path = archive_blob_path.rstrip('/')  # Remove trailing slash        \n        archive_blob = archive_bucket.blob(f\"{archive_blob_path}/{new_blob_name}\")\n\n        logger.info(f\"Renaming model to: {new_blob_name}\")\n\n        # Perform the copy operation\n        model_bucket.copy_blob(model_blob, archive_bucket, f\"{archive_blob_path}/{new_blob_name}\")\n\n        logger.info(f\"Model successfully copied and renamed to {new_blob_name}\")\n\n        # Set the output artifact with the new path\n        # model_output.uri = f\"gs://{archive_bucket_name}/{archive_blob_path}/{new_blob_name}\"\n\n    except Exception as e:\n        logger.error(f\"An error occurred while copying the model: {str(e)}\")\n        # raise\n\n    return (model.display_name, model.resource_name, model_version)\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "data-prep-and-train"
+  },
+  "root": {
+    "dag": {
+      "outputs": {
+        "artifacts": {
+          "evaluate-model-component-2-eval_metrics": {
+            "artifactSelectors": [
+              {
+                "outputArtifactKey": "eval_metrics",
+                "producerSubtask": "evaluate-model-component-2"
+              }
+            ]
+          },
+          "evaluate-model-component-eval_metrics": {
+            "artifactSelectors": [
+              {
+                "outputArtifactKey": "eval_metrics",
+                "producerSubtask": "evaluate-model-component"
+              }
+            ]
+          },
+          "evaluate-slices-component-eval_slices_metrics": {
+            "artifactSelectors": [
+              {
+                "outputArtifactKey": "evaluate-slices-component-eval_slices_metrics",
+                "producerSubtask": "condition-1"
+              }
+            ]
+          },
+          "run-optuna-experiment-best_hyperparams_metrics": {
+            "artifactSelectors": [
+              {
+                "outputArtifactKey": "best_hyperparams_metrics",
+                "producerSubtask": "run-optuna-experiment"
+              }
+            ]
+          },
+          "train-save-stage-model_metrics": {
+            "artifactSelectors": [
+              {
+                "outputArtifactKey": "model_metrics",
+                "producerSubtask": "train-save-stage"
+              }
+            ]
+          }
+        }
+      },
+      "tasks": {
+        "condition-1": {
+          "componentRef": {
+            "name": "comp-condition-1"
+          },
+          "dependentTasks": [
+            "data-prep-stage",
+            "evaluate-model-component",
+            "evaluate-model-component-2",
+            "train-save-stage"
+          ],
+          "inputs": {
+            "artifacts": {
+              "pipelinechannel--data-prep-stage-test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "data-prep-stage"
+                }
+              },
+              "pipelinechannel--train-save-stage-model": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "model",
+                  "producerTask": "train-save-stage"
+                }
+              }
+            },
+            "parameters": {
+              "pipelinechannel--evaluate-model-component-2-f1_score": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "f1_score",
+                  "producerTask": "evaluate-model-component-2"
+                }
+              },
+              "pipelinechannel--evaluate-model-component-f1_score": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "f1_score",
+                  "producerTask": "evaluate-model-component"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "conditional-validation-check"
+          },
+          "triggerPolicy": {
+            "condition": "inputs.parameter_values['pipelinechannel--evaluate-model-component-f1_score'] >= inputs.parameter_values['pipelinechannel--evaluate-model-component-2-f1_score']"
+          }
+        },
+        "data-prep-stage": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-data-prep-stage"
+          },
+          "inputs": {
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                }
+              },
+              "input_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/input/labeled_data_10perc.csv"
+                }
+              },
+              "output_dir": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/output/data/"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "data-prep-stage"
+          }
+        },
+        "evaluate-model-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-evaluate-model-component"
+          },
+          "dependentTasks": [
+            "data-prep-stage",
+            "train-save-stage"
+          ],
+          "inputs": {
+            "artifacts": {
+              "model_gcs_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "model",
+                  "producerTask": "train-save-stage"
+                }
+              },
+              "test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "data-prep-stage"
+                }
+              }
+            },
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                }
+              },
+              "f1_threshold": {
+                "runtimeValue": {
+                  "constant": 0.6
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "evaluate-model-component"
+          }
+        },
+        "evaluate-model-component-2": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-evaluate-model-component-2"
+          },
+          "dependentTasks": [
+            "data-prep-stage",
+            "load-latest-model"
+          ],
+          "inputs": {
+            "artifacts": {
+              "model_gcs_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "archive_model",
+                  "producerTask": "load-latest-model"
+                }
+              },
+              "test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "data-prep-stage"
+                }
+              }
+            },
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                }
+              },
+              "f1_threshold": {
+                "runtimeValue": {
+                  "constant": 0.6
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "evaluate-model-component-2"
+          }
+        },
+        "load-latest-model": {
+          "cachingOptions": {},
+          "componentRef": {
+            "name": "comp-load-latest-model"
+          },
+          "inputs": {
+            "parameters": {
+              "model_archive_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/output/models/archive/"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "load-latest-model"
+          }
+        },
+        "run-optuna-experiment": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-run-optuna-experiment"
+          },
+          "dependentTasks": [
+            "data-prep-stage"
+          ],
+          "inputs": {
+            "artifacts": {
+              "test_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "test_data",
+                  "producerTask": "data-prep-stage"
+                }
+              },
+              "train_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "train_data",
+                  "producerTask": "data-prep-stage"
+                }
+              },
+              "val_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "val_data",
+                  "producerTask": "data-prep-stage"
+                }
+              }
+            },
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                }
+              },
+              "data_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/input/labeled_data_10perc.csv"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "run-optuna-experiment"
+          }
+        },
+        "train-save-stage": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-save-stage"
+          },
+          "dependentTasks": [
+            "data-prep-stage",
+            "run-optuna-experiment"
+          ],
+          "inputs": {
+            "artifacts": {
+              "best_hyperparams_metrics": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "best_hyperparams_metrics",
+                  "producerTask": "run-optuna-experiment"
+                }
+              },
+              "train_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "train_data",
+                  "producerTask": "data-prep-stage"
+                }
+              },
+              "val_data": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "val_data",
+                  "producerTask": "data-prep-stage"
+                }
+              }
+            },
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/code/src"
+                }
+              },
+              "data_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/output/data/"
+                }
+              },
+              "model_save_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral_v2/output/models/train_job/final_model.pth"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "train-save-stage"
+          }
+        }
+      }
+    },
+    "outputDefinitions": {
+      "artifacts": {
+        "evaluate-model-component-2-eval_metrics": {
+          "artifactType": {
+            "schemaTitle": "system.Metrics",
+            "schemaVersion": "0.0.1"
+          }
+        },
+        "evaluate-model-component-eval_metrics": {
+          "artifactType": {
+            "schemaTitle": "system.Metrics",
+            "schemaVersion": "0.0.1"
+          }
+        },
+        "evaluate-slices-component-eval_slices_metrics": {
+          "artifactType": {
+            "schemaTitle": "system.Metrics",
+            "schemaVersion": "0.0.1"
+          }
+        },
+        "run-optuna-experiment-best_hyperparams_metrics": {
+          "artifactType": {
+            "schemaTitle": "system.Metrics",
+            "schemaVersion": "0.0.1"
+          }
+        },
+        "train-save-stage-model_metrics": {
+          "artifactType": {
+            "schemaTitle": "system.Metrics",
+            "schemaVersion": "0.0.1"
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.4.0"
+}

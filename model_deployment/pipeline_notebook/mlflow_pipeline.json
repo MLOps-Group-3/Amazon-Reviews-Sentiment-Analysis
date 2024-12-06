@@ -1,0 +1,213 @@
+{
+  "components": {
+    "comp-create-mlflow-server-component": {
+      "executorLabel": "exec-create-mlflow-server-component",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "mlflow_port": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "region": {
+            "parameterType": "STRING"
+          },
+          "vm_name": {
+            "parameterType": "STRING"
+          },
+          "zone": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-experiment-runner-component": {
+      "executorLabel": "exec-experiment-runner-component",
+      "inputDefinitions": {
+        "parameters": {
+          "code_bucket_path": {
+            "parameterType": "STRING"
+          },
+          "dataset_path": {
+            "parameterType": "STRING"
+          },
+          "mlflow_tracking_uri": {
+            "parameterType": "STRING"
+          },
+          "output_hyperparams_path": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "defaultPipelineRoot": "gs://arsa_model_deployment_uscentral/pipeline_root/",
+  "deploymentSpec": {
+    "executors": {
+      "exec-create-mlflow-server-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "create_mlflow_server_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-compute' 'mlflow' 'flask' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef create_mlflow_server_component(\n    vm_name: str,\n    region: str,\n    zone: str,\n    bucket_name: str,\n    mlflow_port: int,\n) -> str:\n    from google.cloud import compute_v1\n    import time\n    import os\n\n    # Initialize logging\n    import logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # VM Configurations\n    project = os.getenv(\"GCP_PROJECT\")\n    instance_client = compute_v1.InstancesClient()\n    machine_type = f\"zones/{zone}/machineTypes/e2-micro\"\n    disk_image = \"projects/debian-cloud/global/images/family/debian-10\"\n    startup_script = f\"\"\"#!/bin/bash\n    apt-get update\n    apt-get install -y python3-pip\n    pip3 install mlflow flask google-cloud-storage\n    nohup mlflow server \\\n        --backend-store-uri sqlite:///mlflow.db \\\n        --default-artifact-root gs://{bucket_name}/mlflow-artifacts/ \\\n        --host 0.0.0.0 \\\n        --port {mlflow_port} &\n    \"\"\"\n\n    # Create the VM\n    instance = compute_v1.Instance()\n    instance.name = vm_name\n    instance.zone = zone\n    instance.machine_type = machine_type\n    instance.network_interfaces = [{\"name\": \"global/networks/default\"}]\n    instance.disks = [\n        {\n            \"boot\": True,\n            \"auto_delete\": True,\n            \"initialize_params\": {\n                \"source_image\": disk_image,\n                \"disk_size_gb\": 10,\n            },\n        }\n    ]\n    instance.metadata = {\"items\": [{\"key\": \"startup-script\", \"value\": startup_script}]}\n\n    # Insert the instance\n    operation = instance_client.insert_unary(\n        project=project, zone=zone, instance_resource=instance\n    )\n    logger.info(f\"Creating VM {vm_name}, operation: {operation}\")\n    time.sleep(60)  # Wait for the VM to start\n\n    # Get the external IP of the VM\n    vm = instance_client.get(project=project, zone=zone, instance=vm_name)\n    external_ip = vm.network_interfaces[0].access_configs[0].nat_ip\n\n    # Return the MLflow URI\n    mlflow_uri = f\"http://{external_ip}:{mlflow_port}\"\n    logger.info(f\"MLflow server is available at {mlflow_uri}\")\n    return mlflow_uri\n\n"
+          ],
+          "image": "python:3.7"
+        }
+      },
+      "exec-experiment-runner-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "experiment_runner_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.4.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'optuna' 'mlflow' 'torch' 'transformers' 'scikit-learn' 'pandas' 'google-cloud-storage' 'gcsfs' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef experiment_runner_component(\n    code_bucket_path: str,\n    mlflow_tracking_uri: str,\n    dataset_path: str,\n    output_hyperparams_path: str,\n):\n    import os\n    import sys\n    import subprocess\n    from google.cloud import storage\n\n    # Logging setup\n    import logging\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    # Download code from GCS\n    client = storage.Client()\n    bucket_name = code_bucket_path.split(\"/\")[2]\n    prefix = \"/\".join(code_bucket_path.split(\"/\")[3:])\n    bucket = client.bucket(bucket_name)\n    blobs = bucket.list_blobs(prefix=prefix)\n\n    code_dir = \"/tmp/code\"\n    os.makedirs(code_dir, exist_ok=True)\n\n    for blob in blobs:\n        if blob.name.endswith(\".py\"):\n            # Maintain folder structure\n            relative_path = blob.name[len(prefix) :].lstrip(\"/\")\n            file_path = os.path.join(code_dir, relative_path)\n            os.makedirs(os.path.dirname(file_path), exist_ok=True)\n            blob.download_to_filename(file_path)\n            logger.info(f\"Downloaded {blob.name} to {file_path}\")\n\n    # Add code_dir to sys.path\n    sys.path.insert(0, code_dir)\n    logger.info(f\"sys.path updated: {sys.path}\")\n\n    # Set MLflow tracking URI\n    os.environ[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n    logger.info(f\"MLflow tracking URI set to: {mlflow_tracking_uri}\")\n\n    # Run the experiment\n    try:\n        script_path = os.path.join(code_dir, \"experiment_runner_optuna.py\")\n        subprocess.run([\"python3\", script_path, \"--data_path\", dataset_path], check=True)\n\n        # Move the best hyperparameters file to the output path\n        hyperparams_local_path = os.path.join(code_dir, \"best_hyperparameters.json\")\n        storage_path = os.path.join(output_hyperparams_path, \"best_hyperparameters.json\")\n        if os.path.exists(hyperparams_local_path):\n            output_bucket = client.bucket(bucket_name)\n            blob = output_bucket.blob(storage_path)\n            blob.upload_from_filename(hyperparams_local_path)\n            logger.info(f\"Uploaded best hyperparameters to: gs://{bucket_name}/{storage_path}\")\n        else:\n            logger.warning(\"best_hyperparameters.json not found.\")\n    except Exception as e:\n        logger.error(f\"Experiment failed: {e}\")\n        raise\n\n"
+          ],
+          "image": "python:3.7",
+          "resources": {
+            "cpuLimit": 4.0,
+            "memoryLimit": 17.179869184
+          }
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "mlflow-experiment-runner-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "create-mlflow-server-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-create-mlflow-server-component"
+          },
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "mlflow_port": {
+                "componentInputParameter": "mlflow_port"
+              },
+              "region": {
+                "componentInputParameter": "region"
+              },
+              "vm_name": {
+                "componentInputParameter": "vm_name"
+              },
+              "zone": {
+                "componentInputParameter": "zone"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "create-mlflow-server-component"
+          }
+        },
+        "experiment-runner-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-experiment-runner-component"
+          },
+          "dependentTasks": [
+            "create-mlflow-server-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "code_bucket_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral/code/"
+                }
+              },
+              "dataset_path": {
+                "componentInputParameter": "dataset_path"
+              },
+              "mlflow_tracking_uri": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "create-mlflow-server-component"
+                }
+              },
+              "output_hyperparams_path": {
+                "runtimeValue": {
+                  "constant": "gs://arsa_model_deployment_uscentral/output/hyperparams/"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "experiment-runner-component"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bucket_name": {
+          "defaultValue": "arsa_model_deployment_uscentral",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "dataset_path": {
+          "defaultValue": "gs://arsa_model_deployment_uscentral/input/labeled_data_1perc.csv",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "mlflow_port": {
+          "defaultValue": 5000.0,
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "region": {
+          "defaultValue": "us-central1",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "vm_name": {
+          "defaultValue": "mlflow-server",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "zone": {
+          "defaultValue": "us-central1-a",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.4.0"
+}
