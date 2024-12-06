@@ -1,3 +1,55 @@
+"""
+This module defines a Kubeflow pipeline for training, evaluating, and deploying a machine learning model.
+
+The pipeline performs the following steps:
+1. **Data Preparation:** Splits the input dataset into training, validation, and test datasets.
+2. **Hyperparameter Optimization:** Runs an Optuna experiment to find the best hyperparameters for model training.
+3. **Model Training:** Trains a model using the best hyperparameters and saves the resulting model.
+4. **Model Evaluation:** Evaluates the trained model and compares it with the latest archived model.
+5. **Slice Evaluation:** Analyzes model performance across data slices to detect any performance inconsistencies.
+6. **Bias Detection:** Identifies potential biases in the model using the slice evaluation metrics.
+7. **Containerization:** Builds and pushes a TorchServe-compatible Docker image for model serving.
+8. **Model Deployment:** Uploads the model to Google Cloud AI Platform, ensuring proper versioning and archiving.
+
+Pipeline Highlights:
+- **Modular Design:** The pipeline is built using reusable components (`dsl_components`) to promote modularity and reusability.
+- **Conditional Logic:** Conditional checks are included to handle dynamic flows based on model evaluation and bias detection results.
+- **Integration with GCP:** Integrates with Google Cloud services like AI Platform, Cloud Build, and Cloud Storage for seamless operations.
+- **Resource Optimization:** Supports configuration of compute resources (CPU, memory, GPU) for each pipeline step.
+
+Environment Variables:
+- `SOURCE_CODE`: Path to the source code bucket for the pipeline components.
+- `DATA_PATH`: Path to the input dataset.
+- `OUTPUT_DIR`: Directory to store intermediate outputs.
+- `MODEL_SAVE_PATH`: Path to save the trained model.
+- `MODEL_ARCHIVE_PATH`: Path to archive older model versions.
+- `SLICE_METRIC_PATH`: Path to store slice evaluation metrics.
+- `GCP_PROJECT`: Google Cloud project ID.
+- `GCP_REGION`: Region for AI Platform and other GCP services.
+- `BUCKET_NAME`: Google Cloud Storage bucket name for pipeline artifacts.
+- `MODEL_DISPLAY_NAME`: Display name for the model on AI Platform.
+- `CUSTOM_PREDICTOR_IMAGE_URI`: URI of the custom Docker image for model serving.
+- `MODEL_DESCRIPTION`: Description of the model for documentation purposes.
+- `APP_NAME`: Application name for routing in the serving container.
+
+Key Functions:
+- **`data_split`:** Splits the dataset into training, validation, and test subsets.
+- **`run_optuna_experiment`:** Optimizes hyperparameters using Optuna.
+- **`train_save_stage`:** Trains the model and saves the resulting artifact.
+- **`evaluate_model_component`:** Evaluates the model against the test dataset.
+- **`load_latest_model`:** Loads the latest archived model for comparison.
+- **`evaluate_slices_component`:** Evaluates model performance across data slices.
+- **`bias_detect_component`:** Detects potential biases in the model based on slice metrics.
+- **`build_and_push_torchserve_image`:** Builds and pushes a Docker image compatible with TorchServe.
+- **`upload_model_to_registry`:** Uploads the model to AI Platform and manages versioning.
+
+Usage:
+1. Update the environment variables and GCS paths in the `model_config` module.
+2. Ensure all required components are defined in the `dsl_components` module.
+3. Compile the pipeline and run it using the Kubeflow Pipelines UI or CLI.
+
+This pipeline automates the ML lifecycle, including training, evaluation, bias detection, and deployment, with robust integration with Google Cloud services.
+"""
 import kfp
 from kfp.v2 import dsl
 from google.cloud import storage

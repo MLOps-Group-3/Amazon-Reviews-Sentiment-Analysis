@@ -2,7 +2,7 @@ import kfp
 from kfp.v2 import dsl
 from typing import NamedTuple
 
-# from kfp.v2.dsl import component, Input, Output, Dataset, Artifact
+# Importing necessary components and types from kfp.v2.dsl
 from kfp.v2.dsl import (
     Input,
     Output,
@@ -13,6 +13,7 @@ from kfp.v2.dsl import (
     component,
     pipeline,
 )
+
 @component(
     packages_to_install=["pandas", "scikit-learn", "google-cloud-storage", "torch", "gcsfs","arsa-pipeline-tools"],
     base_image="python:3.7",
@@ -26,30 +27,56 @@ def data_split(
     test_data: Output[Dataset],
 
 ):
+    """
+    A component to split input data into training, validation, and test datasets,
+    and save them as artifacts in a pipeline-friendly format.
+
+    Args:
+        code_bucket_path (str): Path to the GCS bucket containing the necessary code files.
+        input_path (str): Path to the input data file to be split.
+        output_dir (str): Directory path to save the output files locally.
+        train_data (Output[Dataset]): Output artifact for the training dataset.
+        val_data (Output[Dataset]): Output artifact for the validation dataset.
+        test_data (Output[Dataset]): Output artifact for the test dataset.
+
+    Returns:
+        None: The function generates and saves the train, validation, and test datasets
+        as pipeline artifacts.
+    """
     import os
     import sys
     import importlib.util
     import pandas as pd
     from google.cloud import storage
     from arsa_pipeline_tools.utils import download_files_from_gcs, load_module_from_file
-    # Logging setup
     import logging
+
+    # Logging setup
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    # Create a temporary directory for the code
     code_dir = "/tmp/code"
     os.makedirs(code_dir, exist_ok=True)
 
+    # Download files from the specified GCS bucket
     download_files_from_gcs(code_bucket_path,code_dir)
     logger.info(f"Files in {code_dir}: {os.listdir(code_dir)}")
+
+    # Add the code directory to the system path
     sys.path.insert(0, code_dir)
 
+    # Load the custom data preparation module
     prepare_data_module = load_module_from_file(f"{code_dir}/prepare_data.py")
+
+    # Split and save the data using the module's method    
     train_df, val_df, test_df, label_encoder = prepare_data_module.split_and_save_data(input_path, output_dir)
+    
+    # Save the train, validation, and test datasets to their respective paths
     train_df.to_pickle(train_data.path)
     val_df.to_pickle(val_data.path)
     test_df.to_pickle(test_data.path)
-    # label_encoder.to_pickle(label_encoder_data.path)
+
     logger.info("Artifacts for train, dev, and test data created successfully.")
 
 
@@ -75,6 +102,29 @@ def run_optuna_experiment(
     test_data: Input[Dataset],
     best_hyperparams_metrics: Output[Metrics],
 ):
+    """
+    A component to run an Optuna hyperparameter optimization experiment on the provided data.
+
+    Args:
+        code_bucket_path (str): Path to the GCS bucket containing the required experiment scripts.
+        data_path (str): Path to the data used for running the experiment.
+        train_data (Input[Dataset]): Input artifact containing the training dataset.
+        val_data (Input[Dataset]): Input artifact containing the validation dataset.
+        test_data (Input[Dataset]): Input artifact containing the test dataset.
+        best_hyperparams_metrics (Output[Metrics]): Output artifact to log the best hyperparameters
+                                                    and their corresponding metrics.
+
+    Returns:
+        None: The function runs the Optuna experiment and logs the best hyperparameters as a pipeline artifact.
+        
+    Workflow:
+        1. Downloads the necessary code files from the specified GCS bucket.
+        2. Ensures that the `experiment_runner_optuna.py` script is available.
+        3. Loads the custom experiment module from the downloaded files.
+        4. Executes the experiment to find the best hyperparameters using Optuna.
+        5. Logs the best hyperparameters and their associated metrics to the output artifact.
+    """
+    
     import os
     import sys
     import importlib.util
@@ -86,12 +136,15 @@ def run_optuna_experiment(
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    # Create a temporary directory for the code
     code_dir = "/tmp/code"
     os.makedirs(code_dir, exist_ok=True)
     ALLOWED_EXTENSIONS = {".py", ".json", ".yaml"}
 
+    # Download files from the GCS bucket
     download_files_from_gcs(code_bucket_path,code_dir,ALLOWED_EXTENSIONS)
 
+    # Add the code directory to the system path
     logger.info(f"Files in {code_dir}: {os.listdir(code_dir)}")
     sys.path.insert(0, code_dir)
 
@@ -140,6 +193,31 @@ def train_save_stage(
     
 
 ):
+    """
+    A component to train a model using the provided data, save the trained model, and log its performance metrics.
+
+    Args:
+        code_bucket_path (str): Path to the GCS bucket containing the code files needed for training.
+        data_path (str): Path to the dataset to be used for training and validation.
+        model_save_path (str): Path where the trained model will be saved.
+        train_data (Input[Dataset]): Input artifact containing the training dataset.
+        val_data (Input[Dataset]): Input artifact containing the validation dataset.
+        best_hyperparams_metrics (Input[Metrics]): Input artifact with the best hyperparameters for training.
+        model (Output[Model]): Output artifact for saving the trained model metadata.
+        model_metrics (Output[Metrics]): Output artifact to log the model's performance metrics.
+
+    Returns:
+        None: The function trains the model, saves it to the specified path, and logs its metrics.
+    
+    Workflow:
+        1. Downloads code files from the specified GCS bucket and ensures required extensions are present.
+        2. Initializes the accelerator to leverage GPU or CPU resources.
+        3. Loads a custom training module from the downloaded files.
+        4. Reads hyperparameters from the input metrics artifact.
+        5. Trains the model and saves it to the specified GCS path.
+        6. Logs the model's metadata and epoch-wise performance metrics (accuracy, loss, precision, recall, F1 score).
+    """
+
     import os
     import sys
     import logging
@@ -169,11 +247,12 @@ def train_save_stage(
     sys.path.insert(0, code_dir)
 
     train_save_module = load_module_from_file(f"{code_dir}/train_save.py")
-    # hyperparameters_path = os.path.join(code_dir, "best_hyperparameters.json")
 
+    # Extract best hyperparameters from metrics artifact
     best_hyperparams = {key: value for key, value in best_hyperparams_metrics.metadata.items()}
     logger.info(f"Read best hyperparameters from metrics: {best_hyperparams}")
 
+    # Train model and save it
     returned_model_path, epoch_metrics = train_save_module.train_and_save_final_model(
         hyperparameters=best_hyperparams, 
         data_path=data_path,
@@ -182,7 +261,7 @@ def train_save_stage(
         model_save_path=model_save_path,
     )
 
-
+    # Update model metadata with GCS path
     model.metadata["gcs_path"] = returned_model_path
     logger.info(f"Model artifact metadata updated with GCS path: {returned_model_path}")
 
@@ -211,6 +290,24 @@ def load_latest_model(
     archive_model: Output[Model]
 
 ):
+    """
+    A component to retrieve the latest model artifact from a specified Google Cloud Storage (GCS) path.
+
+    Args:
+        model_archive_path (str): The GCS path to the directory containing the archived models.
+                                  Must be a valid path starting with "gs://".
+        archive_model (Output[Model]): Output artifact to store the metadata of the latest model.
+
+    Returns:
+        None: Updates the metadata of the `archive_model` output artifact with the GCS path of the latest model.
+    
+    Workflow:
+        1. Parses the provided GCS path to extract the bucket name and prefix.
+        2. Lists all files (blobs) in the specified GCS directory.
+        3. Identifies the most recently updated model file.
+        4. Stores the GCS path of the latest model in the metadata of the output artifact.
+    """
+
     from google.cloud import storage
     import logging
     from urllib.parse import urlparse
@@ -245,6 +342,8 @@ def load_latest_model(
         latest_model_path = f"gs://{bucket_name}/{latest_blob.name}"
 
         logger.info(latest_model_path)
+
+        # Update output artifact metadata
         archive_model.metadata["gcs_path"] = latest_model_path
 
 
@@ -271,6 +370,35 @@ def evaluate_model_component(
     # f1_score: Output[float],
     f1_threshold: float = 0.6,
 )-> NamedTuple("output", [("eval_pass", str),("f1_score", float)]):
+    
+    """
+    A component to evaluate a trained model on a test dataset and log evaluation metrics.
+    The evaluation checks if the model's F1 score meets a specified threshold.
+
+    Args:
+        code_bucket_path (str): Path to the GCS bucket containing the evaluation script (`evaluate_model.py`).
+        model_gcs_path (Input[Model]): Input artifact containing the GCS path to the trained model.
+        test_data (Input[Dataset]): Input artifact containing the test dataset for evaluation.
+        eval_metrics (Output[Metrics]): Output artifact to log evaluation metrics (accuracy, precision, recall, F1 score).
+        f1_threshold (float): Threshold for the F1 score to determine if the model passes evaluation. Default is 0.6.
+
+    Returns:
+        NamedTuple: A tuple with:
+            - eval_pass (str): "true" if the model passes the F1 threshold, "false" otherwise.
+            - f1_score (float): The evaluated F1 score of the model.
+
+    Workflow:
+        1. Downloads the evaluation script (`evaluate_model.py`) from the specified GCS bucket.
+        2. Dynamically loads the script to execute the evaluation logic.
+        3. Evaluates the model on the test dataset using the `gcp_eval` method from the script.
+        4. Logs evaluation metrics (accuracy, precision, recall, F1 score) to the output artifact.
+        5. Compares the F1 score with the threshold and determines the evaluation result.
+        6. Returns whether the model passed the evaluation and the F1 score.
+
+    Raises:
+        ValueError: If the GCS path of the model is invalid.
+    """
+
     import logging
     import json
     import importlib.util
@@ -351,6 +479,32 @@ def evaluate_slices_component(
     gcs_artifact_path: str,
     f1_threshold: float = 0.6,
 ):
+
+    """
+    A component to evaluate model performance on specific data slices and log the results as metrics.
+    The metrics are saved to GCS in both CSV and JSON formats.
+
+    Args:
+        code_bucket_path (str): GCS path to the bucket containing the `evaluate_model_slices.py` script.
+        model_gcs_path (Input[Model]): Input artifact containing the GCS path of the trained model.
+        test_data (Input[Dataset]): Input artifact containing the test dataset.
+        eval_slices_metrics (Output[Metrics]): Output artifact to log the slice evaluation metrics.
+        gcs_artifact_path (str): GCS path where the slice evaluation artifacts (CSV, JSON) will be saved.
+        f1_threshold (float): Threshold for F1 score to evaluate performance (not used directly in this function).
+
+    Returns:
+        None: Outputs are logged as GCS artifacts and evaluation metrics.
+
+    Workflow:
+        1. Downloads the required evaluation script (`evaluate_model_slices.py`) from the specified GCS bucket.
+        2. Dynamically loads the evaluation script to execute the slice evaluation logic.
+        3. Evaluates the model on test data slices using the loaded script and generates metrics as a DataFrame.
+        4. Saves the slice metrics to GCS in both CSV and JSON formats.
+        5. Logs the GCS paths of the artifacts in the `eval_slices_metrics` output.
+
+    Raises:
+        ValueError: If the model GCS path is invalid or missing.
+    """
     import logging
     import json
     import importlib.util
@@ -428,6 +582,30 @@ def bias_detect_component(
     metrics: Input[Metrics],
     gcs_artifact_path: str,
 )-> NamedTuple("output", [("bias_detect", str)]):
+    """
+    A component to detect potential bias in data slices based on metrics.
+    Generates a bias report and saves it to Google Cloud Storage (GCS).
+
+    Args:
+        code_bucket_path (str): GCS path containing the `bias_detect.py` script.
+        metrics (Input[Metrics]): Input artifact containing metrics data for slices, including a path to slice metrics.
+        gcs_artifact_path (str): GCS path where the bias detection report will be saved.
+
+    Returns:
+        NamedTuple: A tuple with:
+            - bias_detect (str): "true" if bias is detected, "false" otherwise.
+
+    Workflow:
+        1. Downloads the `bias_detect.py` script from the provided GCS path.
+        2. Dynamically loads the `bias_detect.py` script to execute bias detection logic.
+        3. Evaluates the slice metrics to identify potential biases.
+        4. Logs detailed information about detected biases, including affected slices and their metrics.
+        5. Saves the bias detection report as a JSON file to GCS.
+        6. Returns "true" if bias is detected, otherwise "false".
+
+    Raises:
+        Exception: If the bias detection report cannot be saved to GCS.
+    """    
     import logging
     import json
     import importlib.util
@@ -526,7 +704,35 @@ def build_and_push_torchserve_image(
     docker_image_name: str,
     model_gcs_path: Input[Model]
 ):
-    # Import inside the component
+    """
+    A component to build and push a TorchServe Docker image using Google Cloud Build.
+
+    Args:
+        code_bucket_path (str): GCS path to the folder containing the TorchServe predictor code.
+        gcp_project (str): Google Cloud project ID.
+        gcp_region (str): Google Cloud region for the project.
+        bucket_name (str): Name of the GCS bucket to store the model and related files.
+        docker_image_name (str): Name for the Docker image to be built and pushed.
+        model_gcs_path (Input[Model]): Input artifact containing the GCS path of the trained model.
+
+    Returns:
+        None: The function builds and pushes the Docker image to the specified container registry.
+
+    Workflow:
+        1. Sets up environment variables and paths for TorchServe and Docker.
+        2. Configures a Cloud Build YAML equivalent as Python dictionary for the build steps:
+            - Downloads predictor code from GCS.
+            - Creates a directory for the model.
+            - Downloads the model files from GCS into the directory.
+            - Lists the downloaded files for verification.
+            - Builds the Docker image using the downloaded files.
+            - Pushes the Docker image to the Google Container Registry (GCR).
+        3. Triggers the Cloud Build process using the defined configuration.
+        4. Monitors the build status and logs progress.
+
+    Raises:
+        Exception: Logs any issues encountered during the build or push process.
+    """    
     from google.cloud.devtools import cloudbuild_v1 as cloudbuild
     from google.cloud import storage
     import logging
@@ -650,7 +856,43 @@ def upload_model_to_registry(
     predict_route: str = "/predictions/",
     serving_container_ports: list = [7080],
 ) -> NamedTuple("Outputs", [("model_display_name", str), ("model_resource_name", str), ("model_version", str)]):
-    """Uploads the model to the AI platform and ensures versioning."""
+    """
+    Uploads a model to Google Cloud AI Platform, supports versioning, and archives the previous model.
+
+    Args:
+        project_id (str): Google Cloud project ID.
+        region (str): Google Cloud region for the AI platform.
+        bucket_name (str): GCS bucket for staging and AI platform uploads.
+        model_display_name (str): Display name of the model in the AI platform.
+        docker_image_uri (str): URI of the Docker image containing the serving container.
+        model_description (str): Description of the model for documentation purposes.
+        app_name (str): Name of the application used in the prediction route.
+        model_save_path (str): GCS path where the trained model is saved.
+        model_archive_path (str): GCS path where previous models will be archived.
+        health_route (str, optional): Health check endpoint of the serving container. Defaults to "/ping".
+        predict_route (str, optional): Prediction endpoint of the serving container. Defaults to "/predictions/".
+        serving_container_ports (list, optional): List of ports exposed by the serving container. Defaults to [7080].
+
+    Returns:
+        NamedTuple: Contains:
+            - model_display_name (str): The display name of the uploaded model.
+            - model_resource_name (str): The resource name of the uploaded model.
+            - model_version (str): The version of the model registered in AI Platform.
+
+    Workflow:
+        1. Initializes AI Platform with the specified project, region, and bucket.
+        2. Checks if a model with the given display name already exists:
+            - If yes, registers the model as a new version under the existing model.
+            - If no, creates a new model in AI Platform.
+        3. Uploads the model to AI Platform with the provided container configuration.
+        4. Archives the previous model version in the specified GCS archive path.
+        5. Returns the display name, resource name, and version of the uploaded model.
+
+    Raises:
+        ValueError: If an error occurs during the model archiving process.
+        Exception: For general issues during AI Platform operations or GCS interactions.
+
+    """    
     from google.cloud import aiplatform
     from google.cloud import storage
     import logging

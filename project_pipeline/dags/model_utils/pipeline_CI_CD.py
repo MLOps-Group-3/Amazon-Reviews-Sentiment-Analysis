@@ -1,3 +1,36 @@
+"""
+This script orchestrates the training, evaluation, and deployment of a machine learning model 
+using a Kubeflow pipeline, Google Cloud Storage (GCS), and Vertex AI.
+
+### Key Components:
+1. **Pipeline Definition:** 
+    - The pipeline is defined in `dsl_pipeline.py` using reusable components from `dsl_components.py`.
+    - Handles data preparation, hyperparameter optimization, model training, evaluation, bias detection, and deployment.
+
+2. **GCS Integration:**
+    - Uploads local folders to GCS for pipeline execution using `upload_folder_to_gcs`.
+
+3. **Vertex AI Integration:**
+    - Compiles and submits the pipeline to Vertex AI for execution using `submit_vertex_ai_pipeline`.
+
+### Main Functions:
+1. **`upload_folder_to_gcs`:**
+    Uploads a local folder to GCS, preserving its structure and preparing it for pipeline execution.
+
+2. **`submit_vertex_ai_pipeline`:**
+    Compiles the pipeline into a JSON file and submits it to Vertex AI for execution.
+
+3. **`main`:**
+    - Uploads the source code folder to GCS.
+    - Submits the pipeline for execution on Vertex AI.
+
+4. **`run_pipeline`:**
+    - Authenticates using a service account.
+    - Uploads the Airflow DAGs and other source files to GCS.
+    - Submits the pipeline to Vertex AI.
+
+"""
+
 import os
 from typing import NamedTuple
 
@@ -20,6 +53,14 @@ from dsl_pipeline import *
 from model_config import *
 
 def upload_folder_to_gcs(local_folder, bucket, destination_folder):
+    """
+    Uploads a local folder to a Google Cloud Storage (GCS) bucket.
+
+    Args:
+        local_folder (str): Path to the local folder to upload.
+        bucket (google.cloud.storage.bucket.Bucket): GCS bucket object.
+        destination_folder (str): Destination folder in the GCS bucket, as a GCS path or relative path.
+    """    
     # Strip the `gs://<bucket_name>/` prefix from the destination path
     if destination_folder.startswith(f"gs://{bucket.name}/"):
         destination_folder = destination_folder[len(f"gs://{bucket.name}/"):]
@@ -71,13 +112,7 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
 def main():
     # Set up logging
     logging.basicConfig(level=logging.INFO)
-    # Google Cloud credentials and project details
-    credentials_path = 'gcp-key.json'  
-    
-    # GCP_PROJECT = "amazonreviewssentimentanalysis"
-    # GCP_REGION = "us-central1"
-    # BUCKET_NAME = "model-deployment-from-airflow"
-    
+
     client = storage.Client(project=GCP_PROJECT)
     bucket = client.bucket(BUCKET_NAME)
 
