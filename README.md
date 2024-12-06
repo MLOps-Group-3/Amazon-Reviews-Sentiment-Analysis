@@ -130,13 +130,6 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
 │   │   ├── dags                # DAGs for RAG
 │   │   │   └── utils
 │   │   └── data                # Data for RAG pipeline
-│   ├── sentiment_model         # Sentiment analysis models
-│   │   ├── assets              # Model assets
-│   │   ├── dags                # Sentiment model DAGs
-│   │   └── src                 # Source code for sentiment models
-│   │       ├── mlruns          # MLflow tracking data
-│   │       └── utils           # Utility scripts
-│   ├── sentiment_model_on_kubeflow # Kubeflow integration for sentiment models
 │   └── Streamlit               # Streamlit-based interactive dashboards
 │       └── items               # Dashboard components
 └── project_pipeline            # Integrated project pipeline
