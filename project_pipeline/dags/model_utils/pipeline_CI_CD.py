@@ -47,10 +47,10 @@ import json
 from kfp.v2.compiler import Compiler
 from google.cloud import aiplatform
 
-from dsl_components import *
-from dsl_pipeline import *
+from model_utils.dsl_components import *
+from model_utils.dsl_pipeline import *
 
-from model_config import *
+from model_utils.model_config import *
 
 def upload_folder_to_gcs(local_folder, bucket, destination_folder):
     """

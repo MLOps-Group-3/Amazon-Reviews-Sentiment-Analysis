@@ -34,4 +34,5 @@ jobs:
     
     - name: Run the pipeline script
       run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/project_pipeline/dags
         python project_pipeline/dags/model_utils/pipeline_CI_CD.py  # Run your pipeline script

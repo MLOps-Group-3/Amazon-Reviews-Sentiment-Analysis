@@ -56,8 +56,8 @@ from google.cloud import storage
 import os
 from google.cloud import aiplatform
 from google.oauth2 import service_account
-from model_config import *
-from dsl_components import (
+from model_utils.model_config import *
+from model_utils.dsl_components import (
     data_split,
     run_optuna_experiment,
     train_save_stage,

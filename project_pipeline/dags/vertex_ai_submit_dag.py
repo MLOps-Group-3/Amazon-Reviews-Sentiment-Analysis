@@ -5,7 +5,8 @@ from airflow.operators.email import EmailOperator
 from datetime import datetime, timedelta
 from google.cloud import aiplatform
 import sys
-sys.path.append("/opt/airflow/dags/model_utils")  # Path to the pipeline.py file
+sys.path.append("/opt/airflow/dags")
+sys.path.append("/opt/airflow/dags/model_utils")
 # from model_utils.pipeline_archive import run_and_monitor_pipeline  # Import the pipeline function
 from model_utils.pipeline_CI_CD import run_pipeline  # Import the pipeline function
 
