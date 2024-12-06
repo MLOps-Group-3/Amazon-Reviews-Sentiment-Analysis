@@ -77,7 +77,7 @@ def upload_folder_to_gcs(local_folder, bucket, destination_folder):
             blob.upload_from_filename(local_path)
             logging.info(f"Uploaded {local_path} to gs://{bucket.name}/{gcs_path}")
 
-def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME, pipeline_file_path="model_pipeline.json"):
+def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME, trigger_from="airflow", pipeline_file_path="model_pipeline.json"):
     """
     Function to compile and submit a pipeline to Vertex AI.
     
@@ -105,8 +105,12 @@ def submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NA
     )
 
     # Run the pipeline
+    logging.info(f"pipeline triggered from {trigger_from}")
     logging.info("Running the pipeline...")
-    pipeline_job.run(sync=True)
+    if trigger_from=="airflow":
+        pipeline_job.run(sync=True)
+    else:
+        pipeline_job.submit()
     logging.info("Pipeline job submitted.")
 
 def main():
@@ -131,7 +135,7 @@ def main():
     logging.info("Uploaded to GCS")
 
     logging.info("Submitting pipeline to Vertex AI...")
-    submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME)
+    submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME,trigger_from="github-actions")
     logging.info("Pipeline submission completed")
 
 
@@ -157,7 +161,7 @@ def run_pipeline():
 
     # Step 2: Submit the pipeline to Vertex AI
     logging.info("Submitting pipeline to Vertex AI...")
-    submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME)
+    submit_vertex_ai_pipeline(model_pipeline, GCP_PROJECT, GCP_REGION, BUCKET_NAME,trigger_from="airflow")
     logging.info("Pipeline submission completed.")
 
 if __name__ == '__main__':
