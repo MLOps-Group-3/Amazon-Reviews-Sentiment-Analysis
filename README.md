@@ -1,4 +1,3 @@
-```markdown
 # Amazon-Reviews-Sentiment-Analysis
 
 ### Team Members:
@@ -332,5 +331,3 @@ The `model_pipeline` directory contains workflows for training, evaluating, and 
 - **MLflow**: Tracks model metrics, artifacts, and experiments.
 - **Vertex AI**: Deploys trained models and monitors their performance in the cloud.
 - **Apache Airflow**: Manages the orchestration of modular pipelines.
-
----
