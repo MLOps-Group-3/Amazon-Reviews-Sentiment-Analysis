@@ -52,78 +52,7 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
 ├── .dvc                        # DVC configuration files for data versioning
 ├── .github/workflows           # GitHub Actions workflows for CI/CD
 ├── data_pipeline               # Main data pipeline directory
-│   ├── archive                 # Deprecated files and early scripts
-│   ├── config                  # Configuration files for pipeline settings
-│   ├── dags                    # Airflow DAGs for pipeline stages
-│   │   └── utils               # Utility scripts shared across DAGs
-│   │       ├── data_collection # Data collection utilities
-│   │       ├── data_preprocessing # Data preprocessing utilities
-│   │       └── data_validation # Data validation utilities
-│   ├── data                    # Directory for datasets
-│   │   └── raw                 # Raw, unprocessed data
-│   ├── logs                    # Airflow logs
-│   │   └── scheduler           # Scheduler-specific logs
-│   └── tests                   # Test suite for pipeline
-│       ├── data_collection     # Tests for data collection
-│       ├── data_preprocessing  # Tests for data preprocessing
-│       └── data_validation     # Tests for data validation
-├── data_pipeline_sampling_test # Alternative pipeline for sampling tests
-│   ├── archive                 # Deprecated sampling-related files
-│   ├── config                  # Sampling-specific configuration files
-│   ├── dags                    # Sampling-specific DAGs
-│   │   └── utils               # Shared sampling utilities
-│   │       ├── data_collection
-│   │       ├── data_preprocessing
-│   │       └── data_validation
-│   ├── data                    # Data directory for sampling
-│   │   └── raw                 # Raw data for sampling
-│   └── tests                   # Tests for sampling pipeline
-│       ├── data_collection
-│       ├── data_preprocessing
-│       └── data_validation
 ├── milestones                  # Project milestone documents
-│   ├── data-pipeline-requirements # Stage-wise pipeline requirements
-│   │   ├── 01-data-collection  # Data collection stage details
-│   │   │   ├── dags            # Stage-specific DAGs
-│   │   │   ├── data            # Raw data files
-│   │   │   │   └── raw
-│   │   │   ├── logs            # Logs for the stage
-│   │   │   │   └── scheduler
-│   │   │   ├── plugins         # Plugins for the stage
-│   │   │   ├── scripts         # Scripts for data collection
-│   │   │   └── staging         # Staging data for this stage
-│   │   ├── 02-data-validation
-│   │   │   ├── Archive         # Archived validation files
-│   │   │   └── staging         # Staging data for validation
-│   │   │       ├── dags
-│   │   │       │   └── utils
-│   │   │       └── tests
-│   │   └── 03-data-preprocessing
-│   │       ├── archive         # Archived preprocessing files
-│   │       │   ├── dags
-│   │       │   │   └── utils
-│   │       │   └── tests
-│   │       └── staging         # Staging data for preprocessing
-│   │           ├── dags
-│   │           │   └── utils
-│   │           ├── data
-│   │           └── tests
-│   └── scoping                 # Project scoping documents
-├── model_deployment            # Model deployment workflows
-│   ├── data_test               # Data for deployment tests
-│   ├── endpoint_pytorchserve   # PyTorch Serve-specific deployment files
-│   │   └── predictor           # Prediction-related scripts
-│   │       └── utils
-│   ├── pipeline_notebook       # Pipeline notebooks for deployment
-│   │   ├── data_prep           # Data preparation scripts
-│   │   │   └── utils
-│   │   ├── predictor           # Prediction workflows
-│   │   │   └── utils
-│   │   └── trainer             # Model training scripts
-│   │       └── utils
-│   └── pipeline_notebook_v2    # Updated deployment workflows
-│       └── src
-│           └── utils
 ├── model_pipeline              # Machine learning pipelines
 │   ├── rag                     # Retrieval-Augmented Generation pipeline
 │   │   ├── config              # RAG configuration files
@@ -132,26 +61,72 @@ The dataset provides a foundation for sentiment analysis and is integral to our 
 │   │   └── data                # Data for RAG pipeline
 │   └── Streamlit               # Streamlit-based interactive dashboards
 │       └── items               # Dashboard components
-└── project_pipeline            # Integrated project pipeline
-    ├── config                  # Configuration files
-    ├── dags                    # Main DAGs for the project
-    │   ├── data_utils          # Data utility scripts
-    │   │   ├── data_collection
-    │   │   ├── data_preprocessing
-    │   │   └── data_validation
-    │   ├── model_utils         # Model-related utilities
-    │   │   └── src
-    │   │       └── utils
-    │   └── serve_utils         # Serving-related utilities
-    ├── data                    # Project-wide data storage
-    │   ├── labeled             # Labeled data for training and serving
-    │   │   ├── serve
-    │   │   └── train
-    │   └── raw                 # Raw data
-    └── tests                   # Project-wide test cases
-        ├── data_collection
-        ├── data_preprocessing
-        └── data_validation
+└── project_pipeline/           # Final project pipeline to run data and model pipelines
+    ├── config                           
+    ├── dags                             # Directed Acyclic Graph (DAG) files for Airflow workflows.
+    │   ├── batch_processing_dag.py      # DAG for batch processing tasks.
+    │   ├── data_acquisition_dag.py      # DAG for acquiring data.
+    │   ├── data_preprocessing_dag.py    # DAG for data preprocessing tasks.
+    │   ├── data_utils                   # Directory containing utility scripts for data tasks.
+    │   │   ├── config.py                # Configuration file for data utilities.
+    │   │   ├── data_collection          # Data collection related scripts 
+    │   │   ├── data_preprocessing       # Data preprocessing related scripts 
+    │   │   ├── data_validation          # Data validation related scripts 
+    │   │   ├── __init__.py              # Initialization file for the data_utils package.
+    │   │   └── __pycache__              # Cached Python files for performance 
+    │   ├── data_validation_dag.py       # DAG for data validation tasks.
+    │   ├── gcs_pull_dag.py              # DAG for pulling data from Google Cloud Storage (GCS).
+    │   ├── __init__.py                  # Initialization file for the DAG package.
+    │   ├── model_utils                  # Directory for model utility scripts.
+    │   │   ├── dsl_components.py        # Domain-specific language components for the pipeline.
+    │   │   ├── dsl_pipeline.py          # Pipeline definition using a domain-specific language.
+    │   │   ├── model_config.py          # Configuration file for models (e.g., hyperparameters, structure).
+    │   │   ├── pipeline_CI_CD_archive.py# CI/CD pipeline for archiving models and related artifacts.
+    │   │   ├── pipeline_CI_CD.py        # CI/CD pipeline for model deployment and monitoring.
+    │   │   ├── pipeline.py              # Main pipeline script for orchestrating tasks.
+    │   │   ├── __pycache__              # Cached Python files for performance 
+    │   │   └── src                      # Source code for model utility components 
+    │   ├── __pycache__                  # Cached Python files for the DAGs 
+    │   ├── sampling_serve_dag.py        # DAG for serving sampled data.
+    │   ├── sampling_train_dag.py        # DAG for training models with sampled data.
+    │   ├── serve_utils                  # Directory for serving-related utilities.
+    │   │   ├── batch_processing.py      # Script for batch processing during model serving.
+    │   │   └── __pycache__              # Cached Python files for performance 
+    │   └── vertex_ai_submit_dag.py      # DAG for submitting jobs to Vertex AI.
+    ├── data                             # Directory for storing datasets.
+    │   ├── labeled                      # Labeled data for training and serving.
+    │   │   ├── serve                    # Data for model serving predictions.
+    │   │   └── train                    # Data for model training.
+    │   ├── raw                          # Raw data before any processing or cleaning.
+    │   └── sampled                       # Sampled data used for training or serving.
+    │       ├── serving                  # Sampled data for serving predictions.
+    │       └── training                 # Sampled data for training models.
+    ├── docker-compose.yaml              # Docker Compose file for orchestrating multi-container applications.
+    ├── Dockerfile                       # Dockerfile to build the image for the pipeline.
+    ├── __init__.py                      # Initialization script for the project pipeline package.
+    ├── logs                             # Logs generated during the pipeline execution.
+    │   ├── dag_id=06_vertex_ai_pipeline_job_submission_with_run
+    │   ├── dag_id=vertex_ai_pipeline_job_submission_with_run
+    │   ├── dag_processor_manager
+    │   └── scheduler                    # Scheduler logs for specific dates.
+    │       ├── 2024-12-03
+    │       └── 2024-12-05
+    ├── plugins                          # Custom plugins used in the pipeline.
+    └── tests                            # Unit and integration tests for various pipeline components.
+        ├── data_collection             # Tests for data collection processes.
+        │   ├── __init__.py             # Initialization file for data collection tests.
+        │   ├── test_data_acquisition.py# Tests for data acquisition functionality.
+        │   └── test_data_sampling.py   # Tests for data sampling processes.
+        ├── data_preprocessing          # Tests for data preprocessing tasks.
+        │   ├── __init__.py             # Initialization file for data preprocessing tests.
+        │   ├── test_aspect_data_labeling.py # Tests for aspect-based data labeling.
+        │   ├── test_aspect_extraction.py    # Tests for aspect extraction.
+        │   ├── test_data_cleaning_pandas.py # Tests for data cleaning using pandas.
+        │   └── test_data_labeling.py        # Tests for data labeling functionality.
+        ├── data_validation             # Tests for data validation procedures.
+        │   └── test_schema_validation.py    # Tests for schema validation of data.
+        └── __init__.py                 # Initialization file for the tests package.
+
 ```
 
 ---
@@ -177,21 +152,60 @@ Ensure you have the following installed:
 
 2. **Install dependencies:**
     ```bash
-    pip install -r requirements.txt
+    pip install -r project_pipeline/requirements.txt
     ```
 
 3. **Set up Airflow:**
-    - Navigate to the `data_pipeline` directory and initialize Airflow:
-        ```bash
-        cd data_pipeline
-        airflow db init
-        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com
+    - Navigate to the `project_pipeline` directory and initialize Airflow:
+        1. Navigate to the `project_pipeline` directory.
+
         ```
-    - Start the Airflow scheduler and webserver:
-        ```bash
-        airflow scheduler
-        airflow webserver
+        cd project_pipeline
         ```
+        2. Run the following command to set up Airflow with Docker Compose:
+
+        ```bash
+        docker-compose up airflow-init
+        ```
+
+        #### Start Airflow service:
+        Once Airflow is initialized, you can start the Airflow service by running:
+
+        ```bash
+        docker-compose up
+        ```
+
+        This will bring up the Airflow web server and scheduler, ready to execute your DAGs.
+
+        #### Save GCP Service Account Keys:
+        - Save your GCP service account key in the `project_pipeline/config` directory as `gcp-sa-key.json`.
+        - Ensure that the keys and other environment variables are correctly set in the `.env` file.
+
+        #### Create and configure the `.env` file:
+        In the `project_pipeline` directory, create a `.env` file and add the following environment variables:
+
+        ```
+        OPENAI_API_KEY=
+        OPENAI_MODEL=
+        PINECONE_API_KEY=
+        PINECONE_ENVIRONMENT=us-east-1-aws
+        AIRFLOW_UID=50000
+        SMTP_USER=
+        SMTP_PASSWORD=
+        SMTP_MAIL_FROM=
+        SMTP_HOST=
+        SMTP_PORT=
+        GCS_SERVICE_ACCOUNT_KEY=/opt/airflow/config/gcp-sa-key.json
+        GCS_BUCKET_NAME=
+        GCS_BUCKET_NAME_MODEL=
+        ```
+
+        Ensure to replace the placeholders with your actual credentials and configuration values:
+        - `OPENAI_API_KEY` and `OPENAI_MODEL`: For connecting to the OpenAI API.
+        - `PINECONE_API_KEY` and `PINECONE_ENVIRONMENT`: For connecting to Pinecone for vector database access.
+        - `GCS_SERVICE_ACCOUNT_KEY`: Path to your GCP service account JSON file.
+        - `GCS_BUCKET_NAME`: Name of the Google Cloud Storage bucket.
+
 
 4. **Run the pipeline:**
     - Trigger DAGs via the Airflow UI to execute stages of the pipeline (e.g., data acquisition, validation, preprocessing).
@@ -295,6 +309,8 @@ This repository contains Airflow DAGs for preprocessing, validating, and analyzi
 
 The `model_pipeline` directory contains workflows for training, evaluating, and deploying machine learning models for sentiment analysis and summarization.
 
+![alt text](assets/model_pipeline_vertex_ai.png)
+
 ### Key Features
 1. **Sentiment Analysis Pipeline:**
    - Trains state-of-the-art models like BERT and RoBERTa.
@@ -310,15 +326,6 @@ The `model_pipeline` directory contains workflows for training, evaluating, and 
 
 4. **Interactive Dashboards:**
    - Built with Streamlit for exploring sentiment trends and insights dynamically.
-
-### Deployment Setup
-1. **Local Deployment:**
-   - Use Docker to containerize and run the model locally.
-   - Navigate to the `model_deployment` folder and follow the instructions in the README file.
-
-2. **Cloud Deployment:**
-   - Use Google Cloud's Vertex AI or PyTorch Serve for scalable deployment.
-   - Ensure your GCP project and credentials are properly configured.
 
 ### Tools and Integrations
 - **MLflow**: Tracks model metrics, artifacts, and experiments.
