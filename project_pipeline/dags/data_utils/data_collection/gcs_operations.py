@@ -72,11 +72,13 @@ def push_to_gcs(bucket_name, source_directory, destination_blob_prefix, service_
         bucket = client.get_bucket(bucket_name)
         logger.info(f"Successfully accessed bucket '{bucket_name}'")
         
+        logger.info(f"{os.listdir(f'/opt/airflow/data/labeled/train')}")
         # List all files in the source directory
         upload_count = 0
         for local_file in glob.glob(os.path.join(source_directory, '*')):
             # Construct the destination blob name
             blob_name = os.path.join(destination_blob_prefix, os.path.basename(local_file))
+            logger.info(f"{local_file} {blob_name}")
             
             # Create a blob object
             blob = bucket.blob(blob_name)

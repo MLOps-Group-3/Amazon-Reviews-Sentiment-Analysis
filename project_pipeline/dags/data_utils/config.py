@@ -14,7 +14,7 @@ CATEGORIES = [
     # "Baby_Products",
     # "All_Beauty",
     "Appliances",
-    "Amazon_Fashion",
+    # "Amazon_Fashion",
     "Health_and_Personal_Care",
 ]
 
@@ -55,7 +55,7 @@ CLEANED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/cleaned/train/aspect_extract
 CLEANED_ASPECT_DATA_PATH_SERVE = "/opt/airflow/data/cleaned/serve/aspect_extracted_data.csv"
 
 # Labeled data paths (only for training)
-LABELED_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_data.csv"
+LABELED_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train"
 
 # Labeled aspect data paths (only for training)
 LABELED_ASPECT_DATA_PATH_TRAIN = "/opt/airflow/data/labeled/train/labeled_aspect_data.csv"

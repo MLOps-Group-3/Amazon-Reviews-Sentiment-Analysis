@@ -248,7 +248,7 @@ with DAG(
         op_kwargs={
             'bucket_name': GCS_BUCKET_NAME,
             'source_directory': LABELED_DATA_PATH_TRAIN,
-            'destination_blob_prefix': 'data/input/',
+            'destination_blob_prefix': 'input/',
             'service_account_key': GCS_SERVICE_ACCOUNT_KEY,
         },
     )

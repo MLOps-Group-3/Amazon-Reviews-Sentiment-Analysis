@@ -4,7 +4,7 @@ GCP_PROJECT="amazonreviewssentimentanalysis"
 BUCKET_NAME="model-deployment-from-airflow"
 GCP_REGION="us-central1"
 
-DATA_PATH = f"gs://{BUCKET_NAME}/input/labeled_data_1perc.csv"
+DATA_PATH = f"gs://{BUCKET_NAME}/input/labeled_data.csv"
 OUTPUT_DIR = f"gs://{BUCKET_NAME}/output/data/"
 CODE_BUCKET_PATH = f"gs://{BUCKET_NAME}/code"
 SOURCE_CODE = f"gs://{BUCKET_NAME}/code/src"
