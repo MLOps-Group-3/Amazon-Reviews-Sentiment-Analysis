@@ -10,7 +10,7 @@ Variable.set("LOG_DIRECTORY", "/opt/airflow/logs", description="Directory for st
 
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 1, 1),  # Start from January 1, 2024
+    'start_date': datetime(2024, 12, 1),  # Start from January 1, 2024
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,
