@@ -19,6 +19,7 @@ default_args = {
     'start_date': datetime(2024, 12, 3),
     'email_on_failure': True,
     'email_on_retry': False,
+    'email_on_success': True,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks

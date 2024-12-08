@@ -36,7 +36,7 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
     'email_on_failure': True,         # Send email on failure
     'email_on_retry': True,           # Send email on retry
-    'email_on_success': False,        # Optional: email on success
+    'email_on_success': True,        # When we perform model retraining, email is sent upon completion of task
     'email': 'vallimeenaavellaiyan@gmail.com'  # Global recipient for all tasks
 }
 
