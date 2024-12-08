@@ -14,3 +14,7 @@ google-api-python-client
 grpcio-tools 
 googleapis-common-protos
 pinecone[grpc]
+google-auth==2.36.0
+google-cloud-aiplatform==1.74.0
+google-cloud-storage==2.19.0
+protoc-gen-openapiv2==0.0.1

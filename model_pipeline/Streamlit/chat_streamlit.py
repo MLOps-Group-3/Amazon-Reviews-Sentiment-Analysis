@@ -41,7 +41,7 @@ metadata = load_hierarchical_metadata(metadata_file_path)
 
 # Sidebar navigation
 st.sidebar.header("Navigation")
-page = st.sidebar.radio("Select a Page", ("Introduction", "Summary Generator"))
+page = st.sidebar.radio("Select a Page", ("Introduction", "Summary Generator","Model Test"))
 
 # Custom CSS for styling
 st.markdown("""
@@ -172,3 +172,130 @@ elif page == "Summary Generator":
             st.success(response)
         else:
             st.warning("Please select all filters (Category, Year, and Month) to proceed.")
+
+# Model Test Page
+elif page == "Model Test":
+    from google.cloud import aiplatform
+    from google.oauth2 import service_account
+    service_key_path = os.getenv("GCS_SERVICE_ACCOUNT_KEY_LOCAL")
+    credentials = service_account.Credentials.from_service_account_file(service_key_path)
+
+    st.markdown('<div class="main-header">Test Deployed Sentiment Model</div>', unsafe_allow_html=True)
+    st.markdown("<div class='intro-text'>Provide custom inputs below to test the deployed model and get predictions.</div>", unsafe_allow_html=True)
+
+    # Input fields for model testing
+    text_input = st.text_area("Text Input", "The product was excellent and exceeded my expectations.", help="Enter the review text.")
+    price_input = st.number_input("Price", value=49.99, help="Enter the price of the product.")
+    price_missing_input = st.selectbox("Is Price Missing?", [False, True], help="Select whether the price information is missing.")
+    helpful_vote_input = st.number_input("Helpful Votes", value=15, help="Enter the number of helpful votes.")
+    verified_purchase_input = st.selectbox("Verified Purchase?", [True, False], help="Select whether the purchase is verified.")
+
+    # Initialize AI Platform
+    PROJECT_ID = os.getenv("PROJECT_ID","amazonreviewssentimentanalysis")  # Replace with your project ID or set it in .env
+    REGION = os.getenv("GCP_REGION", "us-central1")  # Replace with your region or set in .env
+    APP_NAME = "review_sentiment_bert_model"  # Replace with your app name
+
+    aiplatform.init(project=PROJECT_ID, location=REGION, credentials=credentials)
+
+    # Construct endpoint display name
+    endpoint_display_name = f"{APP_NAME}-endpoint"
+    filter = f'display_name="{endpoint_display_name}"'
+
+    # Retrieve the endpoint
+    endpoint_info = None
+    for endpoint_info in aiplatform.Endpoint.list(filter=filter):
+        print(
+            f"Endpoint display name = {endpoint_info.display_name}, resource ID = {endpoint_info.resource_name}"
+        )
+
+    if endpoint_info:
+        endpoint = aiplatform.Endpoint(endpoint_info.resource_name)
+        print(f"Endpoint ready for use: {endpoint_info.resource_name}")
+    else:
+        # Create endpoint if it doesn't exist
+        endpoint = aiplatform.Endpoint.create(display_name=endpoint_display_name)
+        print(f"Created new endpoint: {endpoint.display_name}")
+
+    # Check if the model is already deployed
+    is_model_deployed = False
+    deployed_models = endpoint.list_models()
+    for deployed_model in deployed_models:
+        
+        if deployed_model.display_name == APP_NAME+"-v1":
+            is_model_deployed = True
+            print(f"Model '{APP_NAME}' is already deployed to this endpoint.")
+            break
+
+    # Deploy the model if not deployed
+    if not is_model_deployed:
+        st.warning(f"Model '{APP_NAME}' is not yet deployed to endpoint '{endpoint_display_name}'!")
+        st.info(f"Deploying '{APP_NAME}' to endpoint '{endpoint_display_name}'!")
+        
+        VERSION = 1
+        model_display_name = f"{APP_NAME}-v{VERSION}"
+
+        st.info(f"Deploying model '{APP_NAME}' to endpoint...")
+        model = aiplatform.Model.list(filter=f'display_name="{model_display_name}"')[0]
+        
+        traffic_percentage = 100
+        machine_type = "n1-standard-4"
+        deployed_model_display_name = model_display_name
+        min_replica_count = 1
+        max_replica_count = 3
+        sync = True
+
+        # Deploy the model
+        operation = model.deploy(
+            endpoint=endpoint,
+            deployed_model_display_name=deployed_model_display_name,
+            machine_type=machine_type,
+            traffic_percentage=traffic_percentage,
+            sync=sync,
+        )
+        st.success(f"Model '{APP_NAME}' successfully deployed to endpoint '{endpoint_display_name}'!")
+    else:
+        st.success(f"Model '{APP_NAME}' is already deployed to endpoint '{endpoint_display_name}'.")
+
+    # Predict button
+    if st.button("Get Prediction"):
+        with st.spinner("Fetching prediction..."):
+            try:
+                # Construct the input instance
+                instance = {
+                    "text": text_input,
+                    "price": price_input,
+                    "price_missing": price_missing_input,
+                    "helpful_vote": helpful_vote_input,
+                    "verified_purchase": verified_purchase_input,
+                }
+
+                # Send the prediction request
+                response = endpoint.predict(instances=[instance])
+
+                # Display the prediction results
+                st.markdown('<div class="sub-header">Prediction Results</div>', unsafe_allow_html=True)
+                sentiment = response.predictions[0][0]
+                confidence = response.predictions[0][1]
+                print(sentiment,confidence)
+                # Determine color based on sentiment
+                if sentiment == "NEGATIVE":
+                    sentiment_color = "red"
+                elif sentiment == "NEUTRAL":
+                    sentiment_color = "orange"
+                else:
+                    sentiment_color = "green"
+
+                # Display sentiment with color
+                st.markdown(
+                    f"""
+                    <div style="font-size:20px; font-weight:bold; color:{sentiment_color};">
+                        Sentiment: {sentiment}
+                    </div>
+                    <div style="font-size:16px; color:gray;">
+                        Confidence: {confidence}
+                    </div>
+                    """,
+                    unsafe_allow_html=True, 
+                    )   
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
