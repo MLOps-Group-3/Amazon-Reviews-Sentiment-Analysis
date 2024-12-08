@@ -31,7 +31,7 @@ SAMPLING_FRACTION = 0.1
 LOG_DIRECTORY = "/opt/airflow/logs"
 
 # Sampled Data Path
-SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/sampled_data_2021.csv"
+SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/sampled_data_2022_2023.csv"
 
 # Validation Data Result Path
 VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation/validation_results.csv"

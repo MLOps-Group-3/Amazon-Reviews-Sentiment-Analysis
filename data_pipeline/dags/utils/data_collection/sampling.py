@@ -87,8 +87,8 @@ def process_reviews_df(reviews_df):
     reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
     
     filtered_reviews_df = reviews_df[
-        (reviews_df['review_date_timestamp'] >= '2021-01-01 00:00:00') & 
-        (reviews_df['review_date_timestamp'] <= '2021-12-31 23:59:59')
+        (reviews_df['review_date_timestamp'] >= '2022-01-01 00:00:00') & 
+        (reviews_df['review_date_timestamp'] <= '2023-12-31 23:59:59')
     ].drop(columns=['images'])
     
     logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
@@ -139,7 +139,7 @@ def process_sampled_data(sampled_df):
     sampled_df['categories'] = sampled_df['categories'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
     sampled_df = sampled_df.drop(columns=['count'])
     
-    sampled_2018_2019_df = sampled_df[sampled_df['year'].isin([2018, 2019])]
+    sampled_2018_2019_df = sampled_df[sampled_df['year'].isin([2022, 2023])]
     sampled_2020_df = sampled_df[sampled_df['year'] == 2021]
     
     logger.info(f"Split data into {len(sampled_2018_2019_df)} rows for 2018-2019 and {len(sampled_2020_df)} rows for 2020")
@@ -171,7 +171,7 @@ def sample_category(category_name):
         
         # Save to CSV
         os.makedirs(TARGET_DIRECTORY_SAMPLED, exist_ok=True)
-        sampled_2018_2019_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2018_2019_{category_name}.csv"), index=False)
+        sampled_2018_2019_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2022_2023_{category_name}.csv"), index=False)
         sampled_2020_df.to_csv(os.path.join(TARGET_DIRECTORY_SAMPLED, f"sampled_data_2021_{category_name}.csv"), index=False)
         
         logger.info("Data processing completed successfully")
