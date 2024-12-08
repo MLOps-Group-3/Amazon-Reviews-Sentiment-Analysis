@@ -9,3 +9,7 @@ scikit-learn
 pytest==7.4.4
 pandas==2.2.2
 openai==0.28.0
+google-auth==2.36.0
+google-cloud-aiplatform==1.74.0
+google-cloud-storage==2.19.0
+protoc-gen-openapiv2==0.0.1
