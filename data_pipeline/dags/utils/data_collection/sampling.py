@@ -87,8 +87,8 @@ def process_reviews_df(reviews_df):
     reviews_df['review_date_timestamp'] = pd.to_datetime(reviews_df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
     
     filtered_reviews_df = reviews_df[
-        (reviews_df['review_date_timestamp'] >= '2022-01-01 00:00:00') & 
-        (reviews_df['review_date_timestamp'] <= '2023-12-31 23:59:59')
+        (reviews_df['review_date_timestamp'] >= '2021-01-01 00:00:00') & 
+        (reviews_df['review_date_timestamp'] <= '2021-12-31 23:59:59')
     ].drop(columns=['images'])
     
     logger.info(f"Filtered reviews DataFrame to {len(filtered_reviews_df)} rows")
