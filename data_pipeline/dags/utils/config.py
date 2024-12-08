@@ -10,7 +10,7 @@ CATEGORIES = [
     #"Beauty_and_Personal_Care",
     # "Baby_Products",
     # "All_Beauty",
-    "Appliances",
+    # "Appliances",
     "Amazon_Fashion",
     "Health_and_Personal_Care"
 ]
@@ -31,7 +31,7 @@ SAMPLING_FRACTION = 0.1
 LOG_DIRECTORY = "/opt/airflow/logs"
 
 # Sampled Data Path
-SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/sampled_data_2018_2019.csv"
+SAMPLED_DATA_PATH = "/opt/airflow/data/sampled/sampled_data_2021.csv"
 
 # Validation Data Result Path
 VALIDATION_RESULT_DATA_PATH = "/opt/airflow/data/validation/validation_results.csv"

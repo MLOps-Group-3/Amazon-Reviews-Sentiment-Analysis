@@ -15,7 +15,7 @@ def concatenate_and_save_csv_files():
             if 'sampled_data_2018_2019_' in filename:
                 df = pd.read_csv(file_path)
                 dfs_2018_2019.append(df)
-            elif 'sampled_data_2020_' in filename:
+            elif 'sampled_data_2021_' in filename:
                 df = pd.read_csv(file_path)
                 dfs_2020.append(df)
 
@@ -31,7 +31,7 @@ def concatenate_and_save_csv_files():
     # Concatenate and save DataFrames for 2020
     if dfs_2020:
         concatenated_2020 = pd.concat(dfs_2020, ignore_index=True)
-        output_path_2020 = os.path.join(TARGET_DIRECTORY_SAMPLED, 'sampled_data_2020.csv')
+        output_path_2020 = os.path.join(TARGET_DIRECTORY_SAMPLED, 'sampled_data_2021.csv')
         concatenated_2020.to_csv(output_path_2020, index=False)
         print(f"Saved concatenated 2020 data to {output_path_2020}")
     else:

@@ -74,3 +74,5 @@ trainer_state.txt
 special_tokens_map.json
 tokenizer_config.json
 vocab.json
+
+amazonreviewssentimentanalysis-8dfde6e21c1d.json
