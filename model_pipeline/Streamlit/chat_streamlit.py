@@ -23,7 +23,8 @@ def get_available_options(metadata, category=None, year=None):
         return list(metadata.keys())
     if year is None:
         return list(metadata.get(category, {}).keys())
-    return metadata.get(category, {}).get(year, [])
+    options = metadata.get(category, {}).get(year, [])
+    return ["ALL"] + options  # Add "ALL" option to the months list
 
 # Streamlit app configuration
 st.set_page_config(
@@ -150,7 +151,7 @@ elif page == "Summary Generator":
             get_available_options(metadata, selected_category)
         )
         if selected_year:
-            # Dynamic month selection based on category and year
+            # Dynamic month selection with "ALL" option
             selected_month = st.selectbox(
                 "Month",
                 get_available_options(metadata, selected_category, selected_year)
@@ -160,11 +161,12 @@ elif page == "Summary Generator":
     if st.button("Proceed", key="proceed", help="Click to generate the summary"):
         if selected_category and selected_year and selected_month:
             with st.spinner("Generating summary..."):
+                # Pass None for the month if "ALL" is selected
                 response = process_text_query(
-                    input_text=f"Generate a summary for the '{selected_category}' category for the year {selected_year} and the month of {selected_month}.",
+                    input_text=f"Generate a summary for the '{selected_category}' category for the year {selected_year} and month '{selected_month}'.",
                     category=selected_category,
                     year=selected_year,
-                    month=selected_month,
+                    month=selected_month if selected_month != "ALL" else None,
                 )
             st.markdown('<div class="sub-header">Summary</div>', unsafe_allow_html=True)
             st.success(response)

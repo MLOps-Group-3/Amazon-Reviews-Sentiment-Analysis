@@ -71,12 +71,13 @@ def query_pinecone(embedding, top_k=10, category=None, year=None, month=None):
         
         # Filter based on metadata (category, year, month)
         matches = vector_results.get("matches", [])
-        filtered_matches = filter_pinecone_matches(matches, category, year, month)
+        
+        # If "ALL" is selected for month, skip filtering by month
+        filtered_matches = filter_pinecone_matches(matches, category, year, None if month == "ALL" else month)
         return filtered_matches
     except Exception as e:
         logging.error(f"Error querying Pinecone: {e}")
         return []
-
 
 def filter_pinecone_matches(matches, category=None, year=None, month=None):
     """
@@ -84,7 +85,7 @@ def filter_pinecone_matches(matches, category=None, year=None, month=None):
     """
     filtered_matches = []
     logging.info(f"Starting to filter matches with criteria - "
-                 f"Category: {category}, Year: {year}, Month: {month}")
+                 f"Category: {category}, Year: {year}, Month: {month if month else 'ALL'}")
 
     for i, match in enumerate(matches):
         metadata = match.get("metadata", {})
@@ -102,7 +103,7 @@ def filter_pinecone_matches(matches, category=None, year=None, month=None):
                 logging.info(f"Year mismatch - Expected: {year}, Found: {metadata.get('year', 'None')}")
                 continue
 
-        # Check month (strict match)
+        # Check month (strict match unless "ALL" is selected)
         if month:
             if str(metadata.get("month")) != str(month):
                 logging.info(f"Month mismatch - Expected: {month}, Found: {metadata.get('month', 'None')}")
@@ -113,6 +114,7 @@ def filter_pinecone_matches(matches, category=None, year=None, month=None):
 
     logging.info(f"Filtering complete. {len(filtered_matches)} matches passed out of {len(matches)} total.")
     return filtered_matches
+
 
 
 def fetch_from_gcp(metadata):
@@ -238,11 +240,14 @@ def get_llm_response(llm_input, is_out_of_context=False):
             "An error occurred while generating a response. Please try again later. If the issue persists, contact support."
         )
 
-def fetch_all_files_from_gcp(category, year, month):
-    """Fallback: Fetch all JSON files from GCP bucket for a specific category/year/month."""
+# Fetch files from GCP with "ALL" option handling
+def fetch_all_files_from_gcp(category, year, month=None):
+    """Fetch JSON files from GCP for a specific category/year/month. Handles 'ALL' case."""
     try:
         bucket = storage_client.bucket(gcp_bucket_name)
-        prefix = f"RAG/{category}/{year}/{month}/"
+        prefix = f"RAG/{category}/{year}/"
+        if month:
+            prefix += f"{month}/"
         blobs = bucket.list_blobs(prefix=prefix)
         all_files_data = []
         for blob in blobs:
@@ -253,6 +258,7 @@ def fetch_all_files_from_gcp(category, year, month):
     except Exception as e:
         logging.error(f"Error fetching files from GCP: {e}")
         return []
+
 
 
 

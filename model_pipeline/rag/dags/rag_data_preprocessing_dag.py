@@ -14,8 +14,9 @@ import re
 # Import your RAG preprocessing functions
 from utils.review_data_processing import load_and_process_data, aggregate_data, prepare_documents, save_documents
 from utils.document_processor import process_document_with_summary
-from utils.config import PROCESSED_DATA_PATH, DOCUMENT_STORE_PATH  # Paths for input and output data
+from utils.config import PROCESSED_DATA_PATH, DOCUMENT_STORE_PATH
 from utils.config import REFINED_PROCESSED_DATA_PATH, DOCUMENTS_FILE_PATH, PROCESSED_OUTPUT_PATH, REFINED_OUTPUT_PATH
+from utils.bigquery_utils import fetch_data_from_bigquery_and_save
 
 # Load environment variables from .env file
 load_dotenv()
@@ -31,6 +32,21 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     logger.error("OpenAI API key not found. Please set it in the .env file.")
     raise ValueError("OpenAI API key not found. Please set it in the .env file.")
+
+# BigQuery table information
+project_id = os.getenv("GCS_PROJECT_ID")
+dataset_id = os.getenv("GCS_DATASET_ID")
+table_id = os.getenv("GCS_TABLE_ID")
+
+# Function to fetch data from BigQuery and save to local
+def fetch_bigquery_data_task():
+    logger.info("Fetching data from BigQuery and saving to local...")
+    fetch_data_from_bigquery_and_save(
+        project_id=project_id,
+        dataset_id=dataset_id,
+        table_id=table_id,
+        output_path=PROCESSED_OUTPUT_PATH
+    )
 
 # RAG Data Preprocessing Task Group Functions
 def load_and_process_data_task(ti):
@@ -131,6 +147,18 @@ with DAG(
     description='DAG for data preprocessing for the RAG model pipeline',
 ) as dag:
 
+    # Fetch BigQuery data
+    fetch_bigquery_data_op = PythonOperator(
+        task_id='fetch_bigquery_data',
+        python_callable=fetch_data_from_bigquery_and_save,
+        op_kwargs={
+            'project_id': os.getenv("GCS_PROJECT_ID"),
+            'dataset_id': os.getenv("GCS_DATASET_ID"),
+            'table_id': os.getenv("GCS_TABLE_ID"),
+            'output_path': PROCESSED_DATA_PATH,
+        },
+    )
+
     # Define the Task Group for the RAG Data Preprocessing steps
     with TaskGroup("rag_data_preprocessing", tooltip="RAG Data Preprocessing Steps") as rag_data_preprocessing_group:
         
@@ -182,7 +210,7 @@ with DAG(
         load_documents_task_op >> process_documents_task_op >> clean_and_validate_json_task_op >> save_refined_documents_task_op
 
     # Set dependencies for the two task groups
-    save_documents_task_op >> document_processing_group
+    fetch_bigquery_data_op >> rag_data_preprocessing_group >> document_processing_group
 
     # Trigger the second DAG after all tasks in the first DAG are complete
     save_refined_documents_task_op >> TriggerDagRunOperator(
