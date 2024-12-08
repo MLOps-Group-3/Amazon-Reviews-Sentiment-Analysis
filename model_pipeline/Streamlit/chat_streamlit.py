@@ -33,7 +33,7 @@ st.set_page_config(
 )
 
 # Path to the hierarchical metadata file
-metadata_file_path = "/home/ssd/Desktop/Project/Amazon-Reviews-Sentiment-Analysis/model_pipeline/Streamlit/items/hierarchical_metadata.json"
+metadata_file_path = "hierarchical_metadata.json"
 
 # Load metadata from the JSON file
 metadata = load_hierarchical_metadata(metadata_file_path)

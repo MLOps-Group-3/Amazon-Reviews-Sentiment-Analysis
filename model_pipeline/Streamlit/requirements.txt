@@ -10,3 +10,7 @@ pytest==7.4.4
 pandas==2.2.2
 openai==0.28.0
 streamlit
+google-api-python-client
+grpcio-tools 
+googleapis-common-protos
+pinecone[grpc]
